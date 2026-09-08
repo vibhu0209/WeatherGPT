@@ -1,0 +1,27 @@
+<resources>
+    <string name="chat">ಕೇಳಿ</string>
+    <string name="forecast">ಹವಾಮಾನ</string>
+    <string name="alerts">ಎಚ್ಚರಿಕೆಗಳು</string>
+    <string name="settings">ಸೆಟ್ಟಿಂಗ್‌ಗಳು</string>
+    <string name="choose_place">ನಿಮ್ಮ ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ</string>
+    <string name="listen">ಆಲಿಸಿ</string>
+    <string name="speak">ಮಾತನಾಡಿ</string>
+    <string name="send">ಕಳುಹಿಸಿ</string>
+    <string name="search">ಸ್ಥಳ ಹುಡುಕಿ</string>
+    <string name="close">ಮುಚ್ಚಿ</string>
+    <string name="temperature">ತಾಪಮಾನ</string>
+    <string name="rain">ಮಳೆಯ ಸಾಧ್ಯತೆ</string>
+    <string name="wind">ಗಾಳಿ</string>
+    <string name="theme">ನೋಟ</string>
+    <string name="system_theme">ಫೋನ್ ಪ್ರಕಾರ</string>
+    <string name="light_theme">ಬೆಳಕು</string>
+    <string name="dark_theme">ಕತ್ತಲೆ</string>
+    <string name="large_text">ದೊಡ್ಡ ಅಕ್ಷರಗಳು</string>
+    <string name="language">ನಿಮ್ಮ ಭಾಷೆ</string>
+    <string name="general">ದೈನಂದಿನ ಜೀವನ / ಶಾಲೆ</string>
+    <string name="farming">ಕೃಷಿ</string>
+    <string name="fishing">ಮೀನುಗಾರಿಕೆ</string>
+    <string name="outdoor">ಹೊರಾಂಗಣ ಕೆಲಸ ಅಥವಾ ಪ್ರಯಾಣ</string>
+    <string name="cancel">ರದ್ದುಮಾಡಿ</string>
+    <string name="save">ಉಳಿಸಿ</string>
+</resources>

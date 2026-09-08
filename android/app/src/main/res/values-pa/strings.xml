@@ -1,0 +1,27 @@
+<resources>
+    <string name="chat">ਪੁੱਛੋ</string>
+    <string name="forecast">ਮੌਸਮ</string>
+    <string name="alerts">ਚੇਤਾਵਨੀਆਂ</string>
+    <string name="settings">ਸੈਟਿੰਗਾਂ</string>
+    <string name="choose_place">ਆਪਣੀ ਥਾਂ ਚੁਣੋ</string>
+    <string name="listen">ਸੁਣੋ</string>
+    <string name="speak">ਬੋਲੋ</string>
+    <string name="send">ਭੇਜੋ</string>
+    <string name="search">ਥਾਂ ਲੱਭੋ</string>
+    <string name="close">ਬੰਦ ਕਰੋ</string>
+    <string name="temperature">ਤਾਪਮਾਨ</string>
+    <string name="rain">ਮੀਂਹ ਦੀ ਸੰਭਾਵਨਾ</string>
+    <string name="wind">ਹਵਾ</string>
+    <string name="theme">ਦਿੱਖ</string>
+    <string name="system_theme">ਫ਼ੋਨ ਅਨੁਸਾਰ</string>
+    <string name="light_theme">ਹਲਕਾ</string>
+    <string name="dark_theme">ਗੂੜ੍ਹਾ</string>
+    <string name="large_text">ਵੱਡੇ ਅੱਖਰ</string>
+    <string name="language">ਤੁਹਾਡੀ ਭਾਸ਼ਾ</string>
+    <string name="general">ਰੋਜ਼ਾਨਾ ਜੀਵਨ / ਸਕੂਲ</string>
+    <string name="farming">ਖੇਤੀ</string>
+    <string name="fishing">ਮੱਛੀ ਫੜਨਾ</string>
+    <string name="outdoor">ਬਾਹਰ ਕੰਮ ਜਾਂ ਸਫ਼ਰ</string>
+    <string name="cancel">ਰੱਦ ਕਰੋ</string>
+    <string name="save">ਸੰਭਾਲੋ</string>
+</resources>

@@ -1,0 +1,27 @@
+<resources>
+    <string name="chat">জিজ্ঞাসা</string>
+    <string name="forecast">আবহাওয়া</string>
+    <string name="alerts">সতর্কতা</string>
+    <string name="settings">সেটিংস</string>
+    <string name="choose_place">আপনার স্থান বাছুন</string>
+    <string name="listen">শুনুন</string>
+    <string name="speak">বলুন</string>
+    <string name="send">পাঠান</string>
+    <string name="search">স্থান খুঁজুন</string>
+    <string name="close">বন্ধ করুন</string>
+    <string name="temperature">তাপমাত্রা</string>
+    <string name="rain">বৃষ্টির সম্ভাবনা</string>
+    <string name="wind">বাতাস</string>
+    <string name="theme">চেহারা</string>
+    <string name="system_theme">ফোন অনুযায়ী</string>
+    <string name="light_theme">হালকা</string>
+    <string name="dark_theme">গাঢ়</string>
+    <string name="large_text">বড় লেখা</string>
+    <string name="language">আপনার ভাষা</string>
+    <string name="general">দৈনন্দিন জীবন / স্কুল</string>
+    <string name="farming">কৃষিকাজ</string>
+    <string name="fishing">মাছ ধরা</string>
+    <string name="outdoor">বাইরে কাজ বা ভ্রমণ</string>
+    <string name="cancel">বাতিল</string>
+    <string name="save">সংরক্ষণ</string>
+</resources>

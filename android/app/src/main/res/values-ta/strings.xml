@@ -1,0 +1,27 @@
+<resources>
+    <string name="chat">கேளுங்கள்</string>
+    <string name="forecast">வானிலை</string>
+    <string name="alerts">எச்சரிக்கைகள்</string>
+    <string name="settings">அமைப்புகள்</string>
+    <string name="choose_place">உங்கள் இடத்தைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="listen">கேட்கவும்</string>
+    <string name="speak">பேசவும்</string>
+    <string name="send">அனுப்பவும்</string>
+    <string name="search">இடம் தேடவும்</string>
+    <string name="close">மூடவும்</string>
+    <string name="temperature">வெப்பநிலை</string>
+    <string name="rain">மழை வாய்ப்பு</string>
+    <string name="wind">காற்று</string>
+    <string name="theme">தோற்றம்</string>
+    <string name="system_theme">தொலைபேசிக்கு ஏற்ப</string>
+    <string name="light_theme">ஒளி</string>
+    <string name="dark_theme">இருள்</string>
+    <string name="large_text">பெரிய எழுத்து</string>
+    <string name="language">உங்கள் மொழி</string>
+    <string name="general">அன்றாட வாழ்க்கை / பள்ளி</string>
+    <string name="farming">விவசாயம்</string>
+    <string name="fishing">மீன்பிடித்தல்</string>
+    <string name="outdoor">வெளிப்புற வேலை அல்லது பயணம்</string>
+    <string name="cancel">ரத்து</string>
+    <string name="save">சேமிக்கவும்</string>
+</resources>

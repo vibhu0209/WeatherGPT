@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.compile-cache/
+.pytest_cache/
+.env
+*.db
+*.db-*
+.gradle/
+build/
+local.properties
+.tools/
+*.log
+*.jks
+service-account*.json

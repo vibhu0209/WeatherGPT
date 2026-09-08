@@ -1,0 +1,27 @@
+<resources>
+    <string name="chat">ചോദിക്കൂ</string>
+    <string name="forecast">കാലാവസ്ഥ</string>
+    <string name="alerts">മുന്നറിയിപ്പുകൾ</string>
+    <string name="settings">ക്രമീകരണങ്ങൾ</string>
+    <string name="choose_place">നിങ്ങളുടെ സ്ഥലം തിരഞ്ഞെടുക്കുക</string>
+    <string name="listen">കേൾക്കുക</string>
+    <string name="speak">സംസാരിക്കുക</string>
+    <string name="send">അയയ്ക്കുക</string>
+    <string name="search">സ്ഥലം തിരയുക</string>
+    <string name="close">അടയ്ക്കുക</string>
+    <string name="temperature">താപനില</string>
+    <string name="rain">മഴയുടെ സാധ്യത</string>
+    <string name="wind">കാറ്റ്</string>
+    <string name="theme">രൂപം</string>
+    <string name="system_theme">ഫോണിന് അനുസരിച്ച്</string>
+    <string name="light_theme">വെളിച്ചം</string>
+    <string name="dark_theme">ഇരുട്ട്</string>
+    <string name="large_text">വലിയ അക്ഷരങ്ങൾ</string>
+    <string name="language">നിങ്ങളുടെ ഭാഷ</string>
+    <string name="general">ദൈനംദിന ജീവിതം / സ്കൂൾ</string>
+    <string name="farming">കൃഷി</string>
+    <string name="fishing">മത്സ്യബന്ധനം</string>
+    <string name="outdoor">പുറത്തെ ജോലി അല്ലെങ്കിൽ യാത്ര</string>
+    <string name="cancel">റദ്ദാക്കുക</string>
+    <string name="save">സൂക്ഷിക്കുക</string>
+</resources>

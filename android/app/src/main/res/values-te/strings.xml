@@ -1,0 +1,27 @@
+<resources>
+    <string name="chat">అడగండి</string>
+    <string name="forecast">వాతావరణం</string>
+    <string name="alerts">హెచ్చరికలు</string>
+    <string name="settings">సెట్టింగ్‌లు</string>
+    <string name="choose_place">మీ ప్రాంతం ఎంచుకోండి</string>
+    <string name="listen">వినండి</string>
+    <string name="speak">మాట్లాడండి</string>
+    <string name="send">పంపండి</string>
+    <string name="search">ప్రాంతం వెతకండి</string>
+    <string name="close">మూసివేయండి</string>
+    <string name="temperature">ఉష్ణోగ్రత</string>
+    <string name="rain">వర్షం పడే అవకాశం</string>
+    <string name="wind">గాలి</string>
+    <string name="theme">రూపం</string>
+    <string name="system_theme">ఫోన్ ప్రకారం</string>
+    <string name="light_theme">వెలుగు</string>
+    <string name="dark_theme">చీకటి</string>
+    <string name="large_text">పెద్ద అక్షరాలు</string>
+    <string name="language">మీ భాష</string>
+    <string name="general">రోజువారీ జీవితం / పాఠశాల</string>
+    <string name="farming">వ్యవసాయం</string>
+    <string name="fishing">చేపల వేట</string>
+    <string name="outdoor">బయట పని లేదా ప్రయాణం</string>
+    <string name="cancel">రద్దు</string>
+    <string name="save">భద్రపరచండి</string>
+</resources>

@@ -1,0 +1,27 @@
+<resources>
+    <string name="chat">પૂછો</string>
+    <string name="forecast">હવામાન</string>
+    <string name="alerts">ચેતવણીઓ</string>
+    <string name="settings">સેટિંગ્સ</string>
+    <string name="choose_place">તમારું સ્થળ પસંદ કરો</string>
+    <string name="listen">સાંભળો</string>
+    <string name="speak">બોલો</string>
+    <string name="send">મોકલો</string>
+    <string name="search">સ્થળ શોધો</string>
+    <string name="close">બંધ કરો</string>
+    <string name="temperature">તાપમાન</string>
+    <string name="rain">વરસાદની શક્યતા</string>
+    <string name="wind">પવન</string>
+    <string name="theme">દેખાવ</string>
+    <string name="system_theme">ફોન મુજબ</string>
+    <string name="light_theme">આછું</string>
+    <string name="dark_theme">ઘેરું</string>
+    <string name="large_text">મોટા અક્ષરો</string>
+    <string name="language">તમારી ભાષા</string>
+    <string name="general">રોજિંદું જીવન / શાળા</string>
+    <string name="farming">ખેતી</string>
+    <string name="fishing">માછીમારી</string>
+    <string name="outdoor">બહાર કામ કે મુસાફરી</string>
+    <string name="cancel">રદ કરો</string>
+    <string name="save">સાચવો</string>
+</resources>
