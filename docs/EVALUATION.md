@@ -9,12 +9,13 @@
 - Room v2-to-v3 emulator upgrade: the existing private database was upgraded in place; MainActivity resumed and the latest AndroidRuntime/Room log window contained no errors.
 - Theme static verification: all eight explicit foreground/background pairs exceed WCAG 4.5:1 (minimum measured 6.60:1). Resource references resolve.
 - Theme device persistence: dark, light and system selections each remained checked after a force-stop and relaunch on the Pixel_10a emulator. Visual review at varied display sizes remains.
+- Text scaling sample: the Hindi empty-chat screen was visually inspected at Android 200% font scale on 1080×2424. Its heading, body, location controls and five navigation labels remained visible without overlap; data-heavy screens remain unverified.
 
 ## Device checks still required
 The emulator verifies installation, clean launch, resumed activity and the eleven-language onboarding hierarchy. The following hands-on checks remain; do not present them as passed.
 1. Fresh install: choose English/Hindi, test GPS allow/deny/unavailable paths, select a village/town manually, and download weather.
-2. Theme persistence passed for light/dark/system. Toggle larger text, force-close and reopen, then inspect every screen.
-3. Set phone text size to 200%; inspect every screen at narrow width and landscape.
+2. Theme and app larger-text preferences persist through relaunch. Inspect data-heavy screens with larger text enabled.
+3. The Hindi empty-chat screen passed at 200% phone text size; inspect forecast, alerts, history and settings at narrow width and landscape.
 4. Enable TalkBack. Verify reading order, labelled controls, selection state and touch targets.
 5. Speak a question; review transcript; send; listen; test missing speech engine/language.
 6. Restart without network. Downloaded forecast remains visible with timestamp. Ask tomorrow, then morning. Missing periods must show unavailable.
