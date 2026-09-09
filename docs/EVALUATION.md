@@ -10,13 +10,15 @@
 - Theme static verification: all eight explicit foreground/background pairs exceed WCAG 4.5:1 (minimum measured 6.60:1). Resource references resolve.
 - Theme device persistence: dark, light and system selections each remained checked after a force-stop and relaunch on the Pixel_10a emulator. Visual review at varied display sizes remains.
 - Text scaling sample: the Hindi empty-chat screen was visually inspected at Android 200% font scale on 1080×2424. Its heading, body, location controls and five navigation labels remained visible without overlap; data-heavy screens remain unverified.
+- Accessibility-service smoke test: installed TalkBack was enabled, WeatherGPT relaunched and remained the resumed activity, and no AndroidRuntime/WeatherGPT errors appeared in the sampled logs. TalkBack was then disabled. Spoken reading order was not verified.
+- Voice prerequisites: the emulator resolves one speech-recognition activity and one Google TTS service. End-to-end capture and playback remain unverified.
 
 ## Device checks still required
 The emulator verifies installation, clean launch, resumed activity and the eleven-language onboarding hierarchy. The following hands-on checks remain; do not present them as passed.
 1. Fresh install: choose English/Hindi, test GPS allow/deny/unavailable paths, select a village/town manually, and download weather.
 2. Theme and app larger-text preferences persist through relaunch. Inspect data-heavy screens with larger text enabled.
 3. The Hindi empty-chat screen passed at 200% phone text size; inspect forecast, alerts, history and settings at narrow width and landscape.
-4. Enable TalkBack. Verify reading order, labelled controls, selection state and touch targets.
+4. TalkBack enable/relaunch smoke test passed. Verify spoken reading order, labelled controls, selection state and touch targets by listening.
 5. Speak a question; review transcript; send; listen; test missing speech engine/language.
 6. Restart without network. Downloaded forecast remains visible with timestamp. Ask tomorrow, then morning. Missing periods must show unavailable.
 7. Disconnect with empty cache. No weather numbers appear.
