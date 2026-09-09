@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
+from app import main
 from app.decision import current_point, daily_summary, recommendations, weather_score
 from app.main import app
 
@@ -96,7 +97,8 @@ def test_transport_profile_penalizes_visibility():
     assert any(item["name"] == "Visibility" for item in transport["components"])
 
 
-def test_alert_endpoint_never_claims_no_warnings():
+def test_alert_endpoint_never_claims_no_warnings(monkeypatch):
+    monkeypatch.setattr(main.alert_service.settings, "cap_alert_url", "")
     response = TestClient(app).get("/v1/weather/alerts?latitude=28.6&longitude=77.2")
     assert response.status_code == 200
     body = response.json()

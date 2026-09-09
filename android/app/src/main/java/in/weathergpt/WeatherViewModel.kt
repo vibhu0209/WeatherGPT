@@ -1,11 +1,13 @@
 package `in`.weathergpt
 
 import android.app.Application
+import android.content.res.Configuration
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.datastore.preferences.core.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import java.util.Locale
 
 class WeatherViewModel(app:Application):AndroidViewModel(app) {
     val repo=Repository(app)
@@ -119,7 +121,9 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
                 if(a.sources.isEmpty() && repo.dao.weatherOnce(repo.key(p))!=null) throw java.io.IOException("Live sources unavailable")
                 dayOffset=a.day_offset
                 val downloaded=java.time.Instant.parse(a.retrieved_at).atZone(java.time.ZoneId.of(p.timezone)).format(java.time.format.DateTimeFormatter.ofPattern("d MMM, h:mm a",java.util.Locale.forLanguageTag(a.language)))
-                val sourceLabel=if(a.language=="hi") "डाउनलोड किया: " else "Downloaded: "
+                val sourceLabel=getApplication<Application>().createConfigurationContext(
+                    Configuration(getApplication<Application>().resources.configuration).apply { setLocale(Locale.forLanguageTag(lang)) }
+                ).getString(R.string.downloaded_prefix)
                 repo.dao.message(Message(role="assistant",text=a.answer+"\n\n"+sourceLabel+downloaded+" · "+a.sources.joinToString(),language=a.language,conversationId=conversation,resolvedLocationId=repo.key(p),weatherContextTimestamp=a.retrieved_at))
                 offline.value=false
             } catch(e:CancellationException) { throw e }
@@ -161,20 +165,24 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
     fun syncAlertSubscription(enabled:Boolean) {
         val p=place.value?:return
         viewModelScope.launch {
-            if(!enabled || !registerDeviceIfNeeded()) return@launch
-            val deviceId=value("device_id"); val token=value("device_token")
-            if(deviceId.isBlank() || token.isBlank()) return@launch
+            val placeKey=repo.key(p)
             val channels=buildList {
                 if(value("official_notifications")=="true") add("severe")
                 if(value("risk_notifications")=="true") add("rain")
-                if(isEmpty()) add("severe")
             }
+            channels.forEach { channel ->
+                repo.dao.saveAlertRule(AlertRule(id="$placeKey:$channel",placeKey=placeKey,channel=channel,enabled=enabled))
+            }
+            if(!enabled || !registerDeviceIfNeeded()) return@launch
+            val deviceId=value("device_id"); val token=value("device_token")
+            if(deviceId.isBlank() || token.isBlank()) return@launch
+            val payloadChannels=channels.ifEmpty { listOf("severe") }
             try {
-                repo.api(base()).createSubscription(AlertSubscriptionBody(p.latitude,p.longitude,p.timezone,channels),deviceId,"Bearer $token")
+                repo.api(base()).createSubscription(AlertSubscriptionBody(p.latitude,p.longitude,p.timezone,payloadChannels),deviceId,"Bearer $token")
             } catch(_:Exception) { android.util.Log.w("WeatherGPT","subscription_sync_failed") }
         }
     }
-    fun clearAll() { viewModelScope.launch { androidx.work.WorkManager.getInstance(getApplication()).cancelAllWork(); androidx.core.app.NotificationManagerCompat.from(getApplication()).cancelAll(); repo.dao.clearChat(); repo.dao.clearWeather(); repo.dao.clearSyncMetadata(); repo.dao.clearNotificationReceipts(); repo.dao.clearPlaces(); settings.edit{it.clear()}; dayOffset=0 } }
+    fun clearAll() { viewModelScope.launch { androidx.work.WorkManager.getInstance(getApplication()).cancelAllWork(); androidx.core.app.NotificationManagerCompat.from(getApplication()).cancelAll(); repo.dao.clearChat(); repo.dao.clearWeather(); repo.dao.clearSyncMetadata(); repo.dao.clearNotificationReceipts(); repo.dao.clearPlaces(); repo.dao.clearAlertRules(); settings.edit{it.clear()}; dayOffset=0 } }
 }
 
 

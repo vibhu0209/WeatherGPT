@@ -51,6 +51,16 @@ def main() -> int:
             errors.append(f"{locale}: required keys missing: {sorted(required_missing)}")
         if placeholder_mismatch:
             errors.append(f"{locale}: placeholder mismatch: {placeholder_mismatch}")
+        identical = sorted(
+            key for key in set(master) & set(values)
+            if locale in FULL_LOCALES
+            and values[key] == master[key]
+            and master[key].strip()
+            and master[key] not in {"WeatherGPT", "UV", "Wi-Fi", "IMD", "OK"}
+            and not master[key].startswith("http")
+        )
+        if identical:
+            errors.append(f"{locale}: still English (not translated): {identical}")
         reports.append(f"{locale}: {len(master)-len(missing)}/{len(master)}")
     print("Localization coverage: " + ", ".join(reports))
     if errors:

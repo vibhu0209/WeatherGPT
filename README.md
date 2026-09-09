@@ -13,7 +13,7 @@ WeatherGPT fuses validated multi-provider forecasts on a FastAPI backend, answer
 ## Why chatbot-first
 
 Chat is the default screen: suggested questions, typing, or Speak → confirm transcript → send. Answers lead with a plain summary; an expandable evidence control shows sources, confidence reasons and update time. Forecast, alerts, home score and settings remain available, but conversation is the front door.
-z
+
 ## Architecture
 
 ```
@@ -33,9 +33,10 @@ Open-Meteo (+ IFS) · OpenWeather* · WeatherAPI* · IMD probe*
 - Chat-first Q&A over verified weather tools (current, hourly, daily, alerts, score, climate, marine)
 - Multi-model fusion with explainable confidence (uncalibrated; not a probability)
 - Official CAP path when configured; local risk estimates always labelled separately
-- 11 UI languages with full string packs (126/126); offline deterministic drafts English/Hindi-first
+- 11 UI languages with full string packs (162/162); offline drafts cover multiple Indian languages with English fallback where needed
 - On-device voice input/playback where the phone supports it; cloud voice endpoints return 501 until configured
 - Offline Room cache, stale labelling, Low Data Mode, Wi-Fi-preferring background sync
+- Full-screen onboarding: language, occupation, theme, permissions, device location first
 - Light / dark / system theme, larger text, large labelled controls
 - Device-token authenticated alert subscriptions (no IDOR listing of other devices’ coordinates)
 
@@ -86,11 +87,26 @@ Copy `.env.example` to `.env` at the repo root. Empty values disable optional in
 | `CAP_ALERT_URL` / `CAP_ALERT_ALLOWED_HOSTS` | Trusted official CAP feed |
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | Optional backend-only wording |
 | `BHASHINI_*` / `GOOGLE_TRANSLATE_API_KEY` | Optional translation |
+| `GOOGLE_PLACES_API_KEY` | Optional place search (Places Autocomplete); falls back to Open-Meteo + city list |
+| `MAPPLS_ACCESS_TOKEN` | Optional MapmyIndia / Mappls search |
 | `FIREBASE_*` | Optional FCM push (placeholders; empty = disabled) |
 | `SMS_*` | Optional SMS delivery (placeholders; empty = disabled) |
 | `CORS_ORIGINS` / `REDIS_URL` | Optional CORS and cache backend |
 
 Do not commit `.env`. Do not put secrets in Android.
+
+### Google Places API key (low / no cost for light use)
+
+Place search works without Google (Open-Meteo geocoding + popular cities). For better village/locality matches, add a Places key on the **backend only**:
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (or pick an existing one).
+2. Link a **billing account**. Google still requires billing even when you stay in the free monthly usage pool. New Cloud accounts often get a **$300 trial credit**; Maps/Places also has a **free monthly call allowance per SKU** (resets each month). Set a budget alert so you are not surprised if usage grows.
+3. Enable **Places API** (and/or **Places API (New)** if you prefer the new stack — WeatherGPT currently calls the classic Autocomplete endpoint).
+4. Go to **APIs & Services → Credentials → Create credentials → API key**.
+5. Restrict the key: API restriction to Places only; optionally IP restrict to your backend host.
+6. Put the key in repo-root `.env` as `GOOGLE_PLACES_API_KEY=...` and restart the backend.
+
+Docs: [Get a Places API key](https://developers.google.com/maps/documentation/places/web-service/get-api-key) · [Maps pricing / free usage](https://developers.google.com/maps/billing-and-pricing/overview)
 
 ## Offline
 

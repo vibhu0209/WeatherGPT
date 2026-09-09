@@ -155,14 +155,11 @@ def providers():
 
 @app.get('/v1/locations/search')
 async def search(request: Request, q: str = Query(min_length=2, max_length=100), language: str = Query(default='en', pattern='^(en|hi|bn|te|mr|ta|gu|kn|ml|pa|or)$')):
+    from .locations import search_places
     try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
-            r = await client.get('https://geocoding-api.open-meteo.com/v1/search', params={'name': q, 'count': 8, 'language': language})
-            r.raise_for_status()
-            return {'locations': [Location(name=', '.join(filter(None, [p['name'], p.get('admin1'), p.get('country')])),
-                latitude=p['latitude'], longitude=p['longitude'], timezone=p.get('timezone', 'UTC')).model_dump()
-                for p in r.json().get('results', [])]}
-    except (httpx.HTTPError, ValueError, KeyError):
+        places = await search_places(q, language, _settings)
+        return {'locations': [place.model_dump() for place in places]}
+    except Exception:
         return error_response(request, 'unavailable', 'Place search is unavailable. Please try again.', True, 503)
 
 
@@ -181,16 +178,12 @@ class BundleBody(BaseModel):
 
 
 async def _resolve_location(request: Request, latitude: float, longitude: float, name: str):
+    from .locations import resolve_timezone
     try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
-            response = await client.get('https://api.open-meteo.com/v1/forecast', params={
-                'latitude': latitude, 'longitude': longitude, 'timezone': 'auto', 'forecast_days': 1, 'hourly': 'temperature_2m'})
-            response.raise_for_status()
-            timezone_name = response.json()['timezone']
-            location = Location(name=name, latitude=latitude, longitude=longitude, timezone=timezone_name)
-            return {'location': location.model_dump()}
-    except (httpx.HTTPError, ValueError, KeyError):
-        return error_response(request, 'location_unavailable', 'The location timezone could not be checked. Please search for your village or city.', True, 503)
+        location = await resolve_timezone(latitude, longitude, name)
+        return {'location': location.model_dump()}
+    except Exception:
+        return error_response(request, 'location_unavailable', 'The location could not be checked. Please search for your village or city.', True, 503)
 
 
 @app.get('/v1/locations/resolve')

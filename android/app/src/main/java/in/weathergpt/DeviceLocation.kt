@@ -6,6 +6,8 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.Build
 import android.os.CancellationSignal
+import android.os.Handler
+import android.os.Looper
 import androidx.core.content.ContextCompat
 
 object DeviceLocation {
@@ -19,29 +21,47 @@ object DeviceLocation {
                 .maxByOrNull { it.time }
         }.getOrNull()
 
-    fun request(context: Context, onResult: (Location?) -> Unit) {
+    fun request(context: Context, onResult: (Location?) -> Unit, timeoutMs: Long = 8000L) {
         if (!hasPermission(context)) {
             onResult(null)
             return
         }
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        var finished = false
+        fun finish(location: Location?) {
+            if (finished) return
+            finished = true
+            onResult(location)
+        }
+        Handler(Looper.getMainLooper()).postDelayed({
+            finish(lastKnown(manager))
+        }, timeoutMs)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val provider = when {
-                manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-                manager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-                else -> manager.getProviders(true).firstOrNull()
-            }
-            if (provider == null) {
-                onResult(lastKnown(manager))
+            val providers = listOfNotNull(
+                LocationManager.NETWORK_PROVIDER.takeIf { manager.isProviderEnabled(it) },
+                LocationManager.GPS_PROVIDER.takeIf { manager.isProviderEnabled(it) },
+            ).ifEmpty { manager.getProviders(true) }
+            if (providers.isEmpty()) {
+                finish(lastKnown(manager))
                 return
             }
-            runCatching {
-                manager.getCurrentLocation(provider, CancellationSignal(), ContextCompat.getMainExecutor(context)) { location ->
-                    onResult(location ?: lastKnown(manager))
+            var remaining = providers.size
+            providers.forEach { provider ->
+                runCatching {
+                    manager.getCurrentLocation(provider, CancellationSignal(), ContextCompat.getMainExecutor(context)) { location ->
+                        if (location != null) finish(location)
+                        else {
+                            remaining -= 1
+                            if (remaining <= 0) finish(lastKnown(manager))
+                        }
+                    }
+                }.onFailure {
+                    remaining -= 1
+                    if (remaining <= 0) finish(lastKnown(manager))
                 }
-            }.onFailure { onResult(lastKnown(manager)) }
+            }
         } else {
-            onResult(lastKnown(manager))
+            finish(lastKnown(manager))
         }
     }
 }

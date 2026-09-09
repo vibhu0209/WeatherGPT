@@ -79,9 +79,9 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
                     if(shouldDeliverNotification(repo.dao.notificationReceipt(receiptId),signature)) {
                     val notification=NotificationCompat.Builder(applicationContext,"local_risks")
                         .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                        .setContentTitle("WeatherGPT Risk Estimate")
+                        .setContentTitle(applicationContext.getString(R.string.risk_notification_title))
                         .setContentText(risk.message)
-                        .setStyle(NotificationCompat.BigTextStyle().bigText("${risk.message}. ${risk.rationale}. Not an official government warning."))
+                        .setStyle(NotificationCompat.BigTextStyle().bigText("${risk.message}. ${risk.rationale}. ${applicationContext.getString(R.string.risk_notification_not_official)}"))
                         .setAutoCancel(true).build()
                     NotificationManagerCompat.from(applicationContext).notify(risk.id.hashCode(),notification)
                     repo.dao.saveNotificationReceipt(NotificationReceipt(receiptId,signature,System.currentTimeMillis()))

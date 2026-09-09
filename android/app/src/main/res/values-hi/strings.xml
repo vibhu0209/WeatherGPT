@@ -154,7 +154,26 @@
     <string name="step_of">चरण %1$d / %2$d</string>
     <string name="permissions_granted">अनुमति मिली</string>
     <string name="permissions_needed">अभी अनुमति नहीं</string>
+    <string name="messages_count">%1$d संदेश</string>
+    <string name="server_url_label">सर्वर पता</string>
+    <string name="downloaded_prefix">डाउनलोड किया: </string>
+    <string name="compare_prefix">%1$s से तुलना: </string>
+    <string name="unit_kmh">किमी/घंटा</string>
+    <string name="unit_km">किमी</string>
+    <string name="risk_notification_title">WeatherGPT जोखिम अनुमान</string>
+    <string name="risk_notification_not_official">यह सरकारी आधिकारिक चेतावनी नहीं है।</string>
+    <string name="alert_rules">इस फ़ोन पर चेतावनी नियम</string>
+    <string name="simple_setup">सरल सेटअप</string>
+    <string name="pick_language_help">जो भाषा आप सबसे अच्छी पढ़ते हैं, चुनें।</string>
+    <string name="simple_work_help">एक बड़ा बटन दबाएँ। बाद में बदल सकते हैं।</string>
+    <string name="where_do_you_live">आप कहाँ रहते हैं?</string>
+    <string name="search_village_first">अपने गाँव या शहर का नाम लिखें। खोज GPS से आसान है।</string>
+    <string name="or_pick_city">या बड़ा शहर चुनें</string>
+    <string name="location_backup_help">फ़ोन स्थान वैकल्पिक है। अटक जाए तो ऊपर खोजें।</string>
+    <string name="tap_to_ask">एक सवाल दबाएँ</string>
 </resources>
+
+
 
 
 

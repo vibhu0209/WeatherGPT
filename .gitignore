@@ -12,3 +12,4 @@ local.properties
 *.log
 *.jks
 service-account*.json
+backend/data/

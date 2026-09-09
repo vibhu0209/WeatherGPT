@@ -5,12 +5,11 @@ This is an implementation in progress, not completion of the entire master speci
 User override: all work directly in D:/WeatherGPT; demo mode (sections 68–69) skipped; light/dark/system themes and inclusive UI prioritized.
 
 ## Verified so far
-- Python repository-local environment created; dependencies installed.
-- Backend: **91 tests passed** (2026-09-09 verification). Localization integrity: **11 languages × 144/144**.
-- Android: `testDebugUnitTest` and `assembleDebug` **passed** in prior passes (Studio JBR). This pass adds Alert honesty, Home alerts, compare wiring, place purpose (Room v6), chat contextual actions, multilingual offline drafts.
-- Prior Android device checks: Pixel_10a emulator install/relaunch succeeded; full interactive/TalkBack/airplane checklist remains open.
-- Live Open-Meteo fusion (earlier pass): multi-model Delhi bundle returned source disagreement and explainable confidence; official warnings correctly unavailable without a trusted CAP feed.
-- Security + feature hardening: device-token subscriptions, geohash/single-flight cache, Gemini redaction/budget, CAP/BHASHINI allowlists, coarse GPS, POST resolve/bundle, marine alias, translate, voice 501s, `/ready`, fishing score from marine model, full chat tool registry (incl. agromet unavailable / saved locations / alert rules / compare), multi-step onboarding, Android device registration wiring.
+- Backend: **92 tests passed**. Localization integrity: **11 languages × 171/171** with English-leftover gate.
+- Android: `assembleDebug` + `testDebugUnitTest` passed; APK install relaunch clean after this UI/locale pass.
+- Live providers with local `.env`: OpenWeather + WeatherAPI + Open-Meteo/ECMWF; CAP IMD RSS connected; Gemini polish enabled.
+- Full-screen onboarding: language → occupation → theme → permissions → device location first.
+- Room v7 alert rules; backend alert-rule file persistence; junk scratch locale scripts removed.
 - Docs: SECURITY, PRIVACY, SCALABILITY, THREAT_MODEL, API, LANGUAGE_SUPPORT, GEMINI_TUNING, README refreshed.
 
 ## Credential blockers (honest)
@@ -67,10 +66,10 @@ User override: all work directly in D:/WeatherGPT; demo mode (sections 68–69) 
 | 38. AI EVALUATION DATASET | IN PROGRESS | Machine-readable cases cover all eleven languages, nine intent families, multi-turn context and three fabrication attacks; coverage and deterministic adversarial checks pass. Live provider and native-speaker scoring remain. |
 | 39. RAG / GROUNDING | IMPLEMENTED | Numerical answers use typed structured grounding. Approved-document retrieval metadata and authority rules are documented; no vector database is added without an allowlisted corpus. |
 | 40. TWO LANGUAGE PROVIDERS | IN PROGRESS | BHASHINI pipeline and Google Cloud Translation adapters plus ordered original-text fallback are fixture-tested; live credentials are absent. |
-| 41. LANGUAGE CAPABILITY MATRIX | IMPLEMENTED | All eleven UI languages (en, hi, bn, te, mr, ta, gu, kn, ml, pa, or) package all 144 current UI strings (144/144). Android language splitting is disabled. Native-speaker review remains. Offline chat drafts cover en/hi plus additional language templates. |
+| 41. LANGUAGE CAPABILITY MATRIX | IMPLEMENTED | All eleven UI languages package all 171 current UI strings (171/171). English-identical leftovers blocked by check script. Native-speaker review remains. Online chat answers still en/hi-first without BHASHINI/Google Translate credentials. |
 | 42. VOICE-FIRST EXPERIENCE | IN PROGRESS | Android speech intent and TTS; cloud voice endpoints return 501 until configured; device verification pending. |
 | 43. OFFLINE-FIRST ANDROID ARCHITECTURE | IN PROGRESS | Room-backed repository and observed local flows. |
-| 44. ROOM ENTITIES | IN PROGRESS | Room stores weather bundles, chat, saved places (with purpose), sync metadata and hashed notification receipts. Alert-rule entities and provider snapshots remain. |
+| 44. ROOM ENTITIES | IMPLEMENTED | Weather, chat, saved places (+purpose), sync metadata, notification receipts, alert rules (Room v7). Provider snapshot entity intentionally omitted (fused bundle JSON is source of truth). |
 | 45. OFFLINE WEATHER BUNDLE | TESTED | The compact gzip-capable bundle includes forecast, alerts, scores, provenance and freshness. Backend ETag/304 behavior is tested; Android persists validators and weather transactionally in Room and avoids rewriting unchanged bundles. |
 | 46. CACHE FRESHNESS | TESTED | Weather, official-alert and climate freshness windows plus expiry handling have JVM coverage and stale UI messaging. |
 | 47. OFFLINE CHATBOT | TESTED | Local deterministic multilingual weather/rain answers; official-status-aware alert honesty; Android JVM coverage expanded. Device airplane-mode validation remains. |

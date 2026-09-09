@@ -55,6 +55,7 @@ class SavedLocationsInput(BaseModel):
 class AlertRuleInput(BaseModel):
     channels: list[Literal['severe', 'rain', 'daily', 'forecast_change']] = Field(default_factory=lambda: ['severe'])
     enabled: bool = True
+    location: Location | None = None
 
 
 class AgrometInput(BaseModel):
@@ -168,11 +169,26 @@ async def get_saved_locations(request: SavedLocationsInput) -> ToolResult:
 
 
 async def set_alert_rule(request: AlertRuleInput) -> ToolResult:
+    from .rule_store import upsert_rule
     now = datetime.now(timezone.utc).isoformat()
     channels = list(dict.fromkeys(request.channels))
+    location = request.location
+    saved = upsert_rule(
+        channels=channels,
+        enabled=request.enabled,
+        location_name=(location.name if location else 'selected place'),
+        latitude=(location.latitude if location else 0.0),
+        longitude=(location.longitude if location else 0.0),
+    )
     return ToolResult(
-        data={'channels': channels, 'enabled': request.enabled, 'delivery': 'local_or_subscription',
-              'note': 'Official push delivery still requires device registration and configured FCM/SMS.'},
+        data={
+            'channels': saved['channels'],
+            'enabled': saved['enabled'],
+            'location': saved['location_name'],
+            'delivery': 'local_or_subscription',
+            'persisted': True,
+            'note': 'Official push delivery still requires device registration and configured FCM/SMS. Local notification rules are saved.',
+        },
         retrieved_at=now, is_stale=False, sources=['weathergpt-rules'], status='available',
     )
 

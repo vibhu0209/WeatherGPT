@@ -154,7 +154,26 @@
     <string name="step_of">Step %1$d of %2$d</string>
     <string name="permissions_granted">Allowed</string>
     <string name="permissions_needed">Not allowed yet</string>
+    <string name="messages_count">%1$d messages</string>
+    <string name="server_url_label">Server URL</string>
+    <string name="downloaded_prefix">Downloaded: </string>
+    <string name="compare_prefix">Compare with %1$s: </string>
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_km">km</string>
+    <string name="risk_notification_title">WeatherGPT risk estimate</string>
+    <string name="risk_notification_not_official">Not an official government warning.</string>
+    <string name="alert_rules">Alert rules on this phone</string>
+    <string name="simple_setup">Quick setup</string>
+    <string name="pick_language_help">Choose the language you read best.</string>
+    <string name="simple_work_help">Tap one big button. You can change this later.</string>
+    <string name="where_do_you_live">Where do you live?</string>
+    <string name="search_village_first">Type your village or city name. Searching is easier than GPS.</string>
+    <string name="or_pick_city">Or tap a big city</string>
+    <string name="location_backup_help">Phone location is optional. If it gets stuck, use search above.</string>
+    <string name="tap_to_ask">Tap a question</string>
 </resources>
+
+
 
 
 

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     bhashini_user_id: str = ''
     bhashini_translation_service_id: str = ''
     google_translate_api_key: str = ''
+    google_places_api_key: str = ''
+    google_maps_api_key: str = ''
+    mappls_access_token: str = ''
     cors_origins: str = ''
     redis_url: str = ''
 

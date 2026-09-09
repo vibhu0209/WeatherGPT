@@ -64,6 +64,7 @@ data class ConversationSummary(val conversationId:String, val lastTimestamp:Long
 @Entity(tableName="saved_places") data class SavedPlace(@PrimaryKey val key:String, val label:String, val name:String, val latitude:Double, val longitude:Double, val timezone:String, val purpose:String="home") {
     fun place()=Place(name,latitude,longitude,timezone)
 }
+@Entity(tableName="alert_rules") data class AlertRule(@PrimaryKey val id:String, val placeKey:String, val channel:String, val enabled:Boolean=true, val updatedAt:Long=System.currentTimeMillis())
 @Dao interface LocalDao {
     @Query("SELECT * FROM weather WHERE `key` = :key") fun weather(key:String):Flow<SavedWeather?>
     @Query("SELECT * FROM weather WHERE `key` = :key") suspend fun weatherOnce(key:String):SavedWeather?
@@ -87,8 +88,13 @@ data class ConversationSummary(val conversationId:String, val lastTimestamp:Long
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun savePlace(place:SavedPlace)
     @Query("DELETE FROM saved_places") suspend fun clearPlaces()
     @Query("DELETE FROM saved_places WHERE `key` = :key") suspend fun deletePlace(key:String)
+    @Query("SELECT * FROM alert_rules ORDER BY channel") fun alertRules():Flow<List<AlertRule>>
+    @Query("SELECT * FROM alert_rules WHERE placeKey = :placeKey") suspend fun alertRulesOnce(placeKey:String):List<AlertRule>
+    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun saveAlertRule(rule:AlertRule)
+    @Query("DELETE FROM alert_rules") suspend fun clearAlertRules()
+    @Query("DELETE FROM alert_rules WHERE id = :id") suspend fun deleteAlertRule(id:String)
 }
-@Database(entities=[SavedWeather::class,Message::class,SavedPlace::class,SyncMetadata::class,NotificationReceipt::class],version=6,exportSchema=false)
+@Database(entities=[SavedWeather::class,Message::class,SavedPlace::class,SyncMetadata::class,NotificationReceipt::class,AlertRule::class],version=7,exportSchema=false)
 abstract class WeatherDb:RoomDatabase() { abstract fun dao():LocalDao
     companion object {
         @Volatile private var instance:WeatherDb?=null
@@ -109,8 +115,11 @@ abstract class WeatherDb:RoomDatabase() { abstract fun dao():LocalDao
         private val MIGRATION_5_6=object:Migration(5,6) { override fun migrate(db:SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE saved_places ADD COLUMN purpose TEXT NOT NULL DEFAULT 'home'")
         } }
+        private val MIGRATION_6_7=object:Migration(6,7) { override fun migrate(db:SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS alert_rules (`id` TEXT NOT NULL, `placeKey` TEXT NOT NULL, `channel` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+        } }
         fun get(context:Context):WeatherDb = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext,WeatherDb::class.java,"weather.db").addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4,MIGRATION_4_5,MIGRATION_5_6).build().also { instance=it }
+            instance ?: Room.databaseBuilder(context.applicationContext,WeatherDb::class.java,"weather.db").addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4,MIGRATION_4_5,MIGRATION_5_6,MIGRATION_6_7).build().also { instance=it }
         }
     }
 }
