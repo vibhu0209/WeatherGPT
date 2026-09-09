@@ -103,7 +103,7 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             if(value("conversation_id")==conversationId) settings.edit { it.remove(stringPreferencesKey("conversation_id")); it[stringPreferencesKey("day_offset")]="0" }
         }
     }
-    fun clearAll() { viewModelScope.launch { androidx.work.WorkManager.getInstance(getApplication()).cancelAllWork(); androidx.core.app.NotificationManagerCompat.from(getApplication()).cancelAll(); repo.dao.clearChat(); repo.dao.clearWeather(); repo.dao.clearSyncMetadata(); repo.dao.clearPlaces(); settings.edit{it.clear()}; dayOffset=0 } }
+    fun clearAll() { viewModelScope.launch { androidx.work.WorkManager.getInstance(getApplication()).cancelAllWork(); androidx.core.app.NotificationManagerCompat.from(getApplication()).cancelAll(); repo.dao.clearChat(); repo.dao.clearWeather(); repo.dao.clearSyncMetadata(); repo.dao.clearNotificationReceipts(); repo.dao.clearPlaces(); settings.edit{it.clear()}; dayOffset=0 } }
 }
 
 

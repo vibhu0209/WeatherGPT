@@ -7,3 +7,5 @@ Set `CAP_ALERT_URL` in the backend `.env` only to a trusted public CAP 1.2 feed.
 WeatherGPT risk estimates use deterministic thresholds over validated forecast values. They are labelled `WEATHERGPT_RISK_ESTIMATE`, include the supporting value and rule, and never use the official-warning notification channel. Android users must opt in before local risk notifications are shown.
 
 Android defines three channels: high-importance `official_warnings` reserved for connected authoritative feeds, default-importance `local_risks`, and low-importance `daily_forecast`. New warnings cannot arrive while the phone has no network connection.
+
+Android stores a compact notification receipt after delivery. The receipt contains a namespaced alert/risk ID, SHA-256 content signature and timestamp. Repeated unchanged content is suppressed; meaningful content changes are eligible to notify again. Clearing all app data removes receipts.

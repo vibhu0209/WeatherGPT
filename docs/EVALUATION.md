@@ -3,11 +3,12 @@
 ## Automated results
 - Backend: 74 tests passed on 2026-09-09.
 - Live fusion: the backend returned 161 hourly points from independent GFS and ECMWF IFS model families, reported disagreement, and produced explainable confidence 66/100. Official alerts correctly remained unavailable.
-- Android: `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Twelve JVM tests passed and the debug APK was installed on a Pixel_10a emulator.
+- Android: `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Thirteen JVM tests passed and the debug APK was installed on a Pixel_10a emulator.
 
 - Local latency sample on 2026-09-09: first live two-model Delhi bundle 800.6 ms; immediate in-process cache hit 37.5 ms; provider calls reported Open-Meteo GFS 641 ms and ECMWF IFS 735 ms. This is one development-machine sample, not a production benchmark.
 - Room v2-to-v3 emulator upgrade: the existing private database was upgraded in place; MainActivity resumed and the latest AndroidRuntime/Room log window contained no errors.
 - Conditional-download contract: backend ETag/304 behavior and Android rejection of 304 without matching local state are unit-tested. Room v4 adds validator/check timestamps; the existing emulator database upgraded and relaunched with no sampled Room, SQLite or runtime errors.
+- Notification deduplication: unit tests verify identical content is suppressed and changed content is eligible. Room v5 stores only receipt IDs, SHA-256 signatures and timestamps; the existing emulator database upgraded and relaunched without sampled Room, SQLite or runtime errors. Actual notification delivery remains unverified.
 - Low Data Mode device check: the Hindi control and explanation rendered, selection persisted through force-stop/relaunch, and the test setting was restored. Unit tests verify three-day/12-hour low-data policy versus seven-day/6-hour normal policy.
 - Theme static verification: all eight explicit foreground/background pairs exceed WCAG 4.5:1 (minimum measured 6.60:1). Resource references resolve.
 - Theme device persistence: dark, light and system selections each remained checked after a force-stop and relaunch on the Pixel_10a emulator. Visual review at varied display sizes remains.

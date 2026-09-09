@@ -22,11 +22,15 @@ class CachedAlertReminder(context:Context,params:WorkerParameters):CoroutineWork
         val bundle=repo.dao.weatherOnce(key)?.let { repo.gson.fromJson(it.json,BundleDto::class.java) }?:return Result.success()
         val alert=bundle.official_alerts.orEmpty().firstOrNull { it.id==alertId && cachedAlertIsActive(it) }?:return Result.success()
         val message=alert.instruction?:alert.description?:alert.event
+        val receiptId="official:${alert.id}"
+        val signature=notificationContentSignature(alert.headline,alert.severity,message,alert.effective,alert.expires)
+        if(!shouldDeliverNotification(repo.dao.notificationReceipt(receiptId),signature)) return Result.success()
         val notification=NotificationCompat.Builder(applicationContext,"official_warnings")
             .setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle(alert.headline)
             .setContentText(message).setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build()
         NotificationManagerCompat.from(applicationContext).notify(alert.id.hashCode(),notification)
+        repo.dao.saveNotificationReceipt(NotificationReceipt(receiptId,signature,System.currentTimeMillis()))
         return Result.success()
     }
 }
@@ -54,16 +58,25 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
             bundle?.let { scheduleCachedAlerts(applicationContext,p,it) }
             val official=bundle?.official_alerts?.firstOrNull { Freshness.officialAlert(bundle.retrieved_at,it.expires)==FreshnessState.FRESH }
             if(official!=null && prefs[stringPreferencesKey("official_notifications")] == "true" && (android.os.Build.VERSION.SDK_INT<33 || ContextCompat.checkSelfPermission(applicationContext,android.Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)) {
+                val message=official.instruction?:official.description?:official.event
+                val receiptId="official:${official.id}"
+                val signature=notificationContentSignature(official.headline,official.severity,message,official.effective,official.expires)
+                if(shouldDeliverNotification(repo.dao.notificationReceipt(receiptId),signature)) {
                 val notification=NotificationCompat.Builder(applicationContext,"official_warnings")
                     .setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle(official.headline)
-                    .setContentText(official.instruction?:official.description?:official.event)
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(official.instruction?:official.description?:official.event))
+                    .setContentText(message)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(message))
                     .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build()
                 NotificationManagerCompat.from(applicationContext).notify(official.id.hashCode(),notification)
+                repo.dao.saveNotificationReceipt(NotificationReceipt(receiptId,signature,System.currentTimeMillis()))
+                }
             }
             if(prefs[stringPreferencesKey("risk_notifications")] == "true") {
                 val risk=bundle?.risk_estimates?.firstOrNull()
                 if(risk!=null && (android.os.Build.VERSION.SDK_INT<33 || ContextCompat.checkSelfPermission(applicationContext,android.Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)) {
+                    val receiptId="risk:${risk.id}"
+                    val signature=notificationContentSignature(risk.message,risk.rationale,risk.severity,risk.valid_at,risk.supporting_value.toString(),risk.unit)
+                    if(shouldDeliverNotification(repo.dao.notificationReceipt(receiptId),signature)) {
                     val notification=NotificationCompat.Builder(applicationContext,"local_risks")
                         .setSmallIcon(android.R.drawable.ic_dialog_alert)
                         .setContentTitle("WeatherGPT Risk Estimate")
@@ -71,6 +84,8 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
                         .setStyle(NotificationCompat.BigTextStyle().bigText("${risk.message}. ${risk.rationale}. Not an official government warning."))
                         .setAutoCancel(true).build()
                     NotificationManagerCompat.from(applicationContext).notify(risk.id.hashCode(),notification)
+                    repo.dao.saveNotificationReceipt(NotificationReceipt(receiptId,signature,System.currentTimeMillis()))
+                    }
                 }
             }
             Result.success()

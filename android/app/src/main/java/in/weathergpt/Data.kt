@@ -18,6 +18,7 @@ import retrofit2.http.Query as HttpQuery
 import retrofit2.Response
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
+import java.security.MessageDigest
 
 val Context.settings by preferencesDataStore(name="preferences")
 data class Place(val name:String, val latitude:Double, val longitude:Double, val timezone:String="Asia/Kolkata")
@@ -42,8 +43,11 @@ interface Api {
 }
 @Entity(tableName="weather") data class SavedWeather(@PrimaryKey val key:String, val json:String)
 @Entity(tableName="sync_metadata") data class SyncMetadata(@PrimaryKey val key:String, val etag:String?, val lastCheckedAt:Long, val lastChangedAt:Long)
+@Entity(tableName="notification_receipts") data class NotificationReceipt(@PrimaryKey val id:String, val contentSignature:String, val notifiedAt:Long)
 fun canReuseNotModified(responseCode:Int,metadata:SyncMetadata?,weather:SavedWeather?)=responseCode==304 && metadata?.etag!=null && weather!=null
 fun bundleHorizonHours(lowData:Boolean)=if(lowData)72 else 168
+fun notificationContentSignature(vararg values:String?)=MessageDigest.getInstance("SHA-256").digest(values.joinToString("\u001f"){it.orEmpty()}.toByteArray()).joinToString(""){"%02x".format(it.toInt() and 0xff)}
+fun shouldDeliverNotification(previous:NotificationReceipt?,signature:String)=previous?.contentSignature!=signature
 @Entity(tableName="messages") data class Message(@PrimaryKey(autoGenerate=true) val id:Long=0, val role:String, val text:String, val language:String, val timestamp:Long=System.currentTimeMillis(), val conversationId:String="", val resolvedLocationId:String?=null, val weatherContextTimestamp:String?=null)
 data class ConversationSummary(val conversationId:String, val lastTimestamp:Long, val messageCount:Int)
 @Entity(tableName="saved_places") data class SavedPlace(@PrimaryKey val key:String, val label:String, val name:String, val latitude:Double, val longitude:Double, val timezone:String) {
@@ -65,11 +69,14 @@ data class ConversationSummary(val conversationId:String, val lastTimestamp:Long
     @Query("DELETE FROM messages WHERE conversationId = :conversationId") suspend fun deleteConversation(conversationId:String)
     @Query("DELETE FROM weather") suspend fun clearWeather()
     @Query("DELETE FROM sync_metadata") suspend fun clearSyncMetadata()
+    @Query("SELECT * FROM notification_receipts WHERE id = :id") suspend fun notificationReceipt(id:String):NotificationReceipt?
+    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun saveNotificationReceipt(receipt:NotificationReceipt)
+    @Query("DELETE FROM notification_receipts") suspend fun clearNotificationReceipts()
     @Query("SELECT * FROM saved_places ORDER BY label") fun savedPlaces():Flow<List<SavedPlace>>
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun savePlace(place:SavedPlace)
     @Query("DELETE FROM saved_places") suspend fun clearPlaces()
 }
-@Database(entities=[SavedWeather::class,Message::class,SavedPlace::class,SyncMetadata::class],version=4,exportSchema=false)
+@Database(entities=[SavedWeather::class,Message::class,SavedPlace::class,SyncMetadata::class,NotificationReceipt::class],version=5,exportSchema=false)
 abstract class WeatherDb:RoomDatabase() { abstract fun dao():LocalDao
     companion object {
         @Volatile private var instance:WeatherDb?=null
@@ -84,8 +91,11 @@ abstract class WeatherDb:RoomDatabase() { abstract fun dao():LocalDao
         private val MIGRATION_3_4=object:Migration(3,4) { override fun migrate(db:SupportSQLiteDatabase) {
             db.execSQL("CREATE TABLE IF NOT EXISTS sync_metadata (`key` TEXT NOT NULL, `etag` TEXT, `lastCheckedAt` INTEGER NOT NULL, `lastChangedAt` INTEGER NOT NULL, PRIMARY KEY(`key`))")
         } }
+        private val MIGRATION_4_5=object:Migration(4,5) { override fun migrate(db:SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS notification_receipts (`id` TEXT NOT NULL, `contentSignature` TEXT NOT NULL, `notifiedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+        } }
         fun get(context:Context):WeatherDb = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext,WeatherDb::class.java,"weather.db").addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4).build().also { instance=it }
+            instance ?: Room.databaseBuilder(context.applicationContext,WeatherDb::class.java,"weather.db").addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4,MIGRATION_4_5).build().also { instance=it }
         }
     }
 }

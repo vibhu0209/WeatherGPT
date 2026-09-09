@@ -84,6 +84,13 @@ class OfflineTest {
         assertEquals(12L,syncIntervalHours(true))
         assertEquals(6L,syncIntervalHours(false))
     }
+    @Test fun notificationReceiptsSuppressOnlyUnchangedContent() {
+        val signature=notificationContentSignature("Flood warning","severe","Move to shelter")
+        assertEquals(64,signature.length)
+        assertTrue(shouldDeliverNotification(null,signature))
+        assertFalse(shouldDeliverNotification(NotificationReceipt("official:id",signature,1),signature))
+        assertTrue(shouldDeliverNotification(NotificationReceipt("official:id",signature,1),notificationContentSignature("Flood warning","extreme","Move now")))
+    }
 }
 
 
