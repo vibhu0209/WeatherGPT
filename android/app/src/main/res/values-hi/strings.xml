@@ -38,6 +38,7 @@
     <string name="past_conversations">पिछली बातचीत</string>
     <string name="continue_chat">यह बातचीत जारी रखें</string>
     <string name="delete_conversation">यह बातचीत मिटाएँ</string>
+    <string name="delete_conversation_help">यह केवल इस सहेजी गई बातचीत को आपके फ़ोन से हटाता है।</string>
     <string name="no_conversations">अभी कोई सहेजी बातचीत नहीं है।</string>
     <string name="cancel">रद्द करें</string>
     <string name="save">सहेजें</string>

@@ -9,7 +9,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 - Backend: 74 tests passed.
 - Live Delhi fusion pipeline: 161 hourly records from GFS and ECMWF IFS model families; source disagreement and confidence 66/100 were returned, with official warnings unavailable.
 - Android Studio JBR 25, SDK 37.0 and build tools 36.0.0 located. Gradle 9.3.1 downloaded locally.
-- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `CCE04E47883D1A0A187DF4B65272309B377DD28A235811FCA14096837E85F874`.
+- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `71BFE9FDF2BC522C77B5F1E54280137B59FD4A02080F8746EF610D7DDBCC1E5F`.
 - The APK was installed on a Pixel_10a emulator. A first-launch localization-context crash was found and fixed. A clean-data relaunch now stays resumed without an Android runtime crash, and UI Automator confirms the onboarding dialog, eleven language choices, and large selection controls. Emulator touch injection remains unreliable, so the complete interactive checklist is still open.
 
 ## Master requirement coverage
@@ -55,7 +55,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 38. AI EVALUATION DATASET | IN PROGRESS | Machine-readable cases cover all eleven languages, nine intent families, multi-turn context and three fabrication attacks; coverage and deterministic adversarial checks pass. Live provider and native-speaker scoring remain. |
 | 39. RAG / GROUNDING | IMPLEMENTED | Numerical answers use typed structured grounding. Approved-document retrieval metadata and authority rules are documented; no vector database is added without an allowlisted corpus. |
 | 40. TWO LANGUAGE PROVIDERS | IN PROGRESS | BHASHINI pipeline and Google Cloud Translation adapters plus ordered original-text fallback are fixture-tested; live credentials are absent. |
-| 41. LANGUAGE CAPABILITY MATRIX | IN PROGRESS | English/Hindi full UI; main controls in nine other languages. Android language splitting is disabled so packaged translations remain available; missing strings fall back to English. |
+| 41. LANGUAGE CAPABILITY MATRIX | IN PROGRESS | English, Hindi, Bengali and Telugu package all 124 current UI strings; six other regional packs translate 25 core controls and fall back to English for detailed content. Android language splitting is disabled. Native-speaker review remains. |
 | 42. VOICE-FIRST EXPERIENCE | IN PROGRESS | Android speech intent and TTS, device verification pending. |
 | 43. OFFLINE-FIRST ANDROID ARCHITECTURE | IN PROGRESS | Room-backed repository and observed local flows. |
 | 44. ROOM ENTITIES | IN PROGRESS | Room weather bundle, chat and saved-place entities. Room v3 adds conversation ID, resolved location ID and weather-context timestamp; an in-place emulator upgrade from the existing database launched cleanly with no Room/runtime errors. Alert-rule entities and provider snapshots remain. |
@@ -86,7 +86,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 69. DEMO DATA ARCHITECTURE | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 70. FAILURE HANDLING | IN PROGRESS | Provider partial/all-failure, malformed data, Gemini and language-provider fallback, internet loss, empty/stale Room cache and unavailable alert sources degrade explicitly; device permission cases remain. |
 | 71. TESTING — BACKEND | IN PROGRESS | 74 tests pass across validation, weighted fusion, providers, evaluation, language, time, tools, conversations, scoring, climate, marine, risks, CAP, AI guardrails and sanitized unexpected-error handling. |
-| 72. TESTING — ANDROID | IN PROGRESS | Ten JVM tests, debug build and lint pass; fixed APK installs and launches cleanly on an emulator. Full voice, TalkBack, theme and offline interaction remain. |
+| 72. TESTING — ANDROID | IN PROGRESS | Ten JVM tests, debug build and lint pass; the latest APK installs and launches cleanly. Dark, light and system selections each persist through force-stop/relaunch on the Pixel_10a emulator. Voice, TalkBack, large-text and offline interaction remain. |
 | 73. END-TO-END DEMO TEST | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 74. PERFORMANCE / SIH EVALUATION | IN PROGRESS | Measured one local live two-model bundle at 800.6 ms and immediate cache hit at 37.5 ms (GFS 641 ms, ECMWF IFS 735 ms). Multilingual, device/offline and field evaluation remain. |
 | 75. LOGGING / OBSERVABILITY | IN PROGRESS | Safe request ID, method/path/status/duration, provider latency/status, cache hit/miss, all-provider failure and fusion summaries are logged without query/chat/location content; production metrics backend remains. |
@@ -112,4 +112,4 @@ Theme contrast: all eight explicit text/background pairs passed 4.5:1 (minimum 6
 ## Next work
 Complete the accessibility, voice, theme and airplane-mode device checklist. Then finish nine-language translations, credential-backed IMD/official warning ingestion and live checks for Gemini and both language providers.
 
-Theme implementation: light, dark and system preference saved in DataStore. Larger text preference scales on top of Android font settings. Voice capture uses Android recognizer activity and transcript confirmation; playback uses installed TTS. All require device usability verification.
+Theme implementation: light, dark and system preference saved in DataStore; all three selections persisted through emulator force-stop/relaunch checks. Larger text preference scales on top of Android font settings. Voice capture uses Android recognizer activity and transcript confirmation; playback uses installed TTS. Large-text and voice usability still require device verification.

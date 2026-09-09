@@ -84,6 +84,7 @@
     <string name="past_conversations">గత సంభాషణలు</string>
     <string name="continue_chat">ఈ సంభాషణ కొనసాగించండి</string>
     <string name="delete_conversation">ఈ సంభాషణ తొలగించండి</string>
+    <string name="delete_conversation_help">ఇది సేవ్ చేసిన ఈ సంభాషణను మాత్రమే మీ ఫోన్ నుండి తొలగిస్తుంది.</string>
     <string name="no_conversations">ఇంకా సేవ్ చేసిన సంభాషణలు లేవు.</string>
     <string name="new_chat">చాట్ క్లియర్ చేసి మళ్లీ ప్రారంభించండి</string>
     <string name="clear_data">అన్ని సేవ్ డేటా తొలగించండి</string>

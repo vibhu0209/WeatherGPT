@@ -84,6 +84,7 @@
     <string name="past_conversations">আগের কথোপকথন</string>
     <string name="continue_chat">এই কথোপকথন চালিয়ে যান</string>
     <string name="delete_conversation">এই কথোপকথন মুছুন</string>
+    <string name="delete_conversation_help">এটি শুধু এই সংরক্ষিত কথোপকথনটি আপনার ফোন থেকে মুছে দেয়।</string>
     <string name="no_conversations">এখনও কোনো কথোপকথন সংরক্ষিত নয়।</string>
     <string name="new_chat">চ্যাট মুছে আবার শুরু</string>
     <string name="clear_data">সব সংরক্ষিত তথ্য মুছুন</string>
