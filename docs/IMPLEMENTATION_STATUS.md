@@ -6,10 +6,10 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 
 ## Verified so far
 - Python 3.12.14 repository-local environment created; dependencies installed.
-- Backend: 70 tests passed.
+- Backend: 72 tests passed.
 - Live Delhi fusion pipeline: 161 hourly records from GFS and ECMWF IFS model families; source disagreement and confidence 66/100 were returned, with official warnings unavailable.
 - Android Studio JBR 25, SDK 37.0 and build tools 36.0.0 located. Gradle 9.3.1 downloaded locally.
-- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `AC706E1A5B28EA06EA3534FDBEEA2E294B0F07B0D472F78041C06C559F18CAE4`.
+- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `C3B0EADDE31760A296BA022DF7065381D7AC6573A51D3D2CC8BBD39B1C3FE7AF`.
 - The APK was installed on a Pixel_10a emulator. A first-launch localization-context crash was found and fixed. A clean-data relaunch now stays resumed without an Android runtime crash, and UI Automator confirms the onboarding dialog, eleven language choices, and large selection controls. Emulator touch injection remains unreliable, so the complete interactive checklist is still open.
 
 ## Master requirement coverage
@@ -113,15 +113,3 @@ Theme contrast: all eight explicit text/background pairs passed 4.5:1 (minimum 6
 Complete the accessibility, voice, theme and airplane-mode device checklist. Then finish nine-language translations, credential-backed IMD/official warning ingestion and live checks for Gemini and both language providers.
 
 Theme implementation: light, dark and system preference saved in DataStore. Larger text preference scales on top of Android font settings. Voice capture uses Android recognizer activity and transcript confirmation; playback uses installed TTS. All require device usability verification.
-
-
-
-
-
-
-
-
-
-
-
-
