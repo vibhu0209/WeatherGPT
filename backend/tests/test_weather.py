@@ -145,7 +145,8 @@ def test_weather_bundle_etag_avoids_unchanged_payload(monkeypatch):
     from app import main
 
     async def weather(_):
-        return {'hourly': [], 'is_stale': False, 'retrieved_at': NOW.isoformat(), 'sources': [],
+        return {'hourly': [{'time': (NOW + timedelta(hours=index)).isoformat()} for index in range(30)],
+            'daily': [{'date': str(index)} for index in range(7)], 'is_stale': False, 'retrieved_at': NOW.isoformat(), 'sources': [],
             'source_count': 0, 'agreement': 'unavailable', 'provider_status': []}
 
     async def official(_):
@@ -154,16 +155,18 @@ def test_weather_bundle_etag_avoids_unchanged_payload(monkeypatch):
     monkeypatch.setattr(main.service, 'bundle', weather)
     monkeypatch.setattr(main.alert_service, 'official', official)
     client = TestClient(app)
-    first = client.get('/v1/weather/bundle?latitude=28.6&longitude=77.2')
+    first = client.get('/v1/weather/bundle?latitude=28.6&longitude=77.2&hours=24')
     assert first.status_code == 200
+    assert len(first.json()['hourly']) == 24 and len(first.json()['daily']) == 1
     assert first.headers['etag'].startswith('"')
     assert first.headers['cache-control'] == 'private, max-age=300'
-    second = client.get('/v1/weather/bundle?latitude=28.6&longitude=77.2', headers={
+    second = client.get('/v1/weather/bundle?latitude=28.6&longitude=77.2&hours=24', headers={
         'if-none-match': first.headers['etag'], 'x-request-id': 'etag-check-1',
     })
     assert second.status_code == 304 and second.content == b''
     assert second.headers['etag'] == first.headers['etag']
     assert second.headers['x-request-id'] == 'etag-check-1'
+    assert client.get('/v1/weather/bundle?latitude=28.6&longitude=77.2&hours=23').status_code == 422
 
 def test_chat_official_warning_takes_precedence():
     alert={'headline':'Red rain warning','event':'Heavy rain','severity':'extreme','instruction':'Stay indoors','expires':'2099-09-09T15:00:00Z'}

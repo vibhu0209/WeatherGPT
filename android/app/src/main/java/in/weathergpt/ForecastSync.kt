@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 
+fun syncIntervalHours(lowData:Boolean)=if(lowData)12L else 6L
 
 class CachedAlertReminder(context:Context,params:WorkerParameters):CoroutineWorker(context,params) {
     override suspend fun doWork():Result {
@@ -48,7 +49,7 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
         val saved=prefs[stringPreferencesKey("place")]?:return Result.success()
         return try {
             val p=repo.gson.fromJson(saved,Place::class.java)
-            repo.refresh(p,prefs[stringPreferencesKey("server")]?:BuildConfig.API_URL)
+            repo.refresh(p,prefs[stringPreferencesKey("server")]?:BuildConfig.API_URL,prefs[stringPreferencesKey("low_data")]=="true")
             val bundle=repo.dao.weatherOnce(repo.key(p))?.let { repo.gson.fromJson(it.json,BundleDto::class.java) }
             bundle?.let { scheduleCachedAlerts(applicationContext,p,it) }
             val official=bundle?.official_alerts?.firstOrNull { Freshness.officialAlert(bundle.retrieved_at,it.expires)==FreshnessState.FRESH }
@@ -77,8 +78,8 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
         catch(e:Exception) { if(runAttemptCount<3) Result.retry() else Result.failure() }
     }
     companion object {
-        fun schedule(context:Context,wifiOnly:Boolean) {
-            val job=PeriodicWorkRequestBuilder<ForecastSync>(6,TimeUnit.HOURS)
+        fun schedule(context:Context,wifiOnly:Boolean,lowData:Boolean=false) {
+            val job=PeriodicWorkRequestBuilder<ForecastSync>(syncIntervalHours(lowData),TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(if(wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL,30,TimeUnit.SECONDS).build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork("forecast-sync",ExistingPeriodicWorkPolicy.UPDATE,job)

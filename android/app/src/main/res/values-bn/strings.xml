@@ -95,6 +95,8 @@
     <string name="server_help">স্থানীয় সেটআপ: WeatherGPT সার্ভারের ঠিকানা লিখুন, শেষে / দিন। এমুলেটরে http://10.0.2.2:8000/ ব্যবহার করুন।</string>
     <string name="save">সংরক্ষণ</string>
     <string name="wifi_only">শুধু Wi-Fi-তে পটভূমিতে ডাউনলোড</string>
+    <string name="low_data_mode">কম ডেটা মোড</string>
+    <string name="low_data_help">কম ডেটা ব্যবহারের জন্য ৩ দিনের পূর্বাভাস ডাউনলোড করে এবং প্রতি ১২ ঘণ্টায় হালনাগাদ করে।</string>
     <string name="risk_notifications">WeatherGPT ঝুঁকি অনুমানের বিজ্ঞপ্তি</string>
     <string name="risk_notification_help">ডাউনলোড করা পূর্বাভাস থেকে হিসাব। এগুলো সরকারি সতর্কতা নয়।</string>
     <string name="official_warning">সরকারি আবহাওয়া সতর্কতা</string>

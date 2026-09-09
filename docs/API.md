@@ -11,4 +11,4 @@ Shared examples used by both test suites are in `contracts/weather_bundle.json`,
 
 ## Conditional bundle refresh
 
-GET /v1/weather/bundle returns a private ETag and Cache-Control: private, max-age=300. Send the exact ETag in If-None-Match; an unchanged bundle returns 304 with an empty body. Clients must use 304 only when the matching local bundle exists.
+GET /v1/weather/bundle accepts an hours value from 24 to 168 (default 168) and returns a private ETag and Cache-Control: private, max-age=300. Send the exact ETag in If-None-Match; an unchanged bundle returns 304 with an empty body. Clients must use 304 only when the matching local bundle exists.

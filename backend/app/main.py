@@ -2,6 +2,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 import json
 import hashlib
+import math
 import logging
 import time
 import uuid
@@ -132,12 +133,13 @@ async def resolve_location(request: Request, latitude: float=Query(ge=-90,le=90)
     except (httpx.HTTPError,ValueError,KeyError):
         return error_response(request,'location_unavailable','The location timezone could not be checked. Please search for your village or city.',True,503)
 @app.get('/v1/weather/bundle')
-async def bundle(request: Request, response: Response, latitude: float=Query(ge=-90,le=90),longitude: float=Query(ge=-180,le=180),name: str=Query(default='Selected place',max_length=120),timezone: str='Asia/Kolkata'):
+async def bundle(request: Request, response: Response, latitude: float=Query(ge=-90,le=90),longitude: float=Query(ge=-180,le=180),name: str=Query(default='Selected place',max_length=120),timezone: str='Asia/Kolkata',hours: int=Query(default=168,ge=24,le=168)):
     try: loc=Location(name=name,latitude=latitude,longitude=longitude,timezone=timezone)
     except ValueError: return error_response(request,'invalid_location','Please check the location and timezone.',False,422)
     data = await service.bundle(loc)
     official = await alert_service.official(loc)
-    payload = {**data, 'alerts_status':official['status'], 'official_status':official['status'],
+    payload = {**data, 'hourly':data.get('hourly',[])[:hours], 'daily':data.get('daily',[])[:math.ceil(hours/24)],
+        'alerts_status':official['status'], 'official_status':official['status'],
         'alerts':official['alerts'], 'official_alerts':official['alerts'], 'alerts_message':official['message']}
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':'), default=str).encode()).hexdigest()
     etag = f'"{digest}"'

@@ -95,6 +95,8 @@
     <string name="server_help">For local setup: enter your WeatherGPT backend address, ending with /. On the emulator, use http://10.0.2.2:8000/.</string>
     <string name="save">Save</string>
     <string name="wifi_only">Download in the background on Wi-Fi only</string>
+    <string name="low_data_mode">Low Data Mode</string>
+    <string name="low_data_help">Downloads a 3-day forecast and refreshes every 12 hours to use less data.</string>
     <string name="risk_notifications">Notify me about WeatherGPT risk estimates</string>
     <string name="risk_notification_help">Calculated from downloaded forecasts. These are not official warnings.</string>
     <string name="official_warning">Official weather warning</string>

@@ -5,3 +5,5 @@ Android downloads one gzip-compressible weather bundle and saves it atomically i
 If refresh fails, saved weather stays visible with its retrieval age and stale notice. Offline chat answers only from that saved bundle. An empty cache never produces weather values. New official warnings require connectivity or a separately configured cellular service.
 
 The backend cache is process-local. Production deployment needs shared persistence and distributed rate limiting. Payload-size and network measurements remain in the field evaluation checklist.
+
+Low Data Mode is a visible Android setting. It requests a three-day bundle and schedules background refresh every twelve hours. Normal mode requests seven days every six hours. Wi-Fi-only can be combined with either mode.

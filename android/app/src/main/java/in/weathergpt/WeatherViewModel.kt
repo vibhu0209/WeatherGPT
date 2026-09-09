@@ -30,8 +30,11 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
     @OptIn(ExperimentalCoroutinesApi::class)
     val weather=place.flatMapLatest { p->if(p==null) flowOf(null) else repo.dao.weather(repo.key(p)).map { it?.let{runCatching{repo.gson.fromJson(it.json,BundleDto::class.java)}.getOrNull()} } }.stateIn(viewModelScope,SharingStarted.Eagerly,null)
     fun value(key:String,default:String="")=preferences.value[stringPreferencesKey(key)]?:default
-    fun save(key:String,value:String) { viewModelScope.launch { settings.edit{it[stringPreferencesKey(key)]=value}; if(key=="wifi") ForecastSync.schedule(getApplication(),value=="true") } }
-    fun choose(p:Place) { viewModelScope.launch { androidx.work.WorkManager.getInstance(getApplication()).cancelAllWorkByTag("official-alerts"); repo.dao.savePlace(SavedPlace(repo.key(p),p.name,p.name,p.latitude,p.longitude,p.timezone)); settings.edit{it[stringPreferencesKey("place")]=repo.gson.toJson(p)}; dayOffset=0; results.value=emptyList(); ForecastSync.schedule(getApplication(),value("wifi","true")=="true"); refresh(p) } }
+    fun save(key:String,value:String) { viewModelScope.launch {
+        settings.edit{it[stringPreferencesKey(key)]=value}
+        if(key=="wifi" || key=="low_data") ForecastSync.schedule(getApplication(),if(key=="wifi") value=="true" else this@WeatherViewModel.value("wifi","true")=="true",if(key=="low_data") value=="true" else this@WeatherViewModel.value("low_data")=="true")
+    } }
+    fun choose(p:Place) { viewModelScope.launch { androidx.work.WorkManager.getInstance(getApplication()).cancelAllWorkByTag("official-alerts"); repo.dao.savePlace(SavedPlace(repo.key(p),p.name,p.name,p.latitude,p.longitude,p.timezone)); settings.edit{it[stringPreferencesKey("place")]=repo.gson.toJson(p)}; dayOffset=0; results.value=emptyList(); ForecastSync.schedule(getApplication(),value("wifi","true")=="true",value("low_data")=="true"); refresh(p) } }
     private var searchJob:Job?=null
     fun search(q:String) {
         if(q.trim().length<2) return
@@ -58,7 +61,7 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
         if(p==null || busy.value) return
         viewModelScope.launch {
             busy.value=true; error.value=""
-            try { repo.refresh(p,base()); repo.dao.weatherOnce(repo.key(p))?.let { scheduleCachedAlerts(getApplication(),p,repo.gson.fromJson(it.json,BundleDto::class.java)) }; offline.value=false }
+            try { repo.refresh(p,base(),value("low_data")=="true"); repo.dao.weatherOnce(repo.key(p))?.let { scheduleCachedAlerts(getApplication(),p,repo.gson.fromJson(it.json,BundleDto::class.java)) }; offline.value=false }
             catch(e:CancellationException) { throw e }
             catch(e:Exception) { offline.value=true; error.value="refresh_failed" }
             finally { busy.value=false }

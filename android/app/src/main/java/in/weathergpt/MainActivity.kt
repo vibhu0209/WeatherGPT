@@ -426,6 +426,10 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         item { Row(Modifier.fillMaxWidth().heightIn(min=56.dp).toggleable(value=preference("wifi","true")=="true",onValueChange={vm.save("wifi",it.toString())}),verticalAlignment=Alignment.CenterVertically) {
             Text(s(R.string.wifi_only),Modifier.weight(1f));Switch(checked=preference("wifi","true")=="true",onCheckedChange=null)
         } }
+        item { Row(Modifier.fillMaxWidth().heightIn(min=56.dp).toggleable(value=preference("low_data")=="true",onValueChange={vm.save("low_data",it.toString())}),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) { Text(s(R.string.low_data_mode));Text(s(R.string.low_data_help),style=MaterialTheme.typography.bodyMedium) }
+            Switch(checked=preference("low_data")=="true",onCheckedChange=null)
+        } }
         item { Row(Modifier.fillMaxWidth().heightIn(min=56.dp).toggleable(value=preference("risk_notifications")=="true",onValueChange={enabled->
             if(enabled && android.os.Build.VERSION.SDK_INT>=33) notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) else vm.save("risk_notifications",enabled.toString())
         }),verticalAlignment=Alignment.CenterVertically) {

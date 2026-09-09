@@ -37,12 +37,13 @@ data class AnswerDto(val answer:String, val language:String, val day_offset:Int,
 interface Api {
     @GET("v1/locations/search") suspend fun search(@HttpQuery("q") query:String,@HttpQuery("language") language:String): SearchDto
     @GET("v1/locations/resolve") suspend fun resolve(@HttpQuery("latitude") lat:Double,@HttpQuery("longitude") lon:Double,@HttpQuery("name") name:String):ResolvedPlace
-    @GET("v1/weather/bundle") suspend fun bundle(@HttpQuery("latitude") lat:Double,@HttpQuery("longitude") lon:Double,@HttpQuery("name") name:String,@HttpQuery("timezone") timezone:String,@Header("If-None-Match") etag:String?):Response<BundleDto>
+    @GET("v1/weather/bundle") suspend fun bundle(@HttpQuery("latitude") lat:Double,@HttpQuery("longitude") lon:Double,@HttpQuery("name") name:String,@HttpQuery("timezone") timezone:String,@HttpQuery("hours") hours:Int,@Header("If-None-Match") etag:String?):Response<BundleDto>
     @POST("v1/chat/message") suspend fun chat(@Body body:ChatBody):AnswerDto
 }
 @Entity(tableName="weather") data class SavedWeather(@PrimaryKey val key:String, val json:String)
 @Entity(tableName="sync_metadata") data class SyncMetadata(@PrimaryKey val key:String, val etag:String?, val lastCheckedAt:Long, val lastChangedAt:Long)
 fun canReuseNotModified(responseCode:Int,metadata:SyncMetadata?,weather:SavedWeather?)=responseCode==304 && metadata?.etag!=null && weather!=null
+fun bundleHorizonHours(lowData:Boolean)=if(lowData)72 else 168
 @Entity(tableName="messages") data class Message(@PrimaryKey(autoGenerate=true) val id:Long=0, val role:String, val text:String, val language:String, val timestamp:Long=System.currentTimeMillis(), val conversationId:String="", val resolvedLocationId:String?=null, val weatherContextTimestamp:String?=null)
 data class ConversationSummary(val conversationId:String, val lastTimestamp:Long, val messageCount:Int)
 @Entity(tableName="saved_places") data class SavedPlace(@PrimaryKey val key:String, val label:String, val name:String, val latitude:Double, val longitude:Double, val timezone:String) {
@@ -94,10 +95,10 @@ class Repository(context:Context) {
     private val client=OkHttpClient.Builder().connectTimeout(12,TimeUnit.SECONDS).readTimeout(35,TimeUnit.SECONDS).build()
     fun api(base:String):Api=Retrofit.Builder().baseUrl(base).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(Api::class.java)
     fun key(p:Place)="${p.latitude},${p.longitude},${p.timezone}"
-    suspend fun refresh(p:Place, base:String) {
+    suspend fun refresh(p:Place, base:String, lowData:Boolean=false) {
         val key=key(p)
         val existing=dao.syncOnce(key)
-        val response=api(base).bundle(p.latitude,p.longitude,p.name,p.timezone,existing?.etag)
+        val response=api(base).bundle(p.latitude,p.longitude,p.name,p.timezone,bundleHorizonHours(lowData),existing?.etag)
         val checkedAt=System.currentTimeMillis()
         if(response.code()==304) {
             val localWeather=dao.weatherOnce(key)

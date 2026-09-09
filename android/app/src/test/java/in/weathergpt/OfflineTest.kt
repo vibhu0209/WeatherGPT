@@ -78,6 +78,12 @@ class OfflineTest {
         assertFalse(canReuseNotModified(304,metadata,null))
         assertFalse(canReuseNotModified(200,metadata,weather))
     }
+    @Test fun lowDataModeReducesHorizonAndRefreshFrequency() {
+        assertEquals(72,bundleHorizonHours(true))
+        assertEquals(168,bundleHorizonHours(false))
+        assertEquals(12L,syncIntervalHours(true))
+        assertEquals(6L,syncIntervalHours(false))
+    }
 }
 
 

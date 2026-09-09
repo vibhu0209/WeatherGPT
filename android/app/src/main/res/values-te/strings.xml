@@ -95,6 +95,8 @@
     <string name="server_help">స్థానిక సెటప్: WeatherGPT సర్వర్ చిరునామా రాయండి, చివర / ఉంచండి. ఎమ్యులేటర్‌లో http://10.0.2.2:8000/ ఉపయోగించండి.</string>
     <string name="save">భద్రపరచండి</string>
     <string name="wifi_only">Wi-Fi మీద మాత్రమే నేపథ్యంలో డౌన్‌లోడ్</string>
+    <string name="low_data_mode">తక్కువ డేటా మోడ్</string>
+    <string name="low_data_help">తక్కువ డేటా వినియోగం కోసం 3 రోజుల అంచనాను డౌన్‌లోడ్ చేసి ప్రతి 12 గంటలకు నవీకరిస్తుంది.</string>
     <string name="risk_notifications">WeatherGPT ప్రమాద అంచనా నోటిఫికేషన్లు</string>
     <string name="risk_notification_help">డౌన్‌లోడ్ అంచనాల నుండి లెక్క. ఇవి అధికారిక హెచ్చరికలు కావు.</string>
     <string name="official_warning">అధికారిక వాతావరణ హెచ్చరిక</string>

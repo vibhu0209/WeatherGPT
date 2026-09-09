@@ -94,6 +94,8 @@
     <string name="connection_settings">कनेक्शन सेटिंग्स</string>
     <string name="server_help">स्थानीय सेटअप: WeatherGPT सर्वर का पता लिखें। अंत में / लगाएँ। एमुलेटर पर http://10.0.2.2:8000/ उपयोग करें।</string>
 <string name="wifi_only">बैकग्राउंड में केवल वाई-फ़ाई पर डाउनलोड करें</string>
+    <string name="low_data_mode">कम डेटा मोड</string>
+    <string name="low_data_help">कम डेटा खर्च करने के लिए 3 दिन का पूर्वानुमान डाउनलोड करता है और हर 12 घंटे में अपडेट करता है।</string>
 <string name="risk_notifications">WeatherGPT जोखिम अनुमान की सूचना दें</string>
 <string name="risk_notification_help">डाउनलोड किए पूर्वानुमान से गणना। ये आधिकारिक चेतावनी नहीं हैं।</string>
 <string name="saved_places">सहेजी हुई जगहें</string>
