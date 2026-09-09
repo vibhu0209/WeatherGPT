@@ -24,12 +24,14 @@ def load_provider_weights() -> dict:
 
 
 def provider_weight(provider: str, field: str | None = None, weights: dict | None = None) -> float:
-    config = weights or load_provider_weights()
+    config = load_provider_weights() if weights is None else weights
     if field:
         variable_weights = (config.get('variables') or {}).get(field) or {}
         if provider in variable_weights:
-            return float(variable_weights[provider])
-    return float((config.get('defaults') or {}).get(provider, 1.0))
+            value = float(variable_weights[provider])
+            return value if math.isfinite(value) and value > 0 else 1.0
+    value = float((config.get('defaults') or {}).get(provider, 1.0))
+    return value if math.isfinite(value) and value > 0 else 1.0
 
 
 def weighted_median(values: list[tuple[float, float]]) -> float | None:
@@ -112,6 +114,26 @@ def circular_mean(values: list[float]) -> float | None:
     return round(math.degrees(math.atan2(y, x)) % 360, 1)
 
 
+def weighted_circular_mean(values: list[tuple[float, float]]) -> float | None:
+    if not values:
+        return None
+    x = sum(math.cos(math.radians(value)) * weight for value, weight in values)
+    y = sum(math.sin(math.radians(value)) * weight for value, weight in values)
+    if abs(x) < 1e-9 and abs(y) < 1e-9:
+        return None
+    return round(math.degrees(math.atan2(y, x)) % 360, 1)
+
+
+def weighted_vote(values: list[tuple[float, float]]) -> float | None:
+    totals: dict[float, float] = {}
+    for value, weight in values:
+        totals[value] = totals.get(value, 0.0) + weight
+    if not totals:
+        return None
+    ordered = sorted(totals.items(), key=lambda item: item[1], reverse=True)
+    return ordered[0][0] if len(ordered) == 1 or ordered[0][1] > ordered[1][1] else None
+
+
 def fuse(forecasts: list[Forecast], now: datetime):
     weights_config = load_provider_weights()
     buckets = {}
@@ -135,13 +157,15 @@ def fuse(forecasts: list[Forecast], now: datetime):
             if field=='temperature' and values and max(values)-min(values)>5: reasons.add('temperature spread exceeds 5°C')
             if field=='rain_chance' and values and max(values)-min(values)>40: reasons.add('rain chance spread exceeds 40 percentage points')
             if field=='wind_ms' and values and max(values)-min(values)>8: reasons.add('wind speed spread exceeds 8 m/s')
-        directions = [point.wind_direction for _, point in points if point.wind_direction is not None]
-        row['wind_direction'] = circular_mean(directions)
+        directions = [(point.wind_direction, provider_weight(provider, 'wind_direction', weights_config))
+            for provider, point in points if point.wind_direction is not None]
+        row['wind_direction'] = weighted_circular_mean(directions)
         row['wind_direction_source_count'] = len(directions)
-        codes = [point.weather_code for _, point in points if point.weather_code is not None]
-        row['weather_code'] = codes[0] if len(set(codes)) == 1 else None
+        codes = [(point.weather_code, provider_weight(provider, 'weather_code', weights_config))
+            for provider, point in points if point.weather_code is not None]
+        row['weather_code'] = weighted_vote(codes)
         row['weather_code_source_count'] = len(codes)
-        if len(set(codes)) > 1: reasons.add('weather condition categories disagree')
+        if len({value for value, _ in codes}) > 1: reasons.add('weather condition categories disagree')
         output.append(row)
     return output, bool(reasons), sorted(reasons)
 

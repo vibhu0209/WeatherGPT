@@ -6,7 +6,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 
 ## Verified so far
 - Python 3.12.14 repository-local environment created; dependencies installed.
-- Backend: 73 tests passed.
+- Backend: 74 tests passed.
 - Live Delhi fusion pipeline: 161 hourly records from GFS and ECMWF IFS model families; source disagreement and confidence 66/100 were returned, with official warnings unavailable.
 - Android Studio JBR 25, SDK 37.0 and build tools 36.0.0 located. Gradle 9.3.1 downloaded locally.
 - Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `CCE04E47883D1A0A187DF4B65272309B377DD28A235811FCA14096837E85F874`.
@@ -31,7 +31,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 14. CANONICAL WEATHER DATA MODELS | IN PROGRESS | Validated temperature, apparent temperature, precipitation, wind/gust/direction, humidity, visibility, pressure, cloud, UV and weather-code fields; broader model set pending. |
 | 15. LOCATION AND TIME CORRECTNESS | IN PROGRESS | UTC storage and location-timezone selection for today, tomorrow, day periods, next three hours and weekend are tested; Optional coarse/fine GPS selection uses the latest device location, resolves its IANA timezone through validated provider data, and falls back clearly to manual search on denial or unavailability; the resolver contract test and a live Delhi probe pass. IMD station distance remains. Room-backed saved places are implemented. |
 | 16. DATA VALIDATION | IN PROGRESS | Invalid values and stale forecast rejection tested. |
-| 17. WEATHER FUSION ENGINE | IN PROGRESS | Median consensus across live GFS and ECMWF IFS families, duplicate model exclusion, timestamp alignment, categorical weather-code disagreement and circular wind direction are tested; configured provider weights remain. |
+| 17. WEATHER FUSION ENGINE | TESTED | Configured weighted median consensus, weighted categorical voting, weighted circular wind direction, duplicate-model exclusion, time alignment and disagreement detection are tested. Initial weights remain equal until representative observations justify calibration. |
 | 18. FORECAST CONFIDENCE | TESTED | Explainable source coverage/agreement score and disagreement reasons implemented and tested; explicitly labelled as uncalibrated and not a probability. |
 | 19. PROVIDER ACCURACY EVALUATION | TESTED | Typed samples and MAE, bias, RMSE, rain Brier, availability and latency metrics are tested; no weighting is applied without representative observations. |
 | 20. ALERT ENGINE | IN PROGRESS | Official warnings and local risks are separate; unavailable sources never imply no warning. CAP lifecycle and polygon tests pass; production authority feed validation remains. |
@@ -85,7 +85,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 68. DEMO MODE | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 69. DEMO DATA ARCHITECTURE | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 70. FAILURE HANDLING | IN PROGRESS | Provider partial/all-failure, malformed data, Gemini and language-provider fallback, internet loss, empty/stale Room cache and unavailable alert sources degrade explicitly; device permission cases remain. |
-| 71. TESTING — BACKEND | IN PROGRESS | 73 tests pass across validation, fusion, providers, evaluation, language, time, tools, conversations, scoring, climate, marine, risks, CAP, AI guardrails and sanitized unexpected-error handling. |
+| 71. TESTING — BACKEND | IN PROGRESS | 74 tests pass across validation, weighted fusion, providers, evaluation, language, time, tools, conversations, scoring, climate, marine, risks, CAP, AI guardrails and sanitized unexpected-error handling. |
 | 72. TESTING — ANDROID | IN PROGRESS | Ten JVM tests, debug build and lint pass; fixed APK installs and launches cleanly on an emulator. Full voice, TalkBack, theme and offline interaction remain. |
 | 73. END-TO-END DEMO TEST | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 74. PERFORMANCE / SIH EVALUATION | IN PROGRESS | Measured one local live two-model bundle at 800.6 ms and immediate cache hit at 37.5 ms (GFS 641 ms, ECMWF IFS 735 ms). Multilingual, device/offline and field evaluation remain. |

@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from app.main import app
 from app.models import Point, Forecast, Location, ChatRequest, Settings
 from app.providers import OpenMeteo, EcmwfOpenMeteo, WeatherApi, openweather_to_wmo
-from app.weather import circular_mean, confidence_for, fuse, WeatherService
+from app.weather import circular_mean, confidence_for, fuse, provider_weight, WeatherService
 from app.chat import answer
 NOW=datetime.now(timezone.utc).replace(minute=0,second=0,microsecond=0)
 LOC=Location(name='Delhi',latitude=28.6,longitude=77.2)
@@ -59,6 +59,24 @@ def test_provider_condition_codes_normalize_and_disagreement_is_not_averaged():
     rows,disagree,reasons=fuse(forecasts,NOW)
     assert rows[0]['weather_code'] is None and disagree
     assert 'weather condition categories disagree' in reasons
+
+
+def test_configured_weights_drive_values_direction_and_category(monkeypatch):
+    from app import weather
+    monkeypatch.setattr(weather, 'load_provider_weights', lambda: {
+        'defaults': {'a': 5.0, 'b': 1.0, 'c': 1.0}, 'variables': {},
+    })
+    forecasts = [
+        Forecast(provider='a', model_family='a', hourly=[Point(time=NOW, temperature=10, wind_direction=350, weather_code=61)]),
+        Forecast(provider='b', model_family='b', hourly=[Point(time=NOW, temperature=20, wind_direction=90, weather_code=0)]),
+        Forecast(provider='c', model_family='c', hourly=[Point(time=NOW, temperature=30, weather_code=0)]),
+    ]
+    rows, disagree, reasons = fuse(forecasts, NOW)
+    assert rows[0]['temperature'] == 10
+    assert rows[0]['wind_direction'] < 20 or rows[0]['wind_direction'] > 340
+    assert rows[0]['weather_code'] == 61
+    assert disagree and 'weather condition categories disagree' in reasons
+    assert provider_weight('a', weights={'defaults': {'a': 0}, 'variables': {}}) == 1.0
 
 def test_explainable_confidence_is_not_probability():
     forecast=Forecast(provider='a',model_family='gfs',hourly=[Point(time=NOW,temperature=30,wind_ms=3)])

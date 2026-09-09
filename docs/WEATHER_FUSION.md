@@ -2,6 +2,6 @@
 
 Adapters normalize values to Celsius, millimetres, metres per second, percentages, UTC timestamps, and WMO-style weather codes. Fusion aligns points by UTC time, rejects stale or invalid values, and excludes duplicate model families before combining independent sources.
 
-Continuous values use a median. Wind direction uses circular statistics. Weather codes are categorical and become unavailable on disagreement instead of being averaged. OpenWeather three-hour precipitation is excluded from one-hour totals.
+Continuous values use a configured weighted median. Wind direction uses weighted circular statistics. Weather codes use weighted categorical voting and remain unavailable when the leading categories tie. OpenWeather three-hour precipitation is excluded from one-hour totals.
 
-Responses include sources, disagreement reasons, and an explainable coverage/agreement score. The score is uncalibrated and is not a probability or safety guarantee. Weights remain equal until representative observations justify a change.
+Responses include sources, disagreement reasons, and an explainable coverage/agreement score. The score is uncalibrated and is not a probability or safety guarantee. Initial configured weights remain equal until representative matched observations justify a reviewed change.
