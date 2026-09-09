@@ -1,0 +1,10 @@
+{
+  "location":{"name":"Delhi","latitude":28.6139,"longitude":77.209,"timezone":"Asia/Kolkata"},
+  "hourly":[{"time":"2026-09-09T12:00:00Z","temperature":30.5,"rain_chance":60.0,"rain_mm":1.2,"wind_ms":4.0,"humidity":72.0,"source_count":2,"apparent_temperature":33.0,"wind_direction":20.0,"wind_gust_ms":7.0,"visibility_m":8000.0,"pressure_hpa":1004.0,"cloud_cover":55.0,"uv_index":4.0,"weather_code":61.0}],
+  "retrieved_at":"2026-09-09T11:55:00Z","is_stale":false,"sources":["open-meteo","ecmwf-ifs"],"source_count":2,"agreement":"sources_disagree","alerts_status":"available",
+  "current":null,"daily":[],"scores":{},"recommendations":{},"risk_estimates":[],
+  "confidence":{"score":66,"label":"Moderate agreement","calibrated_probability":false,"reasons":["2 independent model source(s)"]},
+  "disagreement_reasons":["weather condition categories disagree"],"official_status":"available",
+  "official_alerts":[{"id":"cap-1","classification":"official","sender":"IMD","sent":"2026-09-09T11:00:00Z","event":"Heavy rain","headline":"Heavy rain warning","description":"Heavy rain is expected.","instruction":"Stay away from flooded roads.","severity":"severe","urgency":"immediate","certainty":"likely","effective":"2026-09-09T11:00:00Z","expires":"2026-09-09T15:00:00Z","area_descriptions":["Delhi"],"source_format":"CAP 1.2"}],
+  "alerts_message":"Official warning feed available"
+}

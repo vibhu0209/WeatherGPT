@@ -74,6 +74,17 @@
     <string name="farming">Farming</string>
     <string name="fishing">Fishing</string>
     <string name="outdoor">Work or travel outdoors</string>
+    <string name="tourism">Tourism / travel</string>
+    <string name="transport">Transport / delivery</string>
+    <string name="construction">Construction / outdoor labour</string>
+    <string name="emergency">Emergency / disaster response</string>
+    <string name="vendor">Street vendor / outdoor business</string>
+    <string name="aviation">Aviation / professional weather</string>
+    <string name="research">Research / climate</string>
+    <string name="past_conversations">Past conversations</string>
+    <string name="continue_chat">Continue this conversation</string>
+    <string name="delete_conversation">Delete this conversation</string>
+    <string name="no_conversations">No saved conversations yet.</string>
     <string name="new_chat">Clear chat and start again</string>
     <string name="clear_data">Clear all saved data</string>
     <string name="clear_help">Delete your chats, saved weather, location and preferences from this phone?</string>
@@ -89,4 +100,24 @@
     <string name="expires">Expires</string>
     <string name="official_notifications">Notify me about official weather warnings</string>
     <string name="official_notification_help">Works when a trusted authority feed is connected and this phone can refresh.</string>
+    <string name="clear_sky">Clear sky</string><string name="cloudy">Cloudy</string><string name="fog">Fog</string><string name="drizzle">Light drizzle</string><string name="rainy">Rain</string><string name="snow">Snow</string><string name="showers">Rain showers</string><string name="thunderstorm">Thunderstorm</string>
+    <string name="use_current_location">Use my current location</string>
+    <string name="current_location">Current location</string>
+    <string name="location_optional">Optional. You can keep using village or city search instead.</string>
+    <string name="location_unavailable">Current location is unavailable. Please search for your village or city.</string>
+    <string name="show_details">Why? Show weather details</string>
+    <string name="hide_details">Hide weather details</string>
+    <string name="expired_hidden">Some downloaded warnings have expired and are hidden.</string>
+    <string name="sending_question">Sending your question</string>
+    <string name="checking_sources">Checking verified weather sources</string>
+    <string name="farm_work_question">Is tomorrow morning better for farm work?</string>
+    <string name="spray_question">Will rain or wind affect crop spraying tomorrow?</string>
+    <string name="marine_question">What are the marine conditions for fishing?</string>
+    <string name="wave_question">What is the marine wave height for fishing?</string>
+    <string name="next_hours_question">What is the weather for the next three hours?</string>
 </resources>
+
+
+
+
+

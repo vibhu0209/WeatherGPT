@@ -1,0 +1,21 @@
+# Provider fusion weights (0–1). Higher = more influence on consensus.
+# Future calibration from forecast evaluation may override these defaults.
+defaults:
+  open-meteo: 1.0
+  ecmwf-ifs: 1.0
+  openweather: 0.85
+  weatherapi: 0.85
+  imd: 1.1
+variables:
+  temperature:
+    open-meteo: 1.0
+    ecmwf-ifs: 1.0
+    imd: 1.05
+  rain_chance:
+    open-meteo: 1.0
+    ecmwf-ifs: 0.95
+    imd: 1.1
+  wind_ms:
+    open-meteo: 1.0
+    ecmwf-ifs: 1.05
+    imd: 1.0

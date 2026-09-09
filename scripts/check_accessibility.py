@@ -15,7 +15,9 @@ for name in ['Light','Dark']:
     line=next(l for l in src.splitlines() if l.startswith('private val '+name+'='))
     colors=dict(re.findall(r'(\w+)=Color\(0xFF([0-9A-F]{6})\)',line))
     colors.update(dict((k,'FFFFFF') for k in re.findall(r'(\w+)=Color.White',line)))
-    for fg,bg in [('onPrimary','primary'),('onSurface','surface'),('onSurfaceVariant','surfaceVariant'),('onPrimaryContainer','primaryContainer')]:
+    for fg,bg in [('onPrimary','primary'),('onSurface','surface'),('onSurfaceVariant','surfaceVariant'),
+                  ('onPrimaryContainer','primaryContainer'),('onSecondaryContainer','secondaryContainer'),
+                  ('onTertiaryContainer','tertiaryContainer')]:
         a,b=sorted([lum(colors[fg]),lum(colors[bg])])
         ratio=(b+.05)/(a+.05)
         assert ratio>=4.5,(name,fg,bg,ratio)

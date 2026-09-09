@@ -1,9 +1,10 @@
 from app.models import Settings
-from app.providers import PROVIDERS, WeatherProvider
+from app.providers import PRIMARY_PROVIDERS, PROVIDERS, WeatherProvider
 
 
 def test_all_primary_adapters_implement_typed_contract():
-    assert len(PROVIDERS) == 4
+    assert len(PRIMARY_PROVIDERS) == 4
+    assert len(PROVIDERS) == 5
     for adapter in PROVIDERS:
         provider = adapter(None, Settings())
         assert isinstance(provider, WeatherProvider)
@@ -12,3 +13,5 @@ def test_all_primary_adapters_implement_typed_contract():
         status = provider.health()
         assert status["provider"] == provider.id
         assert status["status"] in {"configured", "not_configured"}
+
+

@@ -23,9 +23,16 @@ class OfflineTest {
     }
     @Test fun unavailableAlertsAreNeverClear() {
         val (answer,_)=Offline.answer("Any alerts?",bundle(),0)
-        assertTrue(answer.contains("not connected"));assertFalse(answer.contains("no warnings"))
+        assertTrue(answer.contains("availability is unknown"));assertFalse(answer.contains("no warnings"))
     }
-    @Test fun unsupportedQuestionDoesNotInvent() {
+    @Test fun cachedOfficialWarningKeepsInstructionsOffline() {
+        val alert=OfficialAlert("cap-1","official","IMD",null,"Heavy rain","Heavy rain warning",null,"Stay indoors","severe","immediate","likely",null,Instant.now().plusSeconds(3600).toString(),listOf("Delhi"),"CAP 1.2")
+        val cached=bundle().copy(official_alerts=listOf(alert),official_status="available")
+        val (answer,_)=Offline.answer("Any warnings?",cached,0)
+        assertTrue(answer.contains("Heavy rain warning"))
+        assertTrue(answer.contains("Stay indoors"))
+        assertTrue(answer.contains("New warnings and updates require"))
+    }    @Test fun unsupportedQuestionDoesNotInvent() {
         val (answer,_)=Offline.answer("Make up a cyclone alert",bundle(),0)
         assertFalse(answer.contains("red warning"))
     }
@@ -38,4 +45,32 @@ class OfflineTest {
         assertEquals(FreshnessState.STALE,Freshness.officialAlert("2026-09-08T11:59:00Z","2026-09-08T12:00:00Z",now))
         assertEquals(FreshnessState.FRESH,Freshness.climate("2026-09-02T12:00:00Z",now))
     }
-}
+    @Test fun weatherCodesHavePlainLanguageCategories() {
+        assertEquals(R.string.clear_sky,conditionResource(0))
+        assertEquals(R.string.thunderstorm,conditionResource(95))
+        assertNull(conditionResource(999))
+    }
+    @Test fun cachedAlertLifecycleUsesEffectiveAndExpiry() {
+        val now=Instant.parse("2026-09-09T12:00:00Z")
+        fun alert(effective:String?,expires:String?)=OfficialAlert("id","official","IMD",null,"Rain","Rain warning",null,"Stay inside","severe","immediate","likely",effective,expires,listOf("Delhi"),"CAP 1.2")
+        assertTrue(cachedAlertIsActive(alert("2026-09-09T11:00:00Z","2026-09-09T13:00:00Z"),now))
+        assertFalse(cachedAlertIsActive(alert("2026-09-09T12:30:00Z","2026-09-09T13:00:00Z"),now))
+        assertFalse(cachedAlertIsActive(alert(null,"2026-09-09T12:00:00Z"),now))
+    }    @Test fun officialSeverityMapsToAlertTone() {
+        assertEquals(AlertLevel.RED,alertLevel("Extreme"))
+        assertEquals(AlertLevel.RED,alertLevel("Severe"))
+        assertEquals(AlertLevel.ORANGE,alertLevel("Moderate"))
+        assertEquals(AlertLevel.YELLOW,alertLevel("Minor"))
+    }    @Test fun sharedBackendContractDeserializesInAndroid() {
+        val json=checkNotNull(javaClass.classLoader?.getResource("weather_bundle.json")).readText()
+        val bundle=com.google.gson.Gson().fromJson(json,BundleDto::class.java)
+        assertEquals("Asia/Kolkata",bundle.location.timezone)
+        assertEquals(2,bundle.source_count)
+        assertEquals(61.0,bundle.hourly.single().weather_code?:-1.0,0.0)
+        assertEquals("severe",bundle.official_alerts?.single()?.severity)
+        assertFalse(bundle.confidence?.calibrated_probability?:true)
+    }}
+
+
+
+

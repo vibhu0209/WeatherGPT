@@ -3,7 +3,9 @@ package `in`.weathergpt
 import android.app.Activity
 import android.content.Intent
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.location.LocationManager
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
@@ -12,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.selection.toggleable
@@ -45,9 +48,10 @@ class MainActivity:ComponentActivity() {
     override fun onCreate(savedInstanceState:Bundle?) { super.onCreate(savedInstanceState); enableEdgeToEdge(); setContent { WeatherApp() } }
 }
 private val LocalTranslatedContext=staticCompositionLocalOf<Context>{error("Translated context is unavailable")}
+private val profileOptions=listOf("general" to R.string.general,"farming" to R.string.farming,"fishing" to R.string.fishing,"outdoor" to R.string.outdoor,"tourism" to R.string.tourism,"transport" to R.string.transport,"construction" to R.string.construction,"emergency" to R.string.emergency,"vendor" to R.string.vendor,"aviation" to R.string.aviation,"research" to R.string.research)
 @Composable fun s(id:Int)=LocalTranslatedContext.current.resources.getString(id)
-private val Light=lightColorScheme(primary=Color(0xFF08695B),onPrimary=Color.White,primaryContainer=Color(0xFFD8F3E8),onPrimaryContainer=Color(0xFF123E34),background=Color(0xFFF8FAF6),surface=Color(0xFFF8FAF6),surfaceVariant=Color(0xFFE6EBE5),onSurface=Color(0xFF172B26),onSurfaceVariant=Color(0xFF40554D))
-private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF073B2E),primaryContainer=Color(0xFF204C3D),onPrimaryContainer=Color(0xFFC4F2DC),background=Color(0xFF111C18),surface=Color(0xFF111C18),surfaceVariant=Color(0xFF293B32),onSurface=Color(0xFFE5EFE8),onSurfaceVariant=Color(0xFFC0D0C5))
+private val Light=lightColorScheme(primary=Color(0xFF08695B),onPrimary=Color.White,primaryContainer=Color(0xFFD8F3E8),onPrimaryContainer=Color(0xFF123E34),background=Color(0xFFF8FAF6),surface=Color(0xFFF8FAF6),surfaceVariant=Color(0xFFE6EBE5),onSurface=Color(0xFF172B26),onSurfaceVariant=Color(0xFF40554D),secondaryContainer=Color(0xFFE2F2FF),onSecondaryContainer=Color(0xFF173A4A),tertiaryContainer=Color(0xFFFFE0B2),onTertiaryContainer=Color(0xFF4A2800))
+private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF073B2E),primaryContainer=Color(0xFF204C3D),onPrimaryContainer=Color(0xFFC4F2DC),background=Color(0xFF111C18),surface=Color(0xFF111C18),surfaceVariant=Color(0xFF293B32),onSurface=Color(0xFFE5EFE8),onSurfaceVariant=Color(0xFFC0D0C5),secondaryContainer=Color(0xFF29424E),onSecondaryContainer=Color(0xFFD7F1FF),tertiaryContainer=Color(0xFF5A3A10),onTertiaryContainer=Color(0xFFFFE0B2))
 
 @Composable fun WeatherApp(vm:WeatherViewModel=viewModel()) {
     val prefs by vm.preferences.collectAsState()
@@ -84,6 +88,7 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
     val busy by vm.busy.collectAsState()
     val offline by vm.offline.collectAsState()
     val error by vm.error.collectAsState()
+    val chatStatus by vm.chatStatus.collectAsState()
     val context=LocalContext.current
     val prefs by vm.preferences.collectAsState()
     if(prefs[androidx.datastore.preferences.core.stringPreferencesKey("onboarded")]!="true") {
@@ -95,7 +100,7 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
                 listOf("en" to "English","hi" to "हिन्दी","bn" to "বাংলা","te" to "తెలుగు","mr" to "मराठी","ta" to "தமிழ்","gu" to "ગુજરાતી","kn" to "ಕನ್ನಡ","ml" to "മലയാളം","pa" to "ਪੰਜਾਬੀ","or" to "ଓଡ଼ିଆ").forEach { (code,name)->Choice(name,chosen==code){chosen=code;vm.save("language",code)} }
                 HorizontalDivider()
                 Text(s(R.string.use_for),style=MaterialTheme.typography.titleMedium)
-                listOf("general" to R.string.general,"farming" to R.string.farming,"fishing" to R.string.fishing,"outdoor" to R.string.outdoor).forEach { (key,label)->Choice(s(label),chosenProfile==key){chosenProfile=key;vm.save("profile",key)} }
+                profileOptions.forEach { (key,label)->Choice(s(label),chosenProfile==key){chosenProfile=key;vm.save("profile",key)} }
             }
         },confirmButton={TextButton(onClick={vm.save("onboarded","true");showPlace=true}){Text(s(R.string.choose_place))}})
     }
@@ -133,10 +138,10 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
     ) { padding ->
         Column(Modifier.padding(padding).imePadding().fillMaxSize()) {
             if(offline || b?.is_stale==true) Notice(s(R.string.saved_notice))
-            if(error.isNotEmpty()) Notice(s(when(error){"no_places"->R.string.no_places;"search_failed"->R.string.search_failed;else->R.string.refresh_failed}))
+            if(error.isNotEmpty()) Notice(s(when(error){"no_places"->R.string.no_places;"search_failed"->R.string.search_failed;"location_failed"->R.string.location_unavailable;else->R.string.refresh_failed}))
             if(busy) LinearProgressIndicator(Modifier.fillMaxWidth().semantics{contentDescription=context.getString(R.string.loading)})
             when(tab) {
-                0 -> ChatScreen(vm,p,b,busy,{showPlace=true},::speak)
+                0 -> ChatScreen(vm,p,b,busy,chatStatus,{showPlace=true},::speak)
                 1 -> HomeScreen(vm,b,busy,{vm.refresh()},{showPlace=true})
                 2 -> ForecastScreen(b,busy,{vm.refresh()},{showPlace=true})
                 3 -> AlertScreen(b)
@@ -180,16 +185,26 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
     }
 }
 @Composable fun Heading(text:String) { Text(text,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold,modifier=Modifier.semantics{heading()}) }
+fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->R.string.cloudy;45,48->R.string.fog;51,53,55,56,57->R.string.drizzle;61,63,65,66,67->R.string.rainy;71,73,75,77->R.string.snow;80,81,82,85,86->R.string.showers;95,96,99->R.string.thunderstorm;else->null }
 
-@Composable fun ChatScreen(vm:WeatherViewModel,p:Place?,b:BundleDto?,busy:Boolean,choose:()->Unit,speak:(String,String)->Unit) {
+@Composable fun ChatScreen(vm:WeatherViewModel,p:Place?,b:BundleDto?,busy:Boolean,chatStatus:String,choose:()->Unit,speak:(String,String)->Unit) {
     val messages by vm.messages.collectAsState()
     var draft by rememberSaveable { mutableStateOf("") }
     val context=LocalContext.current
     val unavailable=s(R.string.voice_unavailable)
+    val suggestionIds=when(vm.value("profile","general")) {
+        "farming" -> listOf(R.string.farm_work_question,R.string.spray_question,R.string.rain_question,R.string.warning_question)
+        "fishing" -> listOf(R.string.marine_question,R.string.wave_question,R.string.warning_question,R.string.tomorrow_question)
+        "outdoor","construction","transport","vendor" -> listOf(R.string.next_hours_question,R.string.tomorrow_question,R.string.rain_question,R.string.warning_question)
+        "tourism" -> listOf(R.string.tomorrow_question,R.string.next_hours_question,R.string.rain_question,R.string.climate_question)
+        "emergency","aviation" -> listOf(R.string.warning_question,R.string.next_hours_question,R.string.tomorrow_question,R.string.rain_question)
+        else -> listOf(R.string.rain_question,R.string.tomorrow_question,R.string.warning_question,R.string.climate_question)
+    }
     val launcher=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result->
         if(result.resultCode==Activity.RESULT_OK) draft=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.take(1000)?:draft
     }
     Column(Modifier.fillMaxSize()) {
+        if(chatStatus.isNotEmpty()) Notice(s(if(chatStatus=="sending") R.string.sending_question else R.string.checking_sources))
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp),reverseLayout=true) {
             items(messages.reversed(),key={it.id}) { m ->
                 Surface(color=if(m.role=="user") MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primaryContainer,shape=RoundedCornerShape(20.dp),modifier=Modifier.fillMaxWidth()) {
@@ -207,7 +222,7 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
                 if(p==null) BigButton(s(R.string.choose_place),Icons.Default.LocationOn,choose)
                 else {
                     if(b!=null) WeatherCard(b)
-                    listOf(R.string.rain_question,R.string.tomorrow_question,R.string.warning_question,R.string.climate_question).forEach { id->val prompt=s(id)
+                    suggestionIds.forEach { id->val prompt=s(id)
                         OutlinedButton(onClick={vm.send(prompt)},enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=56.dp),shape=RoundedCornerShape(16.dp)) { Text(prompt,style=MaterialTheme.typography.bodyLarge) }
                     }
                 }
@@ -230,21 +245,33 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
 }
 @Composable fun WeatherCard(b:BundleDto) {
     val now=Instant.now()
+    var details by rememberSaveable(b.retrieved_at) { mutableStateOf(false) }
     val hour=b.hourly.minByOrNull{kotlin.math.abs(Instant.parse(it.time).epochSecond-now.epochSecond)}
     val age=Duration.between(Instant.parse(b.retrieved_at),now).toMinutes().coerceAtLeast(0)
     Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=RoundedCornerShape(24.dp),modifier=Modifier.fillMaxWidth()) {
         Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text(s(R.string.saved_weather),style=MaterialTheme.typography.titleMedium)
             if(hour?.temperature!=null) Text("${hour.temperature}°C",style=MaterialTheme.typography.displayMedium,fontWeight=FontWeight.Bold)
+            conditionResource(hour?.weather_code?.toInt())?.let{Text(s(it),style=MaterialTheme.typography.titleLarge)}
             if(hour?.apparent_temperature!=null) Text("${s(R.string.feels_like)} ${hour.apparent_temperature}°C")
-            if(hour?.humidity!=null) Text("${s(R.string.humidity)}: ${hour.humidity}%")
             Text("${s(R.string.updated)} $age ${s(R.string.minutes_ago)}",style=MaterialTheme.typography.bodyMedium)
             if(Freshness.weather(b.retrieved_at)!=FreshnessState.FRESH) Text(s(R.string.saved_notice))
-            if(b.source_count==1) Text(s(R.string.single_source),style=MaterialTheme.typography.bodyMedium)
-            if(b.agreement=="sources_disagree") Text(s(R.string.disagree))
-            b.confidence?.let { confidence ->
-                Text("${s(R.string.forecast_confidence)}: ${confidence.score}/100 · ${confidence.label}",fontWeight=FontWeight.Bold)
-                Text(s(R.string.confidence_help),style=MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick={details=!details},modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)) {
+                Icon(if(details) Icons.Default.ExpandLess else Icons.Default.ExpandMore,null)
+                Spacer(Modifier.width(8.dp));Text(s(if(details) R.string.hide_details else R.string.show_details))
+            }
+            if(details) {
+                if(hour?.rain_chance!=null) Text("${s(R.string.rain)}: ${hour.rain_chance}%")
+                if(hour?.wind_ms!=null) Text("${s(R.string.wind)}: ${String.format(Locale.getDefault(),"%.0f km/h",hour.wind_ms*3.6)}")
+                if(hour?.humidity!=null) Text("${s(R.string.humidity)}: ${hour.humidity}%")
+                Text("${s(R.string.sources)}: ${b.sources.joinToString()}",style=MaterialTheme.typography.bodyMedium)
+                if(b.source_count==1) Text(s(R.string.single_source),style=MaterialTheme.typography.bodyMedium)
+                if(b.agreement=="sources_disagree") Text(s(R.string.disagree))
+                b.confidence?.let { confidence ->
+                    Text("${s(R.string.forecast_confidence)}: ${confidence.score}/100 · ${confidence.label}",fontWeight=FontWeight.Bold)
+                    confidence.reasons.forEach { Text("• $it",style=MaterialTheme.typography.bodyMedium) }
+                    Text(s(R.string.confidence_help),style=MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
@@ -284,6 +311,7 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
 @Composable fun AlertScreen(bundle:BundleDto?) {
     val context=LocalContext.current
     val official=bundle?.official_alerts.orEmpty().filter { alert->bundle!=null && Freshness.officialAlert(bundle.retrieved_at,alert.expires)!=FreshnessState.STALE }
+    val expiredCount=bundle?.official_alerts.orEmpty().size-official.size
     Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
         Heading(s(R.string.alerts))
         if(official.isNotEmpty()) official.forEach { OfficialAlertCard(it) } else {
@@ -291,6 +319,7 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
             Text(s(R.string.alert_unknown),style=MaterialTheme.typography.titleLarge)
             Text(s(R.string.alert_help))
         }
+        if(expiredCount>0) Text(s(R.string.expired_hidden),style=MaterialTheme.typography.bodyMedium)
         Text(s(R.string.offline_alerts))
         BigButton(s(R.string.open_imd),Icons.AutoMirrored.Filled.OpenInNew,{
             context.startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://mausam.imd.gov.in/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -310,7 +339,12 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
     }
 }
 @Composable fun OfficialAlertCard(alert:OfficialAlert) {
-    Surface(color=MaterialTheme.colorScheme.errorContainer,contentColor=MaterialTheme.colorScheme.onErrorContainer,shape=RoundedCornerShape(20.dp),modifier=Modifier.fillMaxWidth().semantics{liveRegion=LiveRegionMode.Assertive}) {
+    val colors=when(alertLevel(alert.severity)) {
+        AlertLevel.RED -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+        AlertLevel.ORANGE -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        AlertLevel.YELLOW -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    Surface(color=colors.first,contentColor=colors.second,shape=RoundedCornerShape(20.dp),modifier=Modifier.fillMaxWidth().semantics{liveRegion=LiveRegionMode.Assertive}) {
         Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) { Icon(Icons.Default.Warning,null);Spacer(Modifier.width(8.dp));Text(s(R.string.official_warning),fontWeight=FontWeight.Bold) }
             Text(alert.headline,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
@@ -326,9 +360,26 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
     val results by vm.results.collectAsState()
     val saved by vm.savedPlaces.collectAsState()
     val busy by vm.searchBusy.collectAsState()
+    val context=LocalContext.current
+    val locationUnavailable=s(R.string.location_unavailable)
+    fun chooseLastLocation() {
+        if(ContextCompat.checkSelfPermission(context,android.Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED) return
+        val manager=context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val location=runCatching { manager.getProviders(true).mapNotNull { provider->runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }.maxByOrNull { it.time } }.getOrNull()
+        if(location==null) Toast.makeText(context,locationUnavailable,Toast.LENGTH_LONG).show()
+        else vm.resolveCurrentLocation(location.latitude,location.longitude,context.getString(R.string.current_location),onChoose)
+    }
+    val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants->
+        if(grants.values.any { it }) chooseLastLocation() else Toast.makeText(context,locationUnavailable,Toast.LENGTH_LONG).show()
+    }
     AlertDialog(onDismissRequest=onDismiss,title={Text(s(R.string.choose_place))},text={
         Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text(s(R.string.place_help))
+            BigButton(s(R.string.use_current_location),Icons.Default.MyLocation,{
+                if(ContextCompat.checkSelfPermission(context,android.Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED) chooseLastLocation()
+                else locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION,android.Manifest.permission.ACCESS_FINE_LOCATION))
+            })
+            Text(s(R.string.location_optional),style=MaterialTheme.typography.bodyMedium)
             if(saved.isNotEmpty()) {
                 Text(s(R.string.saved_places),style=MaterialTheme.typography.titleMedium)
                 saved.forEach { savedPlace->OutlinedButton(onClick={onChoose(savedPlace.place())},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)) { Text(savedPlace.label) } }
@@ -343,6 +394,7 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
 }
 @Composable fun SettingsScreen(vm:WeatherViewModel) {
     val prefs by vm.preferences.collectAsState()
+    val conversations by vm.conversations.collectAsState()
     fun preference(key:String,default:String="")=prefs[androidx.datastore.preferences.core.stringPreferencesKey(key)]?:default
     var confirm by remember{mutableStateOf(false)}
     var server by rememberSaveable{mutableStateOf(preference("server",BuildConfig.API_URL))}
@@ -379,8 +431,23 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
         item { Text(s(R.string.language),style=MaterialTheme.typography.titleLarge);Text(s(R.string.language_help),style=MaterialTheme.typography.bodyMedium) }
         items(languages) { (key,label)->Choice(label,preference("language","en")==key){vm.save("language",key)} }
         item { Text(s(R.string.use_for),style=MaterialTheme.typography.titleLarge) }
-        items(listOf("general" to R.string.general,"farming" to R.string.farming,"fishing" to R.string.fishing,"outdoor" to R.string.outdoor)) { (key,label)->Choice(s(label),preference("profile","general")==key){vm.save("profile",key)} }
-        item { OutlinedButton(onClick={vm.clearChat()},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.new_chat))} }
+        items(profileOptions) { (key,label)->Choice(s(label),preference("profile","general")==key){vm.save("profile",key)} }
+        item { Text(s(R.string.past_conversations),style=MaterialTheme.typography.titleLarge) }
+        if(conversations.isEmpty()) item { Text(s(R.string.no_conversations),style=MaterialTheme.typography.bodyMedium) }
+        items(conversations,key={it.conversationId}) { summary ->
+            val whenText=Instant.ofEpochMilli(summary.lastTimestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM, h:mm a"))
+            OutlinedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text(whenText,style=MaterialTheme.typography.titleMedium)
+                    Text("${summary.messageCount} messages",style=MaterialTheme.typography.bodyMedium)
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick={vm.openConversation(summary.conversationId)},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.continue_chat))}
+                        OutlinedButton(onClick={vm.deleteConversation(summary.conversationId)},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.delete))}
+                    }
+                }
+            }
+        }
+        item { OutlinedButton(onClick={vm.startNewChat()},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.new_chat))} }
         item { OutlinedButton(onClick={confirm=true},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.clear_data))} }
         item { TextButton(onClick={advanced=!advanced},modifier=Modifier.heightIn(min=52.dp)){Text(s(R.string.connection_settings))}
             if(advanced) {
@@ -399,4 +466,11 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
         }
     }
 }
+
+
+
+
+
+
+
 

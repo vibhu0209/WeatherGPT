@@ -28,3 +28,6 @@ See generated OpenAPI at /docs. No placeholder endpoint claims to perform unsupp
 Current follow-ups retain day offset in DataStore across restarts; full structured conversation sessions and arbitrary time ranges remain unimplemented. Selected location is explicit and persists. Arbitrary place extraction from chat is not implemented; use the place selector.
 
 Backend cache is bounded in-process, with a 15-minute refresh interval, stale fallback and short provider failure suppression. A single failed provider does not fail all weather. JSON responses are compressed above 1 KB. Retries are limited to transport connection/timeouts. A reverse proxy request-body limit and distributed rate limiting are still needed before public deployment.
+
+Grounding policy: numerical meteorology uses typed structured data. See `GROUNDING.md` for the allowlisted-document design and why no vector database is included.
+

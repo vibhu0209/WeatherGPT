@@ -28,6 +28,17 @@
     <string name="farming">खेती</string>
     <string name="fishing">मछली पकड़ना</string>
     <string name="outdoor">बाहर काम या यात्रा</string>
+    <string name="tourism">पर्यटन / यात्रा</string>
+    <string name="transport">परिवहन / डिलीवरी</string>
+    <string name="construction">निर्माण / बाहरी श्रम</string>
+    <string name="emergency">आपातकाल / आपदा प्रतिक्रिया</string>
+    <string name="vendor">सड़क विक्रेता / बाहरी व्यवसाय</string>
+    <string name="aviation">विमानन / पेशेवर मौसम</string>
+    <string name="research">अनुसंधान / जलवायु</string>
+    <string name="past_conversations">पिछली बातचीत</string>
+    <string name="continue_chat">यह बातचीत जारी रखें</string>
+    <string name="delete_conversation">यह बातचीत मिटाएँ</string>
+    <string name="no_conversations">अभी कोई सहेजी बातचीत नहीं है।</string>
     <string name="cancel">रद्द करें</string>
     <string name="save">सहेजें</string>
     <string name="welcome_tag">हर दिन का मौसम साथी</string>
@@ -89,4 +100,24 @@
 <string name="expires">समाप्ति</string>
 <string name="official_notifications">आधिकारिक मौसम चेतावनी की सूचना दें</string>
 <string name="official_notification_help">विश्वसनीय सरकारी फ़ीड जुड़ी हो और फ़ोन अपडेट कर सके तभी काम करता है।</string>
+<string name="clear_sky">साफ़ आसमान</string><string name="cloudy">बादल</string><string name="fog">कोहरा</string><string name="drizzle">हल्की बूंदाबांदी</string><string name="rainy">बारिश</string><string name="snow">बर्फ़बारी</string><string name="showers">बारिश की बौछारें</string><string name="thunderstorm">आंधी-तूफ़ान</string>
+    <string name="use_current_location">मेरी मौजूदा जगह इस्तेमाल करें</string>
+    <string name="current_location">मौजूदा जगह</string>
+    <string name="location_optional">यह वैकल्पिक है। आप गाँव या शहर खोज सकते हैं।</string>
+    <string name="location_unavailable">मौजूदा जगह उपलब्ध नहीं है। अपना गाँव या शहर खोजें।</string>
+    <string name="show_details">क्यों? मौसम का विवरण देखें</string>
+    <string name="hide_details">मौसम का विवरण छिपाएँ</string>
+    <string name="expired_hidden">कुछ डाउनलोड की गई चेतावनियाँ समाप्त हो गई हैं और छिपाई गई हैं।</string>
+    <string name="sending_question">आपका सवाल भेज रहे हैं</string>
+    <string name="checking_sources">सत्यापित मौसम स्रोत जाँच रहे हैं</string>
+    <string name="farm_work_question">क्या कल सुबह खेत के काम के लिए बेहतर है?</string>
+    <string name="spray_question">क्या कल बारिश या हवा से फसल छिड़काव पर असर पड़ेगा?</string>
+    <string name="marine_question">मछली पकड़ने के लिए समुद्र की स्थिति कैसी है?</string>
+    <string name="wave_question">मछली पकड़ने के लिए समुद्री लहरों की ऊँचाई कितनी है?</string>
+    <string name="next_hours_question">अगले तीन घंटे मौसम कैसा रहेगा?</string>
 </resources>
+
+
+
+
+

@@ -6,6 +6,20 @@ from zoneinfo import ZoneInfo
 import httpx
 from .models import Forecast, Point, Location, Settings
 
+def openweather_to_wmo(code: int | None) -> int | None:
+    if code is None: return None
+    if 200 <= code < 300: return 95
+    if 300 <= code < 400: return 51
+    if 500 <= code < 600: return 61 if code < 520 else 80
+    if 600 <= code < 700: return 71
+    if code in (701,741): return 45
+    if 700 <= code < 800: return 48
+    if code == 800: return 0
+    if code == 801: return 1
+    if code == 802: return 2
+    if code in (803,804): return 3
+    return None
+
 class WeatherProvider(ABC):
     id = ''
     display_name = ''
@@ -65,6 +79,27 @@ class OpenMeteo(WeatherProvider):
             cloud_cover=h['cloud_cover'][i], uv_index=h['uv_index'][i],
             weather_code=h['weather_code'][i]) for i,t in enumerate(h['time'])])
 
+class EcmwfOpenMeteo(WeatherProvider):
+    id = 'ecmwf-ifs'
+    display_name = 'ECMWF IFS via Open-Meteo'
+    model_family = 'ecmwf-ifs'
+    async def forecast(self, loc: Location):
+        data = await self.json('https://api.open-meteo.com/v1/ecmwf', {
+            'latitude':loc.latitude, 'longitude':loc.longitude, 'timezone':'UTC',
+            'forecast_days':7, 'wind_speed_unit':'ms',
+            'hourly':'temperature_2m,apparent_temperature,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,relative_humidity_2m,visibility,pressure_msl,cloud_cover,weather_code'})
+        h=data['hourly']
+        def value(field,index):
+            values=h.get(field)
+            return values[index] if values and index < len(values) else None
+        return Forecast(provider=self.id,model_family=self.model_family,hourly=[Point(
+            time=datetime.fromisoformat(t).replace(tzinfo=timezone.utc),
+            temperature=value('temperature_2m',i), apparent_temperature=value('apparent_temperature',i),
+            rain_mm=value('precipitation',i), wind_ms=value('wind_speed_10m',i),
+            wind_direction=value('wind_direction_10m',i), wind_gust_ms=value('wind_gusts_10m',i),
+            humidity=value('relative_humidity_2m',i), visibility_m=value('visibility',i),
+            pressure_hpa=value('pressure_msl',i), cloud_cover=value('cloud_cover',i),
+            weather_code=value('weather_code',i)) for i,t in enumerate(h['time'])])
 class OpenWeather(WeatherProvider):
     id = 'openweather'
     display_name = 'OpenWeather'
@@ -81,7 +116,7 @@ class OpenWeather(WeatherProvider):
             wind_direction=v['wind'].get('deg'), wind_gust_ms=v['wind'].get('gust'),
             humidity=v['main']['humidity'], pressure_hpa=v['main'].get('pressure'),
             visibility_m=v.get('visibility'), cloud_cover=v.get('clouds',{}).get('all'),
-            weather_code=v.get('weather',[{}])[0].get('id')) for v in data['list']])
+            weather_code=openweather_to_wmo(v.get('weather',[{}])[0].get('id'))) for v in data['list']])
 
 class WeatherApi(WeatherProvider):
     id = 'weatherapi'
@@ -114,4 +149,7 @@ class Imd(WeatherProvider):
         if not isinstance(data, list): raise ValueError('IMD access or schema unavailable')
         raise ValueError('IMD station mapping and daily schema integration pending')
 
-PROVIDERS = [OpenMeteo, OpenWeather, WeatherApi, Imd]
+PRIMARY_PROVIDERS = [OpenMeteo, OpenWeather, WeatherApi, Imd]
+NWP_PROVIDERS = [EcmwfOpenMeteo]
+PROVIDERS = PRIMARY_PROVIDERS + NWP_PROVIDERS
+

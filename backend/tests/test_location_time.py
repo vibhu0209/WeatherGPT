@@ -1,3 +1,4 @@
+import pytest
 from datetime import datetime, timezone
 
 from app.chat import select_time_rows
@@ -33,3 +34,18 @@ def test_weekend_selects_saturday_and_sunday():
     assert offset == 3
     assert len(rows) == 48
     assert rows[0]["time"].startswith("2026-09-12") and rows[-1]["time"].startswith("2026-09-13")
+
+@pytest.mark.asyncio
+async def test_coordinate_resolution_uses_provider_timezone(monkeypatch):
+    from app import main
+    class Response:
+        def raise_for_status(self): pass
+        def json(self): return {'timezone':'Asia/Kolkata'}
+    class Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self,*args): pass
+        async def get(self,*args,**kwargs): return Response()
+    monkeypatch.setattr(main.httpx,'AsyncClient',lambda **kwargs:Client())
+    result=await main.resolve_location(None,28.6,77.2,'Current location')
+    assert result['location']['timezone']=='Asia/Kolkata'
+

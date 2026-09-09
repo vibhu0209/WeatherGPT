@@ -1,0 +1,1 @@
+57 '    <string name="feels_like">అనుభవమయya ఉష్ణోగ్రత</string>'

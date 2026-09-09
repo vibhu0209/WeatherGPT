@@ -1,5 +1,7 @@
 # Local deployment
 
+For a container smoke test, run `docker compose up --build` from the repository root. The backend image runs as an unprivileged user with a read-only filesystem and exposes port 8000. The compose file contains no secrets; an optional local `.env` is ignored by Git.
+
 Run scripts/run_backend.ps1 from Windows PowerShell. It binds to 0.0.0.0:8000 for emulator/LAN access and disables HTTP access logs so precise location query strings are not written. Do not expose this prototype directly to the internet. Public deployment still needs an HTTPS reverse proxy, streaming request-size enforcement, distributed rate limiting, secrets management and production persistence.
 
 Android debug permits local HTTP; release disallows cleartext. Set a real HTTPS backend URL in the release build configuration before distribution. No API keys are compiled into Android. Application data backup is disabled.

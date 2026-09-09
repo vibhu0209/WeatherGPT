@@ -63,6 +63,16 @@ def test_recommendations_follow_thresholds():
     assert "official warnings" in text
 
 
+def test_transport_profile_penalizes_visibility():
+    rows = [point(0, temperature=30, rain=10, wind=4, humidity=70)]
+    rows[0]["visibility_m"] = 600
+    transport = weather_score(rows, "transport")
+    general = weather_score(rows, "general")
+    assert transport["score"] is not None and general["score"] is not None
+    assert transport["score"] < general["score"]
+    assert any(item["name"] == "Visibility" for item in transport["components"])
+
+
 def test_alert_endpoint_never_claims_no_warnings():
     response = TestClient(app).get("/v1/weather/alerts?latitude=28.6&longitude=77.2")
     assert response.status_code == 200

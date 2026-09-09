@@ -14,3 +14,15 @@ def test_polish_rejects_dropped_weather_number():
 
 def test_polish_rejects_false_no_warning_claim():
     assert not validate_polish('Official warnings are unavailable.','There are no weather warnings.')
+
+
+def test_validator_rejects_unit_swaps_and_source_omission():
+    assert validate_polish('Temperature 30°C. Rain chance 60%. Source: IMD.','Rain chance is 60% and the IMD temperature is 30°C.')
+    assert not validate_polish('Temperature 30°C. Rain chance 60%. Source: IMD.','Temperature 60°C. Rain chance 30%. Source: IMD.')
+    assert not validate_polish('Temperature 30°C. Source: IMD.','Temperature 30°C.')
+    assert not validate_polish('Rain chance 60%.','Value 60.')
+
+
+def test_validator_preserves_warning_severity():
+    assert not validate_polish('Official warning severity: severe.','Official warning severity: moderate.')
+

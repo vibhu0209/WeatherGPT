@@ -33,7 +33,23 @@ def answer(request: ChatRequest, bundle: dict):
     date = (datetime.now(zone).date()+timedelta(days=offset))
     hindi = request.language=='hi'
     if any(w in text for w in ['alert','warning','चेतावनी']):
-        message = 'आधिकारिक चेतावनियाँ अभी उपलब्ध नहीं हैं। बाहर जाने से पहले IMD की चेतावनी देखें।' if hindi else 'Official warnings are not available here yet. Check the IMD warning for your area before going out.'
+        official = bundle.get('official_alerts') or bundle.get('alerts') or []
+        if official:
+            parts=[]
+            for alert in official:
+                headline=alert.get('headline') or alert.get('event') or ('आधिकारिक मौसम चेतावनी' if hindi else 'Official weather warning')
+                instruction=alert.get('instruction') or alert.get('description') or ''
+                severity=alert.get('severity','unknown')
+                expires=alert.get('expires')
+                if hindi:
+                    parts.append(f"आधिकारिक चेतावनी: {headline}। गंभीरता: {severity}। {instruction}"+(f" समाप्ति: {expires}।" if expires else ''))
+                else:
+                    parts.append(f"Official warning: {headline}. Severity: {severity}. {instruction}"+(f" Expires: {expires}." if expires else ''))
+            message='\n\n'.join(parts)
+        elif bundle.get('official_status')=='available' or bundle.get('alerts_status')=='available':
+            message = 'इस समय जुड़ी आधिकारिक सेवा में कोई सक्रिय चेतावनी नहीं मिली। अपडेट के लिए दोबारा जाँचें।' if hindi else 'The connected official service reports no active warning at this time. Refresh for updates.'
+        else:
+            message = 'आधिकारिक चेतावनी उपलब्धता पता नहीं है। बाहर जाने से पहले IMD की चेतावनी देखें।' if hindi else 'Official warning availability is unknown. Check the IMD warning for your area before going out.'
     elif any(w in text for w in ['fish','marine','समुद्र','मछली']):
         message = 'Marine and fishermen warnings are unavailable. Check IMD and INCOIS before going to sea. Land weather cannot tell you whether fishing is safe.'
     elif any(w in text for w in ['climate','years','monsoon','climate change']):
@@ -66,3 +82,4 @@ def answer(request: ChatRequest, bundle: dict):
             'resolved_location':request.location.model_dump(), 'resolved_day_offset':offset,
             'profile':request.profile, 'last_intent':intent,
             'last_weather_context_id':bundle['retrieved_at']}}
+

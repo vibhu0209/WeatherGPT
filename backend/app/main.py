@@ -19,11 +19,16 @@ from .alerts import alert_service
 from .marine import marine_service
 from .ai import gemini_polisher
 from .language import language_service, BhashiniProvider, GoogleTranslationProvider
+from .subscriptions import create as create_subscription, delete as delete_subscription, list_for_device
+from pydantic import BaseModel, Field
 
 app = FastAPI(title='WeatherGPT', version='0.1.0')
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 requests = defaultdict(deque)
 audit_log = logging.getLogger('weathergpt.request')
+def error_response(request: Request | None, code: str, message: str, retryable: bool, status: int):
+    request_id=getattr(getattr(request,'state',None),'request_id',None)
+    return JSONResponse({'code':code,'message':message,'retryable':retryable,'request_id':request_id},status)
 
 
 @app.exception_handler(RequestValidationError)
@@ -31,6 +36,12 @@ async def validation_error(request: Request, error: RequestValidationError):
     return JSONResponse({'code':'validation_error','message':'Please check the information and try again.',
         'retryable':False,'request_id':getattr(request.state,'request_id',None),
         'details':[{'field':'.'.join(str(part) for part in item['loc'][1:]),'message':item['msg']} for item in error.errors()]},422)
+
+
+@app.exception_handler(Exception)
+async def unexpected_error(request: Request, error: Exception):
+    audit_log.exception('unhandled_error request_id=%s path=%s', getattr(request.state, 'request_id', None), request.url.path)
+    return error_response(request, 'internal_error', 'Something went wrong. Please try again.', True, 500)
 
 @app.middleware('http')
 async def limits(request: Request, call_next):
@@ -44,12 +55,16 @@ async def limits(request: Request, call_next):
     queue = requests[ip]
     while queue and queue[0]<now-60: queue.popleft()
     if len(queue)>=90:
-        return JSONResponse({'code':'rate_limited','message':'Please wait a minute and try again.','retryable':True},429)
+        response=JSONResponse({'code':'rate_limited','message':'Please wait a minute and try again.','retryable':True,'request_id':request_id},429)
+        response.headers['x-request-id']=request_id
+        return response
     queue.append(now)
     if request.method=='POST':
         body = await request.body()
         if len(body)>16384:
-            return JSONResponse({'code':'too_large','message':'Please send a shorter message.','retryable':False},413)
+            response=JSONResponse({'code':'too_large','message':'Please send a shorter message.','retryable':False,'request_id':request_id},413)
+            response.headers['x-request-id']=request_id
+            return response
     response = await call_next(request)
     response.headers['x-request-id'] = request_id
     audit_log.info(json.dumps({'event':'http_request','request_id':request_id,'method':request.method,
@@ -89,21 +104,32 @@ def providers():
     return {'providers':[p(None,service.settings).health() for p in __import__('app.providers',fromlist=['PROVIDERS']).PROVIDERS]}
 
 @app.get('/v1/locations/search')
-async def search(q: str = Query(min_length=2,max_length=100)):
+async def search(request: Request, q: str = Query(min_length=2,max_length=100), language: str = Query(default='en',pattern='^(en|hi|bn|te|mr|ta|gu|kn|ml|pa|or)$')):
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get('https://geocoding-api.open-meteo.com/v1/search',params={'name':q,'count':8,'language':'en'})
+            r = await client.get('https://geocoding-api.open-meteo.com/v1/search',params={'name':q,'count':8,'language':language})
             r.raise_for_status()
             return {'locations':[Location(name=', '.join(filter(None,[p['name'],p.get('admin1'),p.get('country')])),
                 latitude=p['latitude'],longitude=p['longitude'],timezone=p.get('timezone','UTC')).model_dump()
                 for p in r.json().get('results',[])]}
     except (httpx.HTTPError,ValueError,KeyError):
-        return JSONResponse({'code':'unavailable','message':'Place search is unavailable. Please try again.','retryable':True},503)
+        return error_response(request,'unavailable','Place search is unavailable. Please try again.',True,503)
 
+@app.get('/v1/locations/resolve')
+async def resolve_location(request: Request, latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-180,le=180), name: str=Query(default='Current location',max_length=120)):
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response=await client.get('https://api.open-meteo.com/v1/forecast',params={'latitude':latitude,'longitude':longitude,'timezone':'auto','forecast_days':1,'hourly':'temperature_2m'})
+            response.raise_for_status()
+            timezone_name=response.json()['timezone']
+            location=Location(name=name,latitude=latitude,longitude=longitude,timezone=timezone_name)
+            return {'location':location.model_dump()}
+    except (httpx.HTTPError,ValueError,KeyError):
+        return error_response(request,'location_unavailable','The location timezone could not be checked. Please search for your village or city.',True,503)
 @app.get('/v1/weather/bundle')
-async def bundle(latitude: float=Query(ge=-90,le=90),longitude: float=Query(ge=-180,le=180),name: str=Query(default='Selected place',max_length=120),timezone: str='Asia/Kolkata'):
+async def bundle(request: Request, latitude: float=Query(ge=-90,le=90),longitude: float=Query(ge=-180,le=180),name: str=Query(default='Selected place',max_length=120),timezone: str='Asia/Kolkata'):
     try: loc=Location(name=name,latitude=latitude,longitude=longitude,timezone=timezone)
-    except ValueError: return JSONResponse({'code':'invalid_location','message':'Please check the location and timezone.','retryable':False},422)
+    except ValueError: return error_response(request,'invalid_location','Please check the location and timezone.',False,422)
     data = await service.bundle(loc)
     official = await alert_service.official(loc)
     return {**data, 'alerts_status':official['status'], 'official_status':official['status'],
@@ -128,8 +154,10 @@ async def daily(latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-
     summaries = data.get('daily') or daily_summary(data['hourly'], timezone)
     return {key:data[key] for key in ('location','retrieved_at','is_stale','sources','source_count','agreement','provider_status')} | {'data': summaries[:days]}
 
+PROFILE_PATTERN = '^(general|farming|fishing|outdoor|tourism|transport|construction|emergency|vendor|aviation|research)$'
+
 @app.get('/v1/weather/score')
-async def score(latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-180,le=180), name: str='Selected place', timezone: str='Asia/Kolkata', profile: str=Query(default='general',pattern='^(general|farming|fishing|outdoor)$')):
+async def score(latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-180,le=180), name: str='Selected place', timezone: str='Asia/Kolkata', profile: str=Query(default='general',pattern=PROFILE_PATTERN)):
     data = await weather_for(latitude, longitude, name, timezone)
     return {'location':data['location'], 'retrieved_at':data['retrieved_at'], 'is_stale':data['is_stale'], 'data':data.get('scores',{}).get(profile) or weather_score(data['hourly'],profile), 'recommendations':data.get('recommendations',{}).get(profile,[])}
 
@@ -150,23 +178,23 @@ async def alerts(latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=
     }
 
 @app.get('/v1/climate/summary')
-async def climate_summary(latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-180,le=180), name: str='Selected place', timezone: str='Asia/Kolkata', metric: str=Query(default='temperature',pattern='^(temperature|rainfall)$'), years: int=Query(default=10,ge=2,le=30)):
+async def climate_summary(request: Request, latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-180,le=180), name: str='Selected place', timezone: str='Asia/Kolkata', metric: str=Query(default='temperature',pattern='^(temperature|rainfall)$'), years: int=Query(default=10,ge=2,le=30)):
     try:
         data = await climate_service.summary(Location(name=name, latitude=latitude, longitude=longitude, timezone=timezone), metric, years)
         return {'data': data, 'is_stale': False}
     except httpx.HTTPError:
-        return JSONResponse({'code':'climate_unavailable','message':'Historical climate data is unavailable. Please try again later.','retryable':True},503)
+        return error_response(request,'climate_unavailable','Historical climate data is unavailable. Please try again later.',True,503)
     except ValueError as error:
-        return JSONResponse({'code':'insufficient_climate_data','message':str(error),'retryable':False},422)
+        return error_response(request,'insufficient_climate_data',str(error),False,422)
 
 @app.get('/v1/marine/forecast')
-async def marine_forecast(latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-180,le=180), name: str='Selected sea point', timezone: str='Asia/Kolkata', hours: int=Query(default=48,ge=1,le=168)):
+async def marine_forecast(request: Request, latitude: float=Query(ge=-90,le=90), longitude: float=Query(ge=-180,le=180), name: str='Selected sea point', timezone: str='Asia/Kolkata', hours: int=Query(default=48,ge=1,le=168)):
     try:
         return await marine_service.forecast(Location(name=name,latitude=latitude,longitude=longitude,timezone=timezone),hours)
     except httpx.HTTPError:
-        return JSONResponse({'code':'marine_unavailable','message':'Marine forecast data could not be checked. Check official IMD and INCOIS warnings.','retryable':True},503)
+        return error_response(request,'marine_unavailable','Marine forecast data could not be checked. Check official IMD and INCOIS warnings.',True,503)
     except ValueError as error:
-        return JSONResponse({'code':'marine_location_unavailable','message':str(error),'retryable':False},422)
+        return error_response(request,'marine_location_unavailable',str(error),False,422)
 
 @app.post('/v1/chat/message')
 async def chat(request: ChatRequest):
@@ -177,11 +205,22 @@ async def chat(request: ChatRequest):
             rows = result['hourly'][:24]
             waves = [row['wave_height_m'] for row in rows if row['wave_height_m'] is not None]
             periods = [row['wave_period_s'] for row in rows if row['wave_period_s'] is not None]
-            facts = [f"Marine model near {request.location.name} for the next 24 hours."]
+            official=await alert_service.official(request.location)
+            facts=[]
+            official_sources=[]
+            if official['alerts']:
+                for alert in official['alerts']:
+                    facts.append(f"Official warning: {alert['headline']}. Severity: {alert['severity']}. {alert.get('instruction') or alert.get('description') or ''}"+(f" Expires: {alert['expires']}." if alert.get('expires') else ''))
+                    if alert.get('sender'): official_sources.append(alert['sender'])
+            elif official['status']!='available':
+                facts.append('Official fishermen-warning availability is unknown. Check IMD and INCOIS before going to sea.')
+            else:
+                facts.append('The connected official feed reports no active warning here. Refresh before going to sea.')
+            facts.append(f"Marine model near {request.location.name} for the next 24 hours.")
             if waves: facts.append(f"Highest significant wave height: {max(waves):g} m.")
             if periods: facts.append(f"Longest mean wave period: {max(periods):g} seconds.")
             facts.append('This model is not a navigation or safety clearance. Check official IMD and INCOIS fishermen warnings before going to sea.')
-            return await finalize_chat(request,{'answer':'\n\n'.join(facts),'language':'en','day_offset':request.day_offset,'retrieved_at':result['retrieved_at'],'is_stale':False,'sources':result['sources'],'agreement':'single_marine_model',
+            return await finalize_chat(request,{'answer':'\n\n'.join(facts),'language':'en','day_offset':request.day_offset,'retrieved_at':result['retrieved_at'],'is_stale':False,'sources':result['sources']+list(dict.fromkeys(official_sources)),'agreement':'single_marine_model',
                 'conversation_context':{'conversation_id':str(request.conversation_id),'resolved_location':request.location.model_dump(),'resolved_day_offset':request.day_offset,'profile':request.profile,'last_intent':'marine','last_weather_context_id':result['retrieved_at']}}
             )
         except (httpx.HTTPError,ValueError):
@@ -202,5 +241,60 @@ async def chat(request: ChatRequest):
         except (httpx.HTTPError, ValueError):
             pass
     data = await service.bundle(request.location)
+    official = await alert_service.official(request.location)
+    data = {**data, 'official_status':official['status'], 'alerts_status':official['status'], 'official_alerts':official['alerts'], 'alerts':official['alerts']}
     result = answer(request,data)
     return await finalize_chat(request,result)
+
+
+class DeviceRegistration(BaseModel):
+    device_id: str = Field(min_length=8, max_length=80)
+
+
+class AlertSubscriptionRequest(BaseModel):
+    device_id: str = Field(min_length=8, max_length=80)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    timezone: str = Field(default='Asia/Kolkata', max_length=64)
+    channels: list[str] = Field(default_factory=lambda: ['severe'])
+
+
+@app.post('/v1/device/register')
+def register_device(body: DeviceRegistration):
+    return {'device_id': body.device_id, 'registered_at': datetime.now(timezone.utc).isoformat(), 'status': 'accepted'}
+
+
+@app.post('/v1/alerts/subscriptions')
+def create_alert_subscription(body: AlertSubscriptionRequest):
+    subscription = create_subscription(body.device_id, body.latitude, body.longitude, body.timezone, body.channels)
+    return {'subscription': {
+        'id': subscription.id,
+        'device_id': subscription.device_id,
+        'latitude': subscription.latitude,
+        'longitude': subscription.longitude,
+        'timezone': subscription.timezone,
+        'channels': subscription.channels,
+        'created_at': subscription.created_at,
+    }}
+
+
+@app.get('/v1/alerts/subscriptions')
+def list_alert_subscriptions(device_id: str = Query(min_length=8, max_length=80)):
+    return {'subscriptions': [{
+        'id': item.id,
+        'device_id': item.device_id,
+        'latitude': item.latitude,
+        'longitude': item.longitude,
+        'timezone': item.timezone,
+        'channels': item.channels,
+        'created_at': item.created_at,
+    } for item in list_for_device(device_id)]}
+
+
+@app.delete('/v1/alerts/subscriptions/{subscription_id}')
+def remove_alert_subscription(subscription_id: str, device_id: str = Query(min_length=8, max_length=80)):
+    if not delete_subscription(subscription_id, device_id):
+        return error_response(None, 'not_found', 'Subscription not found for this device.', False, 404)
+    return {'deleted': True, 'id': subscription_id}
+
+

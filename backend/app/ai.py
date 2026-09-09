@@ -17,7 +17,18 @@ def validate_polish(draft: str, candidate: str) -> bool:
     candidate_numbers = set(re.findall(r'(?<![\w])[-+]?\d+(?:\.\d+)?', candidate))
     if candidate_numbers != draft_numbers:
         return False
+    unit_pattern=r'(?<![\w])([-+]?\d+(?:\.\d+)?)\s*(°C|%|mm|m/s|km/h|m|seconds?|years?)(?!\w)'
+    draft_units={(number,unit.lower()) for number,unit in re.findall(unit_pattern,draft,re.IGNORECASE)}
+    candidate_units={(number,unit.lower()) for number,unit in re.findall(unit_pattern,candidate,re.IGNORECASE)}
+    if candidate_units != draft_units:
+        return False
     lowered = candidate.lower()
+    protected_terms=('imd','incois','open-meteo','ecmwf','weathergpt risk estimate','official warning')
+    if any(term in draft.lower() and term not in lowered for term in protected_terms):
+        return False
+    severities=('yellow','orange','red','minor','moderate','severe','extreme')
+    if {term for term in severities if term in draft.lower()} != {term for term in severities if term in lowered}:
+        return False
     if re.search(r'\bno (?:active |weather )?warnings?\b', lowered):
         return False
     return True
@@ -53,3 +64,5 @@ class GeminiPolisher:
 
 
 gemini_polisher=GeminiPolisher()
+
+

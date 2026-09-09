@@ -1,0 +1,42 @@
+# WeatherGPT Risk Estimate thresholds. Not official government warnings.
+rules:
+  - id: heavy_rain_hourly
+    source: configured
+    rationale: Hourly rainfall above 7.5 mm suggests heavy rain risk for outdoor work.
+    unit: mm
+    profiles: [general, farming, outdoor, construction, transport, vendor]
+    field: rain_mm
+    threshold: 7.5
+    severity: moderate
+  - id: strong_wind
+    source: configured
+    rationale: Sustained wind above 14 m/s may affect outdoor work and transport.
+    unit: m/s
+    profiles: [general, farming, outdoor, construction, transport, fishing]
+    field: wind_ms
+    threshold: 14
+    severity: moderate
+  - id: dangerous_gust
+    source: configured
+    rationale: Wind gusts above 20 m/s increase injury and equipment risk.
+    unit: m/s
+    profiles: [construction, transport, outdoor, vendor]
+    field: wind_gust_ms
+    threshold: 20
+    severity: severe
+  - id: heat_stress
+    source: configured
+    rationale: Air temperature above 40°C increases heat-stress risk.
+    unit: celsius
+    profiles: [general, farming, outdoor, construction, vendor, tourism]
+    field: temperature
+    threshold: 40
+    severity: moderate
+  - id: poor_visibility
+    source: configured
+    rationale: Visibility below 1000 m may affect travel and outdoor safety.
+    unit: m
+    profiles: [transport, tourism, aviation, emergency]
+    field: visibility_m
+    threshold_max: 1000
+    severity: moderate

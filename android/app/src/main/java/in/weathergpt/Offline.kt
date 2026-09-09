@@ -23,7 +23,18 @@ object Offline {
         if(b==null) return (if(hi) "अभी मौसम सहेजा नहीं गया है। इंटरनेट से जुड़कर पहले मौसम डाउनलोड करें।" else "No saved forecast yet. Connect to the internet and download your weather first.") to day
         val downloaded=Instant.parse(b.retrieved_at).atZone(ZoneId.of(b.location.timezone)).format(java.time.format.DateTimeFormatter.ofPattern("d MMM, h:mm a",java.util.Locale.forLanguageTag(language)))
         val intro=if(hi) "सहेजा मौसम: ${downloaded}। जानकारी बदल सकती है।\n\n" else "Saved forecast from ${downloaded}. Conditions may have changed.\n\n"
-        if(listOf("warning","alert","चेतावनी").any{q.contains(it)}) return (intro+(if(hi) "नई चेतावनियों के लिए इंटरनेट चाहिए। आधिकारिक चेतावनी सेवा अभी जुड़ी नहीं है। बाहर जाने से पहले IMD की चेतावनी देखें।" else "New warnings need an internet connection. Official warnings are not connected in this version. Check IMD before going out.")) to day
+        if(listOf("warning","alert","चेतावनी").any{q.contains(it)}) {
+            val active=b.official_alerts.orEmpty().filter { alert->alert.expires?.let { runCatching { Instant.parse(it)>Instant.now() }.getOrDefault(false) }==true }
+            if(active.isNotEmpty()) {
+                val warnings=active.joinToString("\n\n") { alert->
+                    val instruction=alert.instruction?:alert.description?:""
+                    if(hi) "पहले डाउनलोड की गई आधिकारिक चेतावनी: ${alert.headline}। $instruction समाप्ति: ${alert.expires}।"
+                    else "Previously downloaded official warning: ${alert.headline}. $instruction Expires: ${alert.expires}."
+                }
+                return (intro+warnings+"\n\n"+(if(hi) "नई चेतावनियों और बदलावों के लिए इंटरनेट चाहिए।" else "New warnings and updates require an internet connection.")) to day
+            }
+            return (intro+(if(hi) "नई चेतावनियों के लिए इंटरनेट चाहिए। आधिकारिक चेतावनी उपलब्धता पता नहीं है। बाहर जाने से पहले IMD की चेतावनी देखें।" else "New warnings need an internet connection. Official warning availability is unknown. Check IMD before going out.")) to day
+        }
         if(!listOf("weather","rain","temperature","wind","today","tomorrow","morning","evening","afternoon","मौसम","बारिश","कल","आज","सुबह","शाम").any{q.contains(it)}) return (intro+(if(hi) "मैं आज या कल का सहेजा मौसम बता सकता हूँ। बाकी सवालों के लिए इंटरनेट से जुड़ें।" else "I can show saved weather for today or tomorrow. Reconnect for other questions.")) to day
         val zone=ZoneId.of(b.location.timezone)
         val date=LocalDate.now(zone).plusDays(day.toLong())
@@ -46,4 +57,18 @@ object Offline {
         }
         return (intro+facts.joinToString("\n\n")) to day
     }
+}
+
+
+fun cachedAlertIsActive(alert:OfficialAlert,now:java.time.Instant=java.time.Instant.now()):Boolean {
+    val effective=alert.effective?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
+    val expires=alert.expires?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }?:return false
+    return (effective==null || !effective.isAfter(now)) && expires.isAfter(now)
+}
+
+enum class AlertLevel { YELLOW, ORANGE, RED }
+fun alertLevel(severity:String):AlertLevel=when(severity.lowercase()) {
+    "extreme","severe" -> AlertLevel.RED
+    "moderate" -> AlertLevel.ORANGE
+    else -> AlertLevel.YELLOW
 }

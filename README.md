@@ -19,7 +19,7 @@ For a new environment, use `scripts/setup_backend.ps1 -Python <path-to-python-3.
 
 Open **D:\WeatherGPT\android** in Android Studio. SDK API 37.0 and build tools 36.0.0 are used with AGP 9.1.1. Java is supplied by Android Studio. Build with `scripts/build_android.ps1`.
 
-The verified debug APK is at `android/app/build/outputs/apk/debug/app-debug.apk`. No phone or emulator was connected during the build, so installation and visual/voice testing remain in the device checklist.
+The verified debug APK is at `android/app/build/outputs/apk/debug/app-debug.apk`. It has been installed and launched on the `Pixel_10a` emulator; onboarding renders and the fixed app remains resumed without an Android runtime crash. Voice, notification delivery, TalkBack and full airplane-mode interaction still require hands-on device checks.
 
 CI runs backend compilation/tests plus Android unit tests, lint, and debug assembly without production secrets. Test fixtures remain inside tests and are never served as app weather. Run `scripts/audit_repository.ps1` before release to scan tracked source for common secret formats and confirm `.env` remains ignored.
 
@@ -42,7 +42,7 @@ The **Home** screen now shows the current forecast, an explainable 24-hour Weath
 
 Chat can also answer ten-year temperature and rainfall trend questions using deterministic ERA5 reanalysis calculations. Responses include period, trend, coverage, provenance and the limitation that a reanalysis grid cell may differ from a nearby station and cannot attribute climate causes.
 
-Controls are at least 52–56 dp, labels accompany icons, text scales with phone settings, and screens scroll rather than requiring small fixed text. No account or GPS permission is required. Background refresh defaults to Wi-Fi only every six hours, subject to Android scheduling.
+Controls are at least 52–56 dp, labels accompany icons, text scales with phone settings, and screens scroll rather than requiring small fixed text. No account is required. GPS is optional; denial or an unavailable fix leaves manual village and city search available. Background refresh defaults to Wi-Fi only every six hours, subject to Android scheduling.
 
 ## What is verified
 
@@ -50,10 +50,11 @@ The Python backend tests and a real Open-Meteo weather request have passed. See 
 
 ## Honest limitations
 
-This is an initial working implementation, **not completion of the entire master specification**. English and Hindi cover the full core UI; nine other languages currently translate main controls only. Chat uses deterministic English/Hindi templates, not Gemini. IMD normalization, marine services, cloud translation and authoritative push delivery are not connected. CAP 1.2 ingestion is implemented and tested but requires a trusted live feed in `CAP_ALERT_URL`. The app reports unavailable official data clearly and links to IMD. Missing warning data is never interpreted as no warning.
+This remains an implementation in progress. English and Hindi cover the full core UI; nine other languages currently translate main controls only. Chat always starts from deterministic, validated data and can optionally use backend-only Gemini for wording when credentials are configured; its output is rejected if it changes numbers or warning meaning. Open-Meteo Marine and ERA5 climate services are implemented and live-tested. BHASHINI and Google Translation adapters are fixture-tested but need credentials for live use. CAP 1.2 ingestion is implemented and tested but requires a trusted live feed in `CAP_ALERT_URL`. Authoritative push delivery and normalized live IMD forecasts remain external blockers. The app reports unavailable official data clearly and links to IMD. Missing warning data is never interpreted as no warning.
 
 OpenWeather and WeatherAPI adapters activate only when configured in the root `.env`. IMD's access adapter is disabled by default and cannot yet supply normalized weather. Do not count it as a completed fourth integration. Provider consensus is an uncalibrated median, not a claim of superior accuracy or a safety score.
 
 Saved forecasts and messages live in Room; preferences live in DataStore. Offline answers use the saved forecast and carry a stale warning. New warnings cannot arrive without a connection. Use Settings to clear local data.
 
 See `docs/MASTER_SPEC.md` for the original request. The user's latest instruction explicitly skips demo mode.
+

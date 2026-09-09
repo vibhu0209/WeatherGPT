@@ -1,5 +1,5 @@
 """Typed, deterministic weather tools. These are the only weather-data boundary for a future LLM."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 from .alerts import alert_service
 from .climate import climate_service
 from .decision import current_point, daily_summary, weather_score
+from .marine import marine_service
 from .models import Location
+from .providers import PROVIDERS
 from .weather import service
 
 
@@ -24,7 +26,20 @@ class DailyInput(BaseModel):
 
 class ScoreInput(BaseModel):
     location: Location
-    profile: Literal['general', 'farming', 'fishing', 'outdoor'] = 'general'
+    profile: Literal[
+        'general', 'farming', 'fishing', 'outdoor', 'tourism', 'transport',
+        'construction', 'emergency', 'vendor', 'aviation', 'research',
+    ] = 'general'
+
+
+class MarineInput(BaseModel):
+    location: Location
+    hours: int = Field(default=48, ge=1, le=168)
+
+
+class CompareInput(BaseModel):
+    locations: list[Location] = Field(min_length=2, max_length=4)
+    day_offset: int = Field(default=0, ge=0, le=6)
 
 
 class ClimateInput(BaseModel):
@@ -86,6 +101,49 @@ async def get_climate_summary(request: ClimateInput) -> ToolResult:
     return ToolResult(data=data, retrieved_at=data['generated_at'], is_stale=False, sources=[data['source']])
 
 
+async def get_marine_forecast(request: MarineInput) -> ToolResult:
+    try:
+        data = await marine_service.forecast(request.location, request.hours)
+        return ToolResult(data=data, retrieved_at=data['retrieved_at'], is_stale=False, sources=data['sources'], status='available')
+    except Exception:
+        return ToolResult(data=None, retrieved_at=datetime.now().astimezone().isoformat(), is_stale=False, sources=[],
+            status='unavailable', error='Marine forecast data is unavailable for this location.')
+
+
+class ProviderStatusInput(BaseModel):
+    pass
+
+
+async def get_provider_status(_: ProviderStatusInput | None = None) -> ToolResult:
+    now = datetime.now(timezone.utc).isoformat()
+    providers = [provider(None, service.settings).health() for provider in PROVIDERS]
+    return ToolResult(data={'providers': providers}, retrieved_at=now, is_stale=False,
+        sources=[item['provider'] for item in providers if item.get('status') == 'available'], status='available')
+
+
+async def compare_locations(request: CompareInput) -> ToolResult:
+    comparisons = []
+    sources: set[str] = set()
+    retrieved_at = None
+    for location in request.locations:
+        bundle = await service.bundle(location)
+        daily_rows = bundle.get('daily') or daily_summary(bundle['hourly'], location.timezone)
+        day = daily_rows[request.day_offset] if len(daily_rows) > request.day_offset else None
+        comparisons.append({
+            'location': location.model_dump(mode='json'),
+            'day_offset': request.day_offset,
+            'daily': day,
+            'source_count': bundle.get('source_count', 0),
+            'agreement': bundle.get('agreement'),
+            'retrieved_at': bundle['retrieved_at'],
+            'is_stale': bundle.get('is_stale', False),
+        })
+        sources.update(bundle.get('sources') or [])
+        retrieved_at = bundle['retrieved_at']
+    return ToolResult(data={'comparisons': comparisons}, retrieved_at=retrieved_at or datetime.now().astimezone().isoformat(),
+        is_stale=any(item['is_stale'] for item in comparisons), sources=sorted(sources), status='available')
+
+
 TOOL_REGISTRY = {
     'get_current_weather': (Location, get_current_weather),
     'get_hourly_forecast': (TimeRangeInput, get_hourly_forecast),
@@ -93,4 +151,7 @@ TOOL_REGISTRY = {
     'get_active_alerts': (Location, get_active_alerts),
     'get_weather_score': (ScoreInput, get_weather_score),
     'get_climate_summary': (ClimateInput, get_climate_summary),
+    'get_marine_forecast': (MarineInput, get_marine_forecast),
+    'get_provider_status': (ProviderStatusInput, get_provider_status),
+    'compare_locations': (CompareInput, compare_locations),
 }

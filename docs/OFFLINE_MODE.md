@@ -8,3 +8,4 @@ A downloaded forecast is not a live observation. New warnings cannot arrive on a
 
 Limitations: backend cache is in-process, not persistent; Android per-category alert/nowcast TTLs await those integrations; broader intent coverage remains pending. Real airplane-mode device tests have not yet run.
 
+
