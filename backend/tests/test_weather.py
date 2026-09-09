@@ -162,6 +162,32 @@ def test_caught_service_errors_share_request_id_envelope(monkeypatch):
     assert response.headers['x-request-id']=='marine-error-1'
 
 
+def test_unexpected_errors_are_sanitized_and_correlated(monkeypatch, caplog):
+    from app import main
+
+    async def broken(_):
+        raise RuntimeError('private provider detail must not leave the backend')
+
+    monkeypatch.setattr(main.service, 'bundle', broken)
+    client = TestClient(app, raise_server_exceptions=False)
+    with caplog.at_level('ERROR', logger='weathergpt.request'):
+        response = client.get(
+            '/v1/weather/bundle?latitude=28.6&longitude=77.2',
+            headers={'x-request-id': 'unexpected-error-1'},
+        )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        'code': 'internal_error',
+        'message': 'Something went wrong. Please try again.',
+        'retryable': True,
+        'request_id': 'unexpected-error-1',
+    }
+    assert response.headers['x-request-id'] == 'unexpected-error-1'
+    assert 'private provider detail' not in response.text
+    assert 'unexpected-error-1' in caplog.text
+
+
 def test_marine_chat_puts_official_warning_before_model(monkeypatch):
     from app import main
     async def marine(*args,**kwargs): return {'hourly':[{'wave_height_m':1.8,'wave_period_s':8.0}],'retrieved_at':NOW.isoformat(),'sources':['open-meteo-marine']}

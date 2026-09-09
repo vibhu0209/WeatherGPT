@@ -6,7 +6,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 
 ## Verified so far
 - Python 3.12.14 repository-local environment created; dependencies installed.
-- Backend: 72 tests passed.
+- Backend: 73 tests passed.
 - Live Delhi fusion pipeline: 161 hourly records from GFS and ECMWF IFS model families; source disagreement and confidence 66/100 were returned, with official warnings unavailable.
 - Android Studio JBR 25, SDK 37.0 and build tools 36.0.0 located. Gradle 9.3.1 downloaded locally.
 - Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `C3B0EADDE31760A296BA022DF7065381D7AC6573A51D3D2CC8BBD39B1C3FE7AF`.
@@ -76,7 +76,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 59. SMART SUGGESTIONS | IN PROGRESS | Profile-aware general, farming, fishing and outdoor suggestions call only implemented forecast, alert, marine and climate functions. Post-answer ranking remains. |
 | 60. UI ACCESSIBILITY | IN PROGRESS | Large targets, icon labels, headings, assertive official alerts, scalable text and all explicit color pairs at 6.6:1 or better; device screen-reader audit remains. |
 | 61. BACKEND API | IN PROGRESS | Health, capabilities, provider status, place search, weather bundle/current/hourly/daily/alerts/score, marine, climate and chat are implemented. |
-| 62. API RESPONSE CONTRACT | IN PROGRESS | Weather metadata and validation/caught-service error envelopes include request IDs and retryability; endpoint tests verify header/body parity. Unexpected production exceptions still require centralized sanitization. |
+| 62. API RESPONSE CONTRACT | TESTED | Weather metadata and validation, caught-service, and unexpected-error envelopes include request IDs and retryability. Endpoint tests verify header/body parity and confirm unexpected exception details do not leave the backend. |
 | 63. ANDROID/BACKEND CONTRACT-FIRST DEVELOPMENT | IN PROGRESS | Shared weather-bundle, chat-answer and error JSON examples are validated by backend models and deserialized by production Android Gson DTOs. Broader generated-schema drift checking remains. |
 | 64. LOCAL DEVELOPMENT NETWORKING | IN PROGRESS | Emulator and LAN URLs supported; on-device verification pending. |
 | 65. SECRETS | IMPLEMENTED | Root .env.example placeholders; .env and local secrets ignored. |
@@ -85,7 +85,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 68. DEMO MODE | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 69. DEMO DATA ARCHITECTURE | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 70. FAILURE HANDLING | IN PROGRESS | Provider partial/all-failure, malformed data, Gemini and language-provider fallback, internet loss, empty/stale Room cache and unavailable alert sources degrade explicitly; device permission cases remain. |
-| 71. TESTING — BACKEND | IN PROGRESS | 70 tests pass across validation, fusion, providers, evaluation, language, time, tools, conversations, scoring, climate, marine, risks, CAP and AI guardrails. |
+| 71. TESTING — BACKEND | IN PROGRESS | 73 tests pass across validation, fusion, providers, evaluation, language, time, tools, conversations, scoring, climate, marine, risks, CAP, AI guardrails and sanitized unexpected-error handling. |
 | 72. TESTING — ANDROID | IN PROGRESS | Ten JVM tests, debug build and lint pass; fixed APK installs and launches cleanly on an emulator. Full voice, TalkBack, theme and offline interaction remain. |
 | 73. END-TO-END DEMO TEST | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 74. PERFORMANCE / SIH EVALUATION | IN PROGRESS | Measured one local live two-model bundle at 800.6 ms and immediate cache hit at 37.5 ms (GFS 641 ms, ECMWF IFS 735 ms). Multilingual, device/offline and field evaluation remain. |

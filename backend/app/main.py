@@ -65,7 +65,11 @@ async def limits(request: Request, call_next):
             response=JSONResponse({'code':'too_large','message':'Please send a shorter message.','retryable':False,'request_id':request_id},413)
             response.headers['x-request-id']=request_id
             return response
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:
+        audit_log.exception('unhandled_error request_id=%s path=%s', request_id, request.url.path)
+        response = error_response(request, 'internal_error', 'Something went wrong. Please try again.', True, 500)
     response.headers['x-request-id'] = request_id
     audit_log.info(json.dumps({'event':'http_request','request_id':request_id,'method':request.method,
         'path':request.url.path,'status':response.status_code,'duration_ms':round((time.monotonic()-started)*1000,1)}, separators=(',',':')))
