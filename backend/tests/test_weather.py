@@ -140,6 +140,31 @@ def test_request_id_is_returned_without_logging_query_values():
     response=TestClient(app).get('/health',headers={'x-request-id':'client-request-42'})
     assert response.headers['x-request-id']=='client-request-42'
 
+
+def test_weather_bundle_etag_avoids_unchanged_payload(monkeypatch):
+    from app import main
+
+    async def weather(_):
+        return {'hourly': [], 'is_stale': False, 'retrieved_at': NOW.isoformat(), 'sources': [],
+            'source_count': 0, 'agreement': 'unavailable', 'provider_status': []}
+
+    async def official(_):
+        return {'status': 'unavailable', 'alerts': [], 'message': 'Official warnings unavailable.'}
+
+    monkeypatch.setattr(main.service, 'bundle', weather)
+    monkeypatch.setattr(main.alert_service, 'official', official)
+    client = TestClient(app)
+    first = client.get('/v1/weather/bundle?latitude=28.6&longitude=77.2')
+    assert first.status_code == 200
+    assert first.headers['etag'].startswith('"')
+    assert first.headers['cache-control'] == 'private, max-age=300'
+    second = client.get('/v1/weather/bundle?latitude=28.6&longitude=77.2', headers={
+        'if-none-match': first.headers['etag'], 'x-request-id': 'etag-check-1',
+    })
+    assert second.status_code == 304 and second.content == b''
+    assert second.headers['etag'] == first.headers['etag']
+    assert second.headers['x-request-id'] == 'etag-check-1'
+
 def test_chat_official_warning_takes_precedence():
     alert={'headline':'Red rain warning','event':'Heavy rain','severity':'extreme','instruction':'Stay indoors','expires':'2099-09-09T15:00:00Z'}
     bundle={'hourly':[],'is_stale':False,'retrieved_at':NOW.isoformat(),'sources':['imd'],'agreement':'single_source','official_status':'available','official_alerts':[alert]}

@@ -69,7 +69,16 @@ class OfflineTest {
         assertEquals(61.0,bundle.hourly.single().weather_code?:-1.0,0.0)
         assertEquals("severe",bundle.official_alerts?.single()?.severity)
         assertFalse(bundle.confidence?.calibrated_probability?:true)
-    }}
+    }
+    @Test fun notModifiedRequiresMatchingLocalState() {
+        val metadata=SyncMetadata("place","\"etag\"",1,1)
+        val weather=SavedWeather("place","{}")
+        assertTrue(canReuseNotModified(304,metadata,weather))
+        assertFalse(canReuseNotModified(304,null,weather))
+        assertFalse(canReuseNotModified(304,metadata,null))
+        assertFalse(canReuseNotModified(200,metadata,weather))
+    }
+}
 
 
 

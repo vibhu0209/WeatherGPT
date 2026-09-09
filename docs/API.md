@@ -8,3 +8,7 @@ Run `scripts/run_backend.ps1`, then inspect `http://localhost:8000/docs` for exa
 
 Shared examples used by both test suites are in `contracts/weather_bundle.json`, `contracts/chat_answer.json`, and `contracts/error.json`. Android unit tests deserialize the bundle with the production Gson DTOs; backend tests validate canonical location/point fields and the error envelope.
 
+
+## Conditional bundle refresh
+
+GET /v1/weather/bundle returns a private ETag and Cache-Control: private, max-age=300. Send the exact ETag in If-None-Match; an unchanged bundle returns 304 with an empty body. Clients must use 304 only when the matching local bundle exists.

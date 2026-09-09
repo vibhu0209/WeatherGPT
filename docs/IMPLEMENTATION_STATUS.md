@@ -6,10 +6,10 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 
 ## Verified so far
 - Python 3.12.14 repository-local environment created; dependencies installed.
-- Backend: 74 tests passed.
+- Backend: 75 tests passed.
 - Live Delhi fusion pipeline: 161 hourly records from GFS and ECMWF IFS model families; source disagreement and confidence 66/100 were returned, with official warnings unavailable.
 - Android Studio JBR 25, SDK 37.0 and build tools 36.0.0 located. Gradle 9.3.1 downloaded locally.
-- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `71BFE9FDF2BC522C77B5F1E54280137B59FD4A02080F8746EF610D7DDBCC1E5F`.
+- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Eleven JVM tests pass. Debug APK SHA-256: `77506C8C195AD94212FCDDECE60E4EF0389F631E9FB799CA02D6F38338431C89`.
 - The APK was installed on a Pixel_10a emulator. A first-launch localization-context crash was found and fixed. A clean-data relaunch now stays resumed without an Android runtime crash, and UI Automator confirms the onboarding dialog, eleven language choices, and large selection controls. Emulator touch injection remains unreliable, so the complete interactive checklist is still open.
 
 ## Master requirement coverage
@@ -58,11 +58,11 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 41. LANGUAGE CAPABILITY MATRIX | IN PROGRESS | English, Hindi, Bengali and Telugu package all 124 current UI strings; six other regional packs translate 25 core controls and fall back to English for detailed content. Android language splitting is disabled. Native-speaker review remains. |
 | 42. VOICE-FIRST EXPERIENCE | IN PROGRESS | Android speech intent and TTS, device verification pending. |
 | 43. OFFLINE-FIRST ANDROID ARCHITECTURE | IN PROGRESS | Room-backed repository and observed local flows. |
-| 44. ROOM ENTITIES | IN PROGRESS | Room weather bundle, chat and saved-place entities. Room v3 adds conversation ID, resolved location ID and weather-context timestamp; an in-place emulator upgrade from the existing database launched cleanly with no Room/runtime errors. Alert-rule entities and provider snapshots remain. |
-| 45. OFFLINE WEATHER BUNDLE | IN PROGRESS | Compact bundle download and local persistence. |
+| 44. ROOM ENTITIES | IN PROGRESS | Room stores weather bundles, chat, saved places and per-location sync metadata. Room v4 adds ETag, last-checked and last-changed fields; an in-place emulator upgrade launched resumed with no Room/SQLite/runtime errors. Alert-rule entities and provider snapshots remain. |
+| 45. OFFLINE WEATHER BUNDLE | TESTED | The compact gzip-capable bundle includes forecast, alerts, scores, provenance and freshness. Backend ETag/304 behavior is tested; Android persists validators and weather transactionally in Room and avoids rewriting unchanged bundles. |
 | 46. CACHE FRESHNESS | TESTED | Weather, official-alert and climate freshness windows plus expiry handling have JVM coverage and stale UI messaging. |
 | 47. OFFLINE CHATBOT | TESTED | Local deterministic English/Hindi weather/rain and alert-unavailability answers; Android JVM tests passed. Device airplane-mode validation remains. |
-| 48. LOW-CONNECTIVITY MODE | IN PROGRESS | Compressed responses, manual download and Wi-Fi-only background sync; broader mode pending. |
+| 48. LOW-CONNECTIVITY MODE | IN PROGRESS | Compressed responses, ETag conditional refresh, manual download, timeouts, exponential backoff and Wi-Fi-only background sync are implemented; an explicit low-data frequency control remains. |
 | 49. OFFLINE ALERT REALITY | TESTED | Cached official headline, instructions and expiry remain available to offline chat. One-time WorkManager reminders are scheduled for cached alerts at their effective time without a network constraint; new alerts still require connectivity. |
 | 50. BACKGROUND SYNCHRONIZATION | IN PROGRESS | WorkManager six-hour refresh with constraints and backoff; device test pending. |
 | 51. NOTIFICATIONS | IN PROGRESS | Separate opt-in official and local-risk channels, expiry/freshness checks and deduping IDs implemented; device delivery test remains. |
@@ -77,7 +77,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 60. UI ACCESSIBILITY | IN PROGRESS | Large targets, icon labels, headings, assertive official alerts, scalable text and all explicit color pairs at 6.6:1 or better. The Hindi empty-chat screen remains readable at Android 200% font scale. With installed TalkBack enabled, WeatherGPT relaunched and stayed resumed without runtime errors; spoken reading order and data-heavy screens still require review. |
 | 61. BACKEND API | IN PROGRESS | Health, capabilities, provider status, place search, weather bundle/current/hourly/daily/alerts/score, marine, climate and chat are implemented. |
 | 62. API RESPONSE CONTRACT | TESTED | Weather metadata and validation, caught-service, and unexpected-error envelopes include request IDs and retryability. Endpoint tests verify header/body parity and confirm unexpected exception details do not leave the backend. |
-| 63. ANDROID/BACKEND CONTRACT-FIRST DEVELOPMENT | IN PROGRESS | Shared weather-bundle, chat-answer and error JSON examples are validated by backend models and deserialized by production Android Gson DTOs. Broader generated-schema drift checking remains. |
+| 63. ANDROID/BACKEND CONTRACT-FIRST DEVELOPMENT | IN PROGRESS | Shared weather-bundle, chat-answer and error examples are validated by backend models and Android DTOs. The bundle ETag/If-None-Match contract is covered on the backend and consumed by Android; broader generated-schema drift checking remains. |
 | 64. LOCAL DEVELOPMENT NETWORKING | IN PROGRESS | Emulator and LAN URLs supported; on-device verification pending. |
 | 65. SECRETS | IMPLEMENTED | Root .env.example placeholders; .env and local secrets ignored. |
 | 66. SECURITY | IN PROGRESS | Bounds/chat limits tested; deployment hardening pending. |
@@ -85,8 +85,8 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 68. DEMO MODE | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 69. DEMO DATA ARCHITECTURE | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 70. FAILURE HANDLING | IN PROGRESS | Provider partial/all-failure, malformed data, Gemini and language-provider fallback, internet loss, empty/stale Room cache and unavailable alert sources degrade explicitly; device permission cases remain. |
-| 71. TESTING — BACKEND | IN PROGRESS | 74 tests pass across validation, weighted fusion, providers, evaluation, language, time, tools, conversations, scoring, climate, marine, risks, CAP, AI guardrails and sanitized unexpected-error handling. |
-| 72. TESTING — ANDROID | IN PROGRESS | Ten JVM tests, debug build and lint pass; the latest APK installs and launches cleanly. Dark, light and system selections each persist through force-stop/relaunch on the Pixel_10a emulator. Voice interaction, TalkBack reading order, data-heavy 200%-text screens and offline interaction remain. |
+| 71. TESTING — BACKEND | IN PROGRESS | 75 tests pass across validation, weighted fusion, providers, evaluation, language, time, tools, conversations, scoring, climate, marine, risks, CAP, AI guardrails, cache validators and sanitized errors. |
+| 72. TESTING — ANDROID | IN PROGRESS | Eleven JVM tests, debug build and lint pass; the Room v4 APK installs over the prior database and launches cleanly. Dark, light and system selections each persist through force-stop/relaunch on the Pixel_10a emulator. Voice interaction, TalkBack reading order, data-heavy 200%-text screens and offline interaction remain. |
 | 73. END-TO-END DEMO TEST | NOT STARTED | Demo mode explicitly skipped by user; real-device checklist in EVALUATION.md. |
 | 74. PERFORMANCE / SIH EVALUATION | IN PROGRESS | Measured one local live two-model bundle at 800.6 ms and immediate cache hit at 37.5 ms (GFS 641 ms, ECMWF IFS 735 ms). Multilingual, device/offline and field evaluation remain. |
 | 75. LOGGING / OBSERVABILITY | IN PROGRESS | Safe request ID, method/path/status/duration, provider latency/status, cache hit/miss, all-provider failure and fusion summaries are logged without query/chat/location content; production metrics backend remains. |

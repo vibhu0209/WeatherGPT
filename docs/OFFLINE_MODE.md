@@ -9,3 +9,5 @@ A downloaded forecast is not a live observation. New warnings cannot arrive on a
 Limitations: backend cache is in-process, not persistent; Android per-category alert/nowcast TTLs await those integrations; broader intent coverage remains pending. Real airplane-mode device tests have not yet run.
 
 
+
+Android stores the backend bundle ETag and synchronization timestamps in Room. Later refreshes send If-None-Match; a 304 keeps the existing validated bundle and updates only its last-checked metadata. A 304 without a matching local bundle is rejected.
