@@ -9,7 +9,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 - Backend: 73 tests passed.
 - Live Delhi fusion pipeline: 161 hourly records from GFS and ECMWF IFS model families; source disagreement and confidence 66/100 were returned, with official warnings unavailable.
 - Android Studio JBR 25, SDK 37.0 and build tools 36.0.0 located. Gradle 9.3.1 downloaded locally.
-- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `C3B0EADDE31760A296BA022DF7065381D7AC6573A51D3D2CC8BBD39B1C3FE7AF`.
+- Android `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Ten JVM tests pass. Debug APK SHA-256: `CCE04E47883D1A0A187DF4B65272309B377DD28A235811FCA14096837E85F874`.
 - The APK was installed on a Pixel_10a emulator. A first-launch localization-context crash was found and fixed. A clean-data relaunch now stays resumed without an Android runtime crash, and UI Automator confirms the onboarding dialog, eleven language choices, and large selection controls. Emulator touch injection remains unreliable, so the complete interactive checklist is still open.
 
 ## Master requirement coverage
@@ -72,7 +72,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 55. HOME SCREEN | IN PROGRESS | Home shows current summary, contextual score, limiting factors and advice; alerts and richer profile content remain. |
 | 56. FORECAST SCREEN | IN PROGRESS | Daily summaries, 72-hour detail, feels-like, humidity, gust, visibility, UV, source confidence and uncertainty explanation implemented. |
 | 57. ALERT CENTER | IN PROGRESS | Official-warning unavailability, IMD link and separately labelled WeatherGPT risk cards implemented; authoritative alert feed and lifecycle remain. |
-| 58. CHAT HISTORY | IN PROGRESS | Persisted messages now carry role, text, timestamp, language, conversation ID, resolved location ID and weather-context timestamp. Continue/new/clear work; conversation browser and per-conversation delete remain. |
+| 58. CHAT HISTORY | IN PROGRESS | Persisted messages carry role, text, timestamp, language, conversation ID, resolved location ID and weather-context timestamp. The conversation browser supports continue, new chat and confirmed per-conversation deletion; device interaction verification remains. |
 | 59. SMART SUGGESTIONS | IN PROGRESS | Profile-aware general, farming, fishing and outdoor suggestions call only implemented forecast, alert, marine and climate functions. Post-answer ranking remains. |
 | 60. UI ACCESSIBILITY | IN PROGRESS | Large targets, icon labels, headings, assertive official alerts, scalable text and all explicit color pairs at 6.6:1 or better; device screen-reader audit remains. |
 | 61. BACKEND API | IN PROGRESS | Health, capabilities, provider status, place search, weather bundle/current/hourly/daily/alerts/score, marine, climate and chat are implemented. |

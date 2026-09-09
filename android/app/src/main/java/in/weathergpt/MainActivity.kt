@@ -145,7 +145,7 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
                 1 -> HomeScreen(vm,b,busy,{vm.refresh()},{showPlace=true})
                 2 -> ForecastScreen(b,busy,{vm.refresh()},{showPlace=true})
                 3 -> AlertScreen(b)
-                else -> SettingsScreen(vm)
+                else -> SettingsScreen(vm,onOpenChat={tab=0})
             }
         }
     }
@@ -392,11 +392,12 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         }
     },confirmButton={TextButton(onClick=onDismiss){Text(s(R.string.close))}})
 }
-@Composable fun SettingsScreen(vm:WeatherViewModel) {
+@Composable fun SettingsScreen(vm:WeatherViewModel,onOpenChat:()->Unit) {
     val prefs by vm.preferences.collectAsState()
     val conversations by vm.conversations.collectAsState()
     fun preference(key:String,default:String="")=prefs[androidx.datastore.preferences.core.stringPreferencesKey(key)]?:default
     var confirm by remember{mutableStateOf(false)}
+    var deleteConversationId by remember{mutableStateOf<String?>(null)}
     var server by rememberSaveable{mutableStateOf(preference("server",BuildConfig.API_URL))}
     var advanced by rememberSaveable{mutableStateOf(false)}
     val context=LocalContext.current
@@ -404,6 +405,15 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
     val officialNotificationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted->vm.save("official_notifications",granted.toString()) }
     val languages=listOf("en" to "English","hi" to "हिन्दी","bn" to "বাংলা","te" to "తెలుగు","mr" to "मराठी","ta" to "தமிழ்","gu" to "ગુજરાતી","kn" to "ಕನ್ನಡ","ml" to "മലയാളം","pa" to "ਪੰਜਾਬੀ","or" to "ଓଡ଼ିଆ")
     if(confirm) AlertDialog(onDismissRequest={confirm=false},title={Text(s(R.string.clear_data))},text={Text(s(R.string.clear_help))},confirmButton={TextButton(onClick={vm.clearAll();confirm=false}){Text(s(R.string.delete))}},dismissButton={TextButton(onClick={confirm=false}){Text(s(R.string.cancel))}})
+    deleteConversationId?.let { conversationId ->
+        AlertDialog(
+            onDismissRequest={deleteConversationId=null},
+            title={Text(s(R.string.delete_conversation))},
+            text={Text(s(R.string.delete_conversation_help))},
+            confirmButton={TextButton(onClick={vm.deleteConversation(conversationId);deleteConversationId=null}){Text(s(R.string.delete))}},
+            dismissButton={TextButton(onClick={deleteConversationId=null}){Text(s(R.string.cancel))}},
+        )
+    }
     LazyColumn(contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp),modifier=Modifier.fillMaxSize()) {
         item { Heading(s(R.string.settings));Text(s(R.string.settings_intro)) }
         item { Text(s(R.string.theme),style=MaterialTheme.typography.titleLarge) }
@@ -441,13 +451,13 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
                     Text(whenText,style=MaterialTheme.typography.titleMedium)
                     Text("${summary.messageCount} messages",style=MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick={vm.openConversation(summary.conversationId)},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.continue_chat))}
-                        OutlinedButton(onClick={vm.deleteConversation(summary.conversationId)},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.delete))}
+                        OutlinedButton(onClick={vm.openConversation(summary.conversationId);onOpenChat()},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.continue_chat))}
+                        OutlinedButton(onClick={deleteConversationId=summary.conversationId},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.delete))}
                     }
                 }
             }
         }
-        item { OutlinedButton(onClick={vm.startNewChat()},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.new_chat))} }
+        item { OutlinedButton(onClick={vm.startNewChat();onOpenChat()},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.new_chat))} }
         item { OutlinedButton(onClick={confirm=true},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.clear_data))} }
         item { TextButton(onClick={advanced=!advanced},modifier=Modifier.heightIn(min=52.dp)){Text(s(R.string.connection_settings))}
             if(advanced) {

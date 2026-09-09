@@ -84,6 +84,7 @@
     <string name="past_conversations">Past conversations</string>
     <string name="continue_chat">Continue this conversation</string>
     <string name="delete_conversation">Delete this conversation</string>
+    <string name="delete_conversation_help">This removes only this saved conversation from your phone.</string>
     <string name="no_conversations">No saved conversations yet.</string>
     <string name="new_chat">Clear chat and start again</string>
     <string name="clear_data">Clear all saved data</string>
