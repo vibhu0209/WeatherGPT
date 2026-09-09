@@ -1,9 +1,11 @@
 """Backend-only external language adapters with original-text fallback."""
 from abc import ABC, abstractmethod
+from urllib.parse import urlparse
 
 import httpx
 
 from .models import Settings
+from .security import assert_https_allowlisted
 
 
 LANGUAGES = {'en','hi','bn','te','mr','ta','gu','kn','ml','pa','or'}
@@ -28,9 +30,16 @@ class BhashiniProvider(LanguageProvider):
     id='bhashini'
     @property
     def enabled(self): return bool(self.settings.bhashini_compute_url and self.settings.bhashini_api_key and self.settings.bhashini_user_id and self.settings.bhashini_translation_service_id)
+    def _allowed_hosts(self) -> set[str] | None:
+        configured = {host.strip().lower() for host in (self.settings.bhashini_allowed_hosts or '').split(',') if host.strip()}
+        if configured:
+            return configured
+        host = urlparse(self.settings.bhashini_compute_url).hostname
+        return {host.lower()} if host else set()
     async def translate(self,text,source,target):
         self.validate(text,source,target)
         if not self.enabled: raise RuntimeError('BHASHINI is not configured')
+        assert_https_allowlisted(self.settings.bhashini_compute_url, self._allowed_hosts())
         payload={'pipelineTasks':[{'taskType':'translation','config':{'language':{'sourceLanguage':source,'targetLanguage':target},'serviceId':self.settings.bhashini_translation_service_id}}],
             'inputData':{'input':[{'source':text}]}}
         response=await self.client.post(self.settings.bhashini_compute_url,headers={'Authorization':self.settings.bhashini_api_key,'userID':self.settings.bhashini_user_id},json=payload)
@@ -45,7 +54,8 @@ class GoogleTranslationProvider(LanguageProvider):
     async def translate(self,text,source,target):
         self.validate(text,source,target)
         if not self.enabled: raise RuntimeError('Google Cloud Translation is not configured')
-        response=await self.client.post('https://translation.googleapis.com/language/translate/v2',params={'key':self.settings.google_translate_api_key},
+        response=await self.client.post('https://translation.googleapis.com/language/translate/v2',
+            params={'key': self.settings.google_translate_api_key},
             json={'q':text,'source':source,'target':target,'format':'text'})
         response.raise_for_status()
         return response.json()['data']['translations'][0]['translatedText']

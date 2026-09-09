@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.alerts import parse_cap
+from app.alerts import _rss_or_atom_links, parse_cap
 from app.models import Location
 
 
@@ -30,3 +30,14 @@ def test_cap_rejects_expired_and_outside_polygon():
 
 def test_cap_cancel_never_surfaces_as_active():
     assert parse_cap(CAP.replace("<msgType>Alert</msgType>", "<msgType>Cancel</msgType>"), Location(name="Delhi", latitude=28.6, longitude=77.2), datetime(2026, 9, 7, 8, tzinfo=timezone.utc)) == []
+
+
+def test_rss_index_exposes_cap_document_links():
+    rss = '''<?xml version="1.0"?><rss version="2.0"><channel>
+    <item><title>Rain</title><link>https://cap-sources.s3.amazonaws.com/in-imd-en/sample.xml</link></item>
+    <item><title>Wind</title><link>https://cap-sources.s3.amazonaws.com/in-imd-en/sample2.xml</link></item>
+    </channel></rss>'''
+    assert _rss_or_atom_links(rss) == [
+        "https://cap-sources.s3.amazonaws.com/in-imd-en/sample.xml",
+        "https://cap-sources.s3.amazonaws.com/in-imd-en/sample2.xml",
+    ]

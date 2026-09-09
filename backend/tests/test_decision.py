@@ -22,7 +22,12 @@ def point(hour: int, temperature=30, rain=10, wind=3, humidity=60):
 
 
 def test_daily_summary_uses_location_timezone_and_real_totals():
-    rows = [point(0, 28), point(1, 34)]
+    # Fixed UTC times that stay on the same Asia/Kolkata calendar day.
+    base = datetime(2026, 6, 15, 6, 0, tzinfo=timezone.utc)
+    rows = [
+        {"time": base.isoformat(), "temperature": 28, "rain_chance": 10, "rain_mm": 1, "wind_ms": 3, "humidity": 60, "source_count": 2},
+        {"time": (base + timedelta(hours=1)).isoformat(), "temperature": 34, "rain_chance": 10, "rain_mm": 1, "wind_ms": 3, "humidity": 60, "source_count": 2},
+    ]
     day = daily_summary(rows, "Asia/Kolkata")[0]
     assert day["temperature_min"] == 28
     assert day["temperature_max"] == 34
@@ -54,6 +59,24 @@ def test_fishing_never_gets_land_weather_safety_score():
     assert result['score'] is None
     assert 'Land weather cannot certify' in result['disclaimer']
     assert 'No fishing safety clearance' in recommendations([point(0)],'fishing')[0]['message']
+
+
+def test_fishing_score_uses_marine_wave_penalties():
+    marine = [{'wave_height_m': 3.2, 'swell_height_m': 2.5, 'time': point(0)['time']}]
+    calm = weather_score([point(0)], 'fishing', [{'wave_height_m': 0.8, 'swell_height_m': 0.6, 'time': point(0)['time']}])
+    rough = weather_score([point(0)], 'fishing', marine)
+    assert calm['score'] is not None and rough['score'] is not None
+    assert rough['score'] < calm['score']
+    assert any(item['name'] == 'Waves' for item in rough['components'])
+    assert 'not an official safety certification or fishing clearance' in rough['disclaimer']
+
+
+def test_spray_window_is_deterministic():
+    from app.decision import spray_window
+    rows = [point(i, rain=10 if i < 3 else 80, wind=3) for i in range(6)]
+    result = spray_window(rows, 'UTC')
+    assert result['status'] == 'available'
+    assert result['suitable_hours_local']
 
 
 def test_recommendations_follow_thresholds():

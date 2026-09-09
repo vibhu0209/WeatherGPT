@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
 import httpx
 
 from .models import Location, Settings
+from .security import assert_https_allowlisted
 
 
 CAP_NS = {"cap": "urn:oasis:names:tc:emergency:cap:1.2"}
@@ -89,18 +91,78 @@ def parse_cap(xml: str, location: Location, now: datetime | None = None) -> list
     return sorted(output, key=lambda item: severity_order.get(item["severity"], 4))
 
 
+def _rss_or_atom_links(xml: str) -> list[str]:
+    """Extract CAP document links from an RSS/Atom index feed."""
+    root = ET.fromstring(xml)
+    tag = root.tag.lower()
+    links: list[str] = []
+    if tag.endswith("rss") or tag.endswith("rdf"):
+        for item in root.findall("./channel/item"):
+            link = (item.findtext("link") or "").strip()
+            if link:
+                links.append(link)
+    elif tag.endswith("feed"):
+        for entry in root:
+            if not entry.tag.endswith("entry"):
+                continue
+            href = ""
+            for node in entry:
+                if node.tag.endswith("link"):
+                    href = (node.get("href") or (node.text or "")).strip()
+                    if href:
+                        break
+            if href:
+                links.append(href)
+    return links
+
+
 class AlertService:
-    def __init__(self, settings: Settings | None = None):
+    def __init__(self, settings: Settings | None = None, max_cap_documents: int = 15):
         self.settings = settings or Settings()
+        self.max_cap_documents = max_cap_documents
+
+    def _allowed_hosts(self) -> set[str] | None:
+        configured = {host.strip().lower() for host in (self.settings.cap_alert_allowed_hosts or '').split(',') if host.strip()}
+        if configured:
+            return configured
+        if self.settings.cap_alert_url:
+            host = urlparse(self.settings.cap_alert_url).hostname
+            return {host.lower()} if host else set()
+        return set()
+
+    async def _fetch_cap_documents(self, client: httpx.AsyncClient, index_xml: str) -> list[str]:
+        allowed = self._allowed_hosts()
+        links = _rss_or_atom_links(index_xml)
+        if not links:
+            return [index_xml]
+        documents: list[str] = []
+        for link in links[: self.max_cap_documents]:
+            assert_https_allowlisted(link, allowed)
+            response = await client.get(link)
+            response.raise_for_status()
+            documents.append(response.text)
+        return documents
 
     async def official(self, location: Location) -> dict:
         if not self.settings.cap_alert_url:
             return {"status": "unavailable", "alerts": [], "message": "Official warning data is not connected. This does not mean there are no warnings."}
         try:
-            async with httpx.AsyncClient(timeout=12, follow_redirects=True) as client:
+            assert_https_allowlisted(self.settings.cap_alert_url, self._allowed_hosts())
+            async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
                 response = await client.get(self.settings.cap_alert_url)
                 response.raise_for_status()
-            return {"status": "available", "alerts": parse_cap(response.text, location), "message": None}
+                documents = await self._fetch_cap_documents(client, response.text)
+            alerts: list[dict] = []
+            seen: set[str] = set()
+            for document in documents:
+                for alert in parse_cap(document, location):
+                    if alert["id"] in seen:
+                        continue
+                    seen.add(alert["id"])
+                    alerts.append(alert)
+            severity_order = {"extreme": 0, "severe": 1, "moderate": 2, "minor": 3, "unknown": 4}
+            alerts.sort(key=lambda item: severity_order.get(item["severity"], 4))
+            return {"status": "available", "alerts": alerts, "message": None}
         except (httpx.HTTPError, ET.ParseError, ValueError):
             return {"status": "unavailable", "alerts": [], "message": "Official warning data could not be checked. This does not mean there are no warnings."}
 

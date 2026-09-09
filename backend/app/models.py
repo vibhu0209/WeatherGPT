@@ -3,21 +3,28 @@ from typing import Literal
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 from pydantic import BaseModel, Field, field_validator
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_ROOT_ENV = Path(__file__).resolve().parents[2] / '.env'
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file='../.env', extra='ignore')
+    model_config = SettingsConfigDict(env_file=str(_ROOT_ENV), env_file_encoding='utf-8', extra='ignore')
     openweather_api_key: str = ''
     weatherapi_key: str = ''
     imd_enabled: bool = False
     cap_alert_url: str = ''
+    cap_alert_allowed_hosts: str = ''
     gemini_api_key: str = ''
     gemini_model: str = ''
     bhashini_compute_url: str = ''
+    bhashini_allowed_hosts: str = ''
     bhashini_api_key: str = ''
     bhashini_user_id: str = ''
     bhashini_translation_service_id: str = ''
     google_translate_api_key: str = ''
+    cors_origins: str = ''
+    redis_url: str = ''
 
 class Location(BaseModel):
     name: str = Field(min_length=1, max_length=120)
@@ -62,6 +69,8 @@ class ChatRequest(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
     location: Location
     language: Literal['en','hi','bn','te','mr','ta','gu','kn','ml','pa','or'] = 'en'
-    profile: str = Field(default='general', max_length=40)
+    profile: str = Field(default='general', pattern='^(general|farming|fishing|outdoor|tourism|transport|construction|emergency|vendor|aviation|research)$')
     day_offset: int = Field(default=0, ge=0, le=6)
     conversation_id: UUID = Field(default_factory=uuid4)
+    secondary_location: Location | None = None
+    saved_locations: list[Location] = Field(default_factory=list, max_length=20)

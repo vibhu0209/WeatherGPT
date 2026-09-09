@@ -116,6 +116,8 @@ class OpenWeather(WeatherProvider):
             wind_direction=v['wind'].get('deg'), wind_gust_ms=v['wind'].get('gust'),
             humidity=v['main']['humidity'], pressure_hpa=v['main'].get('pressure'),
             visibility_m=v.get('visibility'), cloud_cover=v.get('clouds',{}).get('all'),
+            rain_chance=(v.get('pop') * 100) if v.get('pop') is not None else None,
+            rain_mm=(v.get('rain') or {}).get('3h') if (v.get('rain') or {}).get('3h') is not None else (v.get('snow') or {}).get('3h'),
             weather_code=openweather_to_wmo(v.get('weather',[{}])[0].get('id'))) for v in data['list']])
 
 class WeatherApi(WeatherProvider):

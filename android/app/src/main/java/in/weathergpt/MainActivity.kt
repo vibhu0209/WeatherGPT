@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.location.LocationManager
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
@@ -89,20 +88,15 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
     val offline by vm.offline.collectAsState()
     val error by vm.error.collectAsState()
     val chatStatus by vm.chatStatus.collectAsState()
+    val backendOnline by vm.backendOnline.collectAsState()
     val context=LocalContext.current
     val prefs by vm.preferences.collectAsState()
-    if(prefs[androidx.datastore.preferences.core.stringPreferencesKey("onboarded")]!="true") {
-        var chosen by rememberSaveable { mutableStateOf(vm.value("language","en")) }
-        var chosenProfile by rememberSaveable { mutableStateOf(vm.value("profile","general")) }
-        AlertDialog(onDismissRequest={},title={Text("Welcome · नमस्ते")},text={
-            Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("Choose your language · अपनी भाषा चुनें")
-                listOf("en" to "English","hi" to "हिन्दी","bn" to "বাংলা","te" to "తెలుగు","mr" to "मराठी","ta" to "தமிழ்","gu" to "ગુજરાતી","kn" to "ಕನ್ನಡ","ml" to "മലയാളം","pa" to "ਪੰਜਾਬੀ","or" to "ଓଡ଼ିଆ").forEach { (code,name)->Choice(name,chosen==code){chosen=code;vm.save("language",code)} }
-                HorizontalDivider()
-                Text(s(R.string.use_for),style=MaterialTheme.typography.titleMedium)
-                profileOptions.forEach { (key,label)->Choice(s(label),chosenProfile==key){chosenProfile=key;vm.save("profile",key)} }
-            }
-        },confirmButton={TextButton(onClick={vm.save("onboarded","true");showPlace=true}){Text(s(R.string.choose_place))}})
+    val onboarded=prefs[androidx.datastore.preferences.core.stringPreferencesKey("onboarded")]=="true"
+    if(!onboarded) {
+        OnboardingScreen(vm,onFinished={ place,purpose ->
+            if(place!=null) vm.choose(place,purpose) else showPlace=true
+        })
+        return
     }
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
@@ -119,7 +113,8 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
         }
         engine.speak(text,TextToSpeech.QUEUE_FLUSH,null,"answer")
     }
-    if(showPlace) PlaceDialog(vm,onDismiss={showPlace=false},onChoose={vm.choose(it);showPlace=false})
+    LaunchedEffect(p) { if(p==null) showPlace=true }
+    if(showPlace) PlaceDialog(vm,onDismiss={if(p!=null) showPlace=false},onChoose={ place,purpose -> vm.choose(place,purpose);showPlace=false},autoLocate=true)
     Scaffold(
         bottomBar={ NavigationBar {
             listOf(R.string.chat to Icons.Default.ChatBubbleOutline,R.string.home to Icons.Default.Home,R.string.forecast to Icons.Default.WbSunny,R.string.alerts to Icons.Default.NotificationsNone,R.string.settings to Icons.Default.Settings).forEachIndexed { index,(label,icon)->
@@ -137,12 +132,13 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
         } }
     ) { padding ->
         Column(Modifier.padding(padding).imePadding().fillMaxSize()) {
+            if(backendOnline==false) Notice(s(R.string.backend_offline))
             if(offline || b?.is_stale==true) Notice(s(R.string.saved_notice))
             if(error.isNotEmpty()) Notice(s(when(error){"no_places"->R.string.no_places;"search_failed"->R.string.search_failed;"location_failed"->R.string.location_unavailable;else->R.string.refresh_failed}))
             if(busy) LinearProgressIndicator(Modifier.fillMaxWidth().semantics{contentDescription=context.getString(R.string.loading)})
             when(tab) {
                 0 -> ChatScreen(vm,p,b,busy,chatStatus,{showPlace=true},::speak)
-                1 -> HomeScreen(vm,b,busy,{vm.refresh()},{showPlace=true})
+                1 -> HomeScreen(vm,b,busy,{vm.refresh()},{showPlace=true},onAsk={tab=0},onRetryConnection={vm.checkBackend()})
                 2 -> ForecastScreen(b,busy,{vm.refresh()},{showPlace=true})
                 3 -> AlertScreen(b)
                 else -> SettingsScreen(vm,onOpenChat={tab=0})
@@ -150,16 +146,36 @@ private val Dark=darkColorScheme(primary=Color(0xFF8BD6BA),onPrimary=Color(0xFF0
         }
     }
 }
-@Composable fun HomeScreen(vm:WeatherViewModel,b:BundleDto?,busy:Boolean,refresh:()->Unit,choose:()->Unit) {
+
+@Composable fun HomeScreen(vm:WeatherViewModel,b:BundleDto?,busy:Boolean,refresh:()->Unit,choose:()->Unit,onAsk:()->Unit,onRetryConnection:()->Unit) {
     val profile=vm.value("profile","general")
     val score=b?.scores?.get(profile)
     val advice=b?.recommendations?.get(profile).orEmpty()
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         item { Heading(s(R.string.home));Text(s(R.string.home_intro),style=MaterialTheme.typography.bodyLarge) }
-        if(b==null) item { Text(s(R.string.no_saved));BigButton(s(R.string.choose_place),Icons.Default.LocationOn,choose) }
+        item { BigButton(s(R.string.ask_weathergpt),Icons.Default.Mic,onAsk) }
+        item { OutlinedButton(onClick=onRetryConnection,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(s(R.string.retry_connection))} }
+        if(b==null) item { Text(s(R.string.no_saved));BigButton(s(R.string.use_current_location),Icons.Default.MyLocation,choose) }
         else {
-            val activeOfficial=b.official_alerts.orEmpty().filter { Freshness.officialAlert(b.retrieved_at,it.expires)!=FreshnessState.STALE }
-            if(activeOfficial.isNotEmpty()) item { OfficialAlertCard(activeOfficial.first()) }
+            val activeOfficial=b.official_alerts.orEmpty().filter { cachedAlertIsActive(it) && Freshness.officialAlert(b.retrieved_at,it.expires)!=FreshnessState.STALE }
+            val officialStatus=(b.official_status?:b.alerts_status).lowercase()
+            item {
+                Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Text(s(R.string.home_alerts),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+                    when {
+                        activeOfficial.isNotEmpty() -> activeOfficial.take(2).forEach { OfficialAlertCard(it) }
+                        officialStatus=="available" -> Notice(s(R.string.no_active_official))
+                        else -> Notice(s(R.string.alert_unknown))
+                    }
+                    b.risk_estimates.orEmpty().take(1).forEach { risk ->
+                        OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                            Text(s(R.string.weather_risk),fontWeight=FontWeight.Bold)
+                            Text(risk.message,style=MaterialTheme.typography.bodyLarge)
+                            Text(risk.disclaimer,style=MaterialTheme.typography.bodyMedium)
+                        } }
+                    }
+                }
+            }
             item { WeatherCard(b) }
             item { Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=RoundedCornerShape(24.dp),modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -189,9 +205,14 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
 
 @Composable fun ChatScreen(vm:WeatherViewModel,p:Place?,b:BundleDto?,busy:Boolean,chatStatus:String,choose:()->Unit,speak:(String,String)->Unit) {
     val messages by vm.messages.collectAsState()
+    val saved by vm.savedPlaces.collectAsState()
+    val compare by vm.comparePlace.collectAsState()
     var draft by rememberSaveable { mutableStateOf("") }
     val context=LocalContext.current
     val unavailable=s(R.string.voice_unavailable)
+    val hourlyPrompt=s(R.string.action_hourly)
+    val warningsPrompt=s(R.string.action_warnings)
+    val scorePrompt=s(R.string.action_score)
     val suggestionIds=when(vm.value("profile","general")) {
         "farming" -> listOf(R.string.farm_work_question,R.string.spray_question,R.string.rain_question,R.string.warning_question)
         "fishing" -> listOf(R.string.marine_question,R.string.wave_question,R.string.warning_question,R.string.tomorrow_question)
@@ -203,6 +224,12 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
     val launcher=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result->
         if(result.resultCode==Activity.RESULT_OK) draft=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.take(1000)?:draft
     }
+    fun sendChat(raw:String) {
+        val text=raw.trim()
+        if(text.isBlank()) return
+        val withCompare=if(compare!=null && !listOf("compare","तुलना"," vs ").any{text.lowercase().contains(it)}) "Compare with ${compare!!.name}: $text" else text
+        vm.send(withCompare)
+    }
     Column(Modifier.fillMaxSize()) {
         if(chatStatus.isNotEmpty()) Notice(s(if(chatStatus=="sending") R.string.sending_question else R.string.checking_sources))
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp),reverseLayout=true) {
@@ -211,7 +238,17 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
                     Column(Modifier.padding(20.dp)) {
                         Text(if(m.role=="user") s(R.string.you) else "WeatherGPT",style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
                         Spacer(Modifier.height(8.dp));Text(m.text,style=MaterialTheme.typography.bodyLarge)
-                        if(m.role!="user") TextButton(onClick={speak(m.text,m.language)},modifier=Modifier.heightIn(min=52.dp)) { Icon(Icons.AutoMirrored.Filled.VolumeUp,null);Spacer(Modifier.width(8.dp));Text(s(R.string.listen)) }
+                        if(m.role!="user") {
+                            TextButton(onClick={speak(m.text,m.language)},modifier=Modifier.heightIn(min=52.dp)) { Icon(Icons.AutoMirrored.Filled.VolumeUp,null);Spacer(Modifier.width(8.dp));Text(s(R.string.listen)) }
+                            if(m.id==messages.lastOrNull { it.role!="user" }?.id) {
+                                Spacer(Modifier.height(8.dp))
+                                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(onClick={sendChat(hourlyPrompt)},enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(hourlyPrompt)}
+                                    OutlinedButton(onClick={sendChat(warningsPrompt)},enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(warningsPrompt)}
+                                    OutlinedButton(onClick={sendChat(scorePrompt)},enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(scorePrompt)}
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -223,12 +260,22 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
                 else {
                     if(b!=null) WeatherCard(b)
                     suggestionIds.forEach { id->val prompt=s(id)
-                        OutlinedButton(onClick={vm.send(prompt)},enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=56.dp),shape=RoundedCornerShape(16.dp)) { Text(prompt,style=MaterialTheme.typography.bodyLarge) }
+                        OutlinedButton(onClick={sendChat(prompt)},enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=56.dp),shape=RoundedCornerShape(16.dp)) { Text(prompt,style=MaterialTheme.typography.bodyLarge) }
                     }
                 }
             } }
         }
         if(p!=null) Surface(tonalElevation=2.dp) { Column(Modifier.padding(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            val others=saved.filter { it.latitude!=p.latitude || it.longitude!=p.longitude }
+            if(others.isNotEmpty()) {
+                Text(s(R.string.compare_place),style=MaterialTheme.typography.labelLarge)
+                others.take(4).forEach { savedPlace ->
+                    val selected=compare!=null && compare!!.latitude==savedPlace.latitude && compare!!.longitude==savedPlace.longitude
+                    OutlinedButton(onClick={vm.setComparePlace(if(selected) null else savedPlace.place())},modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) {
+                        Text(if(selected) s(R.string.clearing_compare) else String.format(s(R.string.compare_with),savedPlace.label))
+                    }
+                }
+            }
             OutlinedTextField(value=draft,onValueChange={draft=it.take(1000)},label={Text(s(R.string.type_question))},modifier=Modifier.fillMaxWidth(),maxLines=4,shape=RoundedCornerShape(16.dp))
             Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick={
@@ -238,7 +285,7 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
                         putExtra(RecognizerIntent.EXTRA_PROMPT,context.getString(R.string.type_question))
                     }) } catch(e:android.content.ActivityNotFoundException) { Toast.makeText(context,unavailable,Toast.LENGTH_LONG).show() }
                 },modifier=Modifier.weight(1f).heightIn(min=56.dp),enabled=!busy) { Icon(Icons.Default.Mic,null);Spacer(Modifier.width(8.dp));Text(s(R.string.speak)) }
-                Button(onClick={vm.send(draft);draft=""},modifier=Modifier.weight(1f).heightIn(min=56.dp),enabled=draft.isNotBlank()&&!busy) { Text(s(R.string.send));Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.Send,null) }
+                Button(onClick={sendChat(draft);draft=""},modifier=Modifier.weight(1f).heightIn(min=56.dp),enabled=draft.isNotBlank()&&!busy) { Text(s(R.string.send));Spacer(Modifier.width(8.dp));Icon(Icons.AutoMirrored.Filled.Send,null) }
             }
         } }
     }
@@ -310,14 +357,23 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
 }
 @Composable fun AlertScreen(bundle:BundleDto?) {
     val context=LocalContext.current
-    val official=bundle?.official_alerts.orEmpty().filter { alert->bundle!=null && Freshness.officialAlert(bundle.retrieved_at,alert.expires)!=FreshnessState.STALE }
+    val official=bundle?.official_alerts.orEmpty().filter { alert->cachedAlertIsActive(alert) && bundle!=null && Freshness.officialAlert(bundle.retrieved_at,alert.expires)!=FreshnessState.STALE }
     val expiredCount=bundle?.official_alerts.orEmpty().size-official.size
+    val status=(bundle?.official_status?:bundle?.alerts_status?:"").lowercase()
     Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
         Heading(s(R.string.alerts))
-        if(official.isNotEmpty()) official.forEach { OfficialAlertCard(it) } else {
-            Icon(Icons.Default.Info,null,Modifier.size(48.dp),tint=MaterialTheme.colorScheme.primary)
-            Text(s(R.string.alert_unknown),style=MaterialTheme.typography.titleLarge)
-            Text(s(R.string.alert_help))
+        when {
+            official.isNotEmpty() -> official.forEach { OfficialAlertCard(it) }
+            status=="available" -> {
+                Icon(Icons.Default.Info,null,Modifier.size(48.dp),tint=MaterialTheme.colorScheme.primary)
+                Text(s(R.string.alerts_none_active),style=MaterialTheme.typography.titleLarge)
+                Text(s(R.string.alert_help))
+            }
+            else -> {
+                Icon(Icons.Default.Info,null,Modifier.size(48.dp),tint=MaterialTheme.colorScheme.primary)
+                Text(s(R.string.alert_unknown),style=MaterialTheme.typography.titleLarge)
+                Text(s(R.string.alert_help))
+            }
         }
         if(expiredCount>0) Text(s(R.string.expired_hidden),style=MaterialTheme.typography.bodyMedium)
         Text(s(R.string.offline_alerts))
@@ -355,40 +411,77 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         }
     }
 }
-@Composable fun PlaceDialog(vm:WeatherViewModel,onDismiss:()->Unit,onChoose:(Place)->Unit) {
+@Composable fun PlaceDialog(vm:WeatherViewModel,onDismiss:()->Unit,onChoose:(Place,String)->Unit,autoLocate:Boolean=true) {
     var query by rememberSaveable{mutableStateOf("")}
+    var purpose by rememberSaveable{mutableStateOf("home")}
+    var locating by remember { mutableStateOf(false) }
+    var showSearch by rememberSaveable { mutableStateOf(!autoLocate) }
+    var autoStarted by rememberSaveable { mutableStateOf(false) }
     val results by vm.results.collectAsState()
     val saved by vm.savedPlaces.collectAsState()
     val busy by vm.searchBusy.collectAsState()
     val context=LocalContext.current
     val locationUnavailable=s(R.string.location_unavailable)
-    fun chooseLastLocation() {
-        if(ContextCompat.checkSelfPermission(context,android.Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED) return
-        val manager=context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val location=runCatching { manager.getProviders(true).mapNotNull { provider->runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }.maxByOrNull { it.time } }.getOrNull()
-        if(location==null) Toast.makeText(context,locationUnavailable,Toast.LENGTH_LONG).show()
-        else vm.resolveCurrentLocation(location.latitude,location.longitude,context.getString(R.string.current_location),onChoose)
+    val purposeOptions=listOf("home" to R.string.purpose_home,"farm" to R.string.purpose_farm,"harbour" to R.string.purpose_harbour,"work" to R.string.purpose_work)
+    fun useDeviceLocation() {
+        locating=true
+        DeviceLocation.request(context) { location ->
+            if(location==null) {
+                locating=false
+                Toast.makeText(context,locationUnavailable,Toast.LENGTH_LONG).show()
+                showSearch=true
+            } else {
+                vm.resolveCurrentLocation(location.latitude,location.longitude,context.getString(R.string.current_location),
+                    onResolved={ place -> locating=false; onChoose(place,purpose) },
+                    onFailed={ locating=false; showSearch=true })
+            }
+        }
     }
-    val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants->
-        if(grants.values.any { it }) chooseLastLocation() else Toast.makeText(context,locationUnavailable,Toast.LENGTH_LONG).show()
+    val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted->
+        if(granted) useDeviceLocation() else {
+            Toast.makeText(context,locationUnavailable,Toast.LENGTH_LONG).show()
+            showSearch=true
+        }
+    }
+    LaunchedEffect(autoLocate) {
+        if(!autoLocate || autoStarted) return@LaunchedEffect
+        autoStarted=true
+        if(DeviceLocation.hasPermission(context)) useDeviceLocation()
+        else locationPermission.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
     }
     AlertDialog(onDismissRequest=onDismiss,title={Text(s(R.string.choose_place))},text={
-        Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text(s(R.string.place_help))
-            BigButton(s(R.string.use_current_location),Icons.Default.MyLocation,{
-                if(ContextCompat.checkSelfPermission(context,android.Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED) chooseLastLocation()
-                else locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION,android.Manifest.permission.ACCESS_FINE_LOCATION))
-            })
-            Text(s(R.string.location_optional),style=MaterialTheme.typography.bodyMedium)
+        Column(Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            Text(s(R.string.location_preferred),style=MaterialTheme.typography.bodyLarge)
+            Text(s(R.string.place_purpose),style=MaterialTheme.typography.titleMedium)
+            purposeOptions.forEach { (key,label)->Choice(s(label),purpose==key){purpose=key} }
+            if(locating || busy) {
+                Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator(Modifier.size(28.dp)); Text(s(R.string.locating))
+                }
+            } else {
+                BigButton(s(R.string.use_current_location),Icons.Default.MyLocation,{
+                    if(DeviceLocation.hasPermission(context)) useDeviceLocation()
+                    else locationPermission.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                })
+            }
+            OutlinedButton(onClick={showSearch=true},modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(s(R.string.search_place_fallback))}
             if(saved.isNotEmpty()) {
                 Text(s(R.string.saved_places),style=MaterialTheme.typography.titleMedium)
-                saved.forEach { savedPlace->OutlinedButton(onClick={onChoose(savedPlace.place())},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)) { Text(savedPlace.label) } }
+                saved.forEach { savedPlace->
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                        OutlinedButton(onClick={onChoose(savedPlace.place(),savedPlace.purpose.ifBlank { purpose })},modifier=Modifier.weight(1f).heightIn(min=56.dp)) {
+                            Text("${savedPlace.label} · ${savedPlace.purpose}")
+                        }
+                        TextButton(onClick={vm.deletePlace(savedPlace)},modifier=Modifier.heightIn(min=56.dp)){Text(s(R.string.delete))}
+                    }
+                }
                 HorizontalDivider()
             }
-            OutlinedTextField(query,{query=it},label={Text(s(R.string.city_village))},modifier=Modifier.fillMaxWidth(),singleLine=true)
-            BigButton(s(R.string.search),Icons.Default.Search,{vm.search(query)},query.trim().length>=2&&!busy)
-            if(busy) CircularProgressIndicator()
-            results.forEach { place->OutlinedButton(onClick={onChoose(place)},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)) { Text(place.name) } }
+            if(showSearch) {
+                OutlinedTextField(query,{query=it},label={Text(s(R.string.city_village))},modifier=Modifier.fillMaxWidth(),singleLine=true)
+                BigButton(s(R.string.search),Icons.Default.Search,{vm.search(query)},query.trim().length>=2&&!busy)
+                results.forEach { place->OutlinedButton(onClick={onChoose(place,purpose)},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)) { Text(place.name) } }
+            }
         }
     },confirmButton={TextButton(onClick=onDismiss){Text(s(R.string.close))}})
 }
@@ -438,6 +531,7 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         } }
         item { Row(Modifier.fillMaxWidth().heightIn(min=56.dp).toggleable(value=preference("official_notifications")=="true",onValueChange={enabled->
             if(enabled && android.os.Build.VERSION.SDK_INT>=33) officialNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) else vm.save("official_notifications",enabled.toString())
+            if(enabled) { vm.ensureDeviceRegistration(); vm.syncAlertSubscription(true) }
         }),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text(s(R.string.official_notifications));Text(s(R.string.official_notification_help),style=MaterialTheme.typography.bodyMedium) }
             Switch(checked=preference("official_notifications")=="true",onCheckedChange=null)

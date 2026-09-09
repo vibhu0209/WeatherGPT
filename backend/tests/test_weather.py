@@ -204,7 +204,7 @@ def test_caught_service_errors_share_request_id_envelope(monkeypatch):
     response=TestClient(app).get('/v1/marine/forecast?latitude=28.6&longitude=77.2',headers={'x-request-id':'marine-error-1'})
     assert response.status_code==422
     body=response.json()
-    assert body=={'code':'marine_location_unavailable','message':'No marine grid cell','retryable':False,'request_id':'marine-error-1'}
+    assert body=={'code':'marine_location_unavailable','message':'Marine forecast is unavailable for that location.','retryable':False,'request_id':'marine-error-1'}
     assert response.headers['x-request-id']=='marine-error-1'
 
 

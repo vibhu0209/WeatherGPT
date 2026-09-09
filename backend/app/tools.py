@@ -48,6 +48,19 @@ class ClimateInput(BaseModel):
     years: int = Field(default=10, ge=2, le=30)
 
 
+class SavedLocationsInput(BaseModel):
+    locations: list[Location] = Field(default_factory=list, max_length=20)
+
+
+class AlertRuleInput(BaseModel):
+    channels: list[Literal['severe', 'rain', 'daily', 'forecast_change']] = Field(default_factory=lambda: ['severe'])
+    enabled: bool = True
+
+
+class AgrometInput(BaseModel):
+    location: Location
+
+
 class ToolResult(BaseModel):
     data: Any
     retrieved_at: str
@@ -144,6 +157,34 @@ async def compare_locations(request: CompareInput) -> ToolResult:
         is_stale=any(item['is_stale'] for item in comparisons), sources=sorted(sources), status='available')
 
 
+async def get_saved_locations(request: SavedLocationsInput) -> ToolResult:
+    now = datetime.now(timezone.utc).isoformat()
+    return ToolResult(
+        data={'locations': [location.model_dump(mode='json') for location in request.locations]},
+        retrieved_at=now, is_stale=False, sources=['client_saved_places'],
+        status='available' if request.locations else 'unavailable',
+        error=None if request.locations else 'No saved locations were supplied by the client.',
+    )
+
+
+async def set_alert_rule(request: AlertRuleInput) -> ToolResult:
+    now = datetime.now(timezone.utc).isoformat()
+    channels = list(dict.fromkeys(request.channels))
+    return ToolResult(
+        data={'channels': channels, 'enabled': request.enabled, 'delivery': 'local_or_subscription',
+              'note': 'Official push delivery still requires device registration and configured FCM/SMS.'},
+        retrieved_at=now, is_stale=False, sources=['weathergpt-rules'], status='available',
+    )
+
+
+async def get_agromet_advisory(request: AgrometInput) -> ToolResult:
+    now = datetime.now(timezone.utc).isoformat()
+    return ToolResult(
+        data=None, retrieved_at=now, is_stale=False, sources=[], status='unavailable',
+        error='Official IMD agromet advisory text is not connected. Use the farming weather score and local agricultural advice. Do not invent crop-specific guidance.',
+    )
+
+
 TOOL_REGISTRY = {
     'get_current_weather': (Location, get_current_weather),
     'get_hourly_forecast': (TimeRangeInput, get_hourly_forecast),
@@ -154,4 +195,7 @@ TOOL_REGISTRY = {
     'get_marine_forecast': (MarineInput, get_marine_forecast),
     'get_provider_status': (ProviderStatusInput, get_provider_status),
     'compare_locations': (CompareInput, compare_locations),
+    'get_saved_locations': (SavedLocationsInput, get_saved_locations),
+    'set_alert_rule': (AlertRuleInput, set_alert_rule),
+    'get_agromet_advisory': (AgrometInput, get_agromet_advisory),
 }

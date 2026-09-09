@@ -11,6 +11,9 @@ from .models import Settings, Location, Forecast
 from .providers import PROVIDERS
 from .decision import ALL_PROFILES, current_point, daily_summary, recommendations, weather_score
 from .risks import estimate_risks
+from .cache import CacheBackend, MemoryCacheBackend
+from .security import weather_cache_key
+from .marine import marine_service
 
 audit_log = logging.getLogger('weathergpt.weather')
 _WEIGHTS_PATH = Path(__file__).resolve().parent / 'config' / 'provider_weights.yaml'
@@ -48,60 +51,106 @@ def weighted_median(values: list[tuple[float, float]]) -> float | None:
     return round(ordered[-1][0], 1)
 
 class WeatherService:
-    def __init__(self):
+    def __init__(self, cache: CacheBackend | None = None):
         self.settings = Settings()
-        self.cache = {}
+        self.cache = cache or MemoryCacheBackend(max_entries=256)
         self.failures = {}
-        self.lock = asyncio.Lock()
+        self._inflight: dict[str, asyncio.Future] = {}
+        self._provider_semaphores: dict[str, asyncio.Semaphore] = {}
+
+    def _cache_key(self, loc: Location) -> str:
+        grid, zone = weather_cache_key(loc.latitude, loc.longitude, loc.timezone)
+        return f'weather:{grid}:{zone}'
+
+    def _provider_limit(self, provider_id: str) -> asyncio.Semaphore:
+        if provider_id not in self._provider_semaphores:
+            self._provider_semaphores[provider_id] = asyncio.Semaphore(4)
+        return self._provider_semaphores[provider_id]
 
     async def bundle(self, loc: Location):
-        key = (loc.latitude, loc.longitude, loc.timezone)
+        key = self._cache_key(loc)
         now = datetime.now(timezone.utc)
         cached = self.cache.get(key)
         if cached and (now - datetime.fromisoformat(cached['retrieved_at'])).total_seconds() < 900:
-            audit_log.info('weather_cache_hit source_count=%s', cached.get('source_count', 0))
+            audit_log.info('weather_cache_hit source_count=%s grid=%s', cached.get('source_count', 0), key.split(':')[1])
             return {**cached, 'location':loc.model_dump()}
+        existing = self._inflight.get(key)
+        if existing is not None:
+            audit_log.info('weather_cache_coalesce grid=%s', key.split(':')[1])
+            shared = await existing
+            return {**shared, 'location':loc.model_dump()}
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        self._inflight[key] = future
+        try:
+            result = await self._fetch_bundle(loc, now, cached)
+            future.set_result(result)
+            return {**result, 'location':loc.model_dump()}
+        except Exception as error:
+            if not future.done():
+                future.set_exception(error)
+            raise
+        finally:
+            self._inflight.pop(key, None)
+
+    async def _fetch_bundle(self, loc: Location, now: datetime, cached):
         audit_log.info('weather_cache_miss')
-        async with self.lock:
-            async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
-                providers = [p(client, self.settings) for p in PROVIDERS]
-                async def fetch(p):
-                    if not p.enabled: return None, {'provider':p.id, 'status':'not_configured'}
-                    if self.failures.get(p.id, now) > now:
-                        return None, {'provider':p.id, 'status':'temporarily_unavailable'}
-                    started = time.monotonic()
-                    try:
+        # Re-check after joining the single-flight lane.
+        fresh = self.cache.get(self._cache_key(loc))
+        if fresh and (now - datetime.fromisoformat(fresh['retrieved_at'])).total_seconds() < 900:
+            return fresh
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
+            providers = [p(client, self.settings) for p in PROVIDERS]
+            async def fetch(p):
+                if not p.enabled: return None, {'provider':p.id, 'status':'not_configured'}
+                if self.failures.get(p.id, now) > now:
+                    return None, {'provider':p.id, 'status':'temporarily_unavailable'}
+                started = time.monotonic()
+                try:
+                    async with self._provider_limit(p.id):
                         result = await asyncio.wait_for(p.forecast(loc), 14)
-                        return result, {'provider':p.id, 'status':'available', 'latency_ms':round((time.monotonic()-started)*1000,1)}
-                    except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError, TimeoutError):
-                        self.failures[p.id] = now + timedelta(seconds=60)
-                        return None, {'provider':p.id, 'status':'unavailable', 'latency_ms':round((time.monotonic()-started)*1000,1)}
-                results = await asyncio.gather(*(fetch(p) for p in providers))
-            forecasts = [r for r,s in results if r]
-            if not forecasts:
-                audit_log.warning('weather_all_providers_unavailable stale_fallback=%s', bool(cached))
-                if cached:
-                    return {**cached, 'location':loc.model_dump(), 'is_stale':True, 'provider_status':[s for r,s in results]}
-                return {'location':loc.model_dump(), 'hourly':[], 'retrieved_at':now.isoformat(),
-                    'is_stale':False, 'sources':[], 'source_count':0, 'agreement':'unavailable',
-                    'provider_status':[s for r,s in results], 'alerts_status':'unavailable', 'alerts':[]}
-            hourly, disagreement, disagreement_reasons = fuse(forecasts, now)
-            confidence = confidence_for(hourly, forecasts, disagreement_reasons)
-            audit_log.info('weather_fusion source_count=%s hourly_points=%s disagreement=%s',
-                len(forecasts), len(hourly), bool(disagreement_reasons))
-            result = {'location':loc.model_dump(), 'hourly':hourly, 'retrieved_at':now.isoformat(),
-                'is_stale':False, 'sources':[f.provider for f in forecasts], 'source_count':len(forecasts),
-                'agreement':'sources_disagree' if disagreement else ('single_source' if len(forecasts)==1 else 'multi_source_consensus'),
-                'confidence':confidence, 'disagreement_reasons':disagreement_reasons,
+                    return result, {'provider':p.id, 'status':'available', 'latency_ms':round((time.monotonic()-started)*1000,1)}
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError, TimeoutError):
+                    self.failures[p.id] = now + timedelta(seconds=60)
+                    return None, {'provider':p.id, 'status':'unavailable', 'latency_ms':round((time.monotonic()-started)*1000,1)}
+            results = await asyncio.gather(*(fetch(p) for p in providers))
+        forecasts = [r for r,s in results if r]
+        if not forecasts:
+            audit_log.warning('weather_all_providers_unavailable stale_fallback=%s', bool(cached))
+            if cached:
+                return {**cached, 'is_stale':True, 'provider_status':[s for r,s in results]}
+            return {'hourly':[], 'retrieved_at':now.isoformat(),
+                'is_stale':False, 'sources':[], 'source_count':0, 'agreement':'unavailable',
                 'provider_status':[s for r,s in results], 'alerts_status':'unavailable', 'alerts':[]}
-            result['current'] = current_point(hourly)
-            result['daily'] = daily_summary(hourly, loc.timezone)
-            result['scores'] = {profile: weather_score(hourly, profile) for profile in ALL_PROFILES}
-            result['recommendations'] = {profile: recommendations(hourly, profile) for profile in ALL_PROFILES}
-            result['risk_estimates'] = estimate_risks(hourly)
-            if len(self.cache) >= 256: self.cache.pop(next(iter(self.cache)))
-            self.cache[key] = result
-            return result
+        hourly, disagreement, disagreement_reasons = fuse(forecasts, now)
+        confidence = confidence_for(hourly, forecasts, disagreement_reasons)
+        audit_log.info('weather_fusion source_count=%s hourly_points=%s disagreement=%s',
+            len(forecasts), len(hourly), bool(disagreement_reasons))
+        result = {'hourly':hourly, 'retrieved_at':now.isoformat(),
+            'is_stale':False, 'sources':[f.provider for f in forecasts], 'source_count':len(forecasts),
+            'agreement':'sources_disagree' if disagreement else ('single_source' if len(forecasts)==1 else 'multi_source_consensus'),
+            'confidence':confidence, 'disagreement_reasons':disagreement_reasons,
+            'provider_status':[s for r,s in results], 'alerts_status':'unavailable', 'alerts':[]}
+        result['current'] = current_point(hourly)
+        result['daily'] = daily_summary(hourly, loc.timezone)
+        marine_rows: list[dict] = []
+        try:
+            marine = await marine_service.forecast(loc, 48)
+            marine_rows = marine.get('hourly') or []
+            result['marine'] = {'available': True, 'sources': marine.get('sources', []), 'limitations': marine.get('limitations', [])}
+        except Exception:
+            result['marine'] = {'available': False, 'sources': [], 'limitations': ['Marine model unavailable for this point']}
+        result['scores'] = {
+            profile: weather_score(hourly, profile, marine_rows if profile == 'fishing' else None)
+            for profile in ALL_PROFILES
+        }
+        result['recommendations'] = {
+            profile: recommendations(hourly, profile, marine_rows if profile == 'fishing' else None)
+            for profile in ALL_PROFILES
+        }
+        result['risk_estimates'] = estimate_risks(hourly)
+        self.cache.set(self._cache_key(loc), result, ttl_seconds=900)
+        return result
 
 def circular_mean(values: list[float]) -> float | None:
     if not values:

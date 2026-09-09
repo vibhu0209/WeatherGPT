@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "android" / "app" / "src" / "main" / "res"
-FULL_LOCALES = {"hi", "bn", "te"}
+FULL_LOCALES = {"hi", "bn", "te", "mr", "ta", "gu", "kn", "ml", "pa", "or"}
 CORE_KEYS = {
     "chat", "forecast", "alerts", "settings", "choose_place", "listen", "speak", "send",
     "search", "close", "theme", "light_theme", "dark_theme", "large_text", "language",

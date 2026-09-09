@@ -9,7 +9,7 @@ def test_tool_registry_has_typed_models_and_callables():
     assert {
         'get_current_weather', 'get_hourly_forecast', 'get_daily_forecast', 'get_active_alerts',
         'get_weather_score', 'get_climate_summary', 'get_marine_forecast', 'get_provider_status',
-        'compare_locations',
+        'compare_locations', 'get_saved_locations', 'set_alert_rule', 'get_agromet_advisory',
     } <= set(TOOL_REGISTRY)
     for model, function in TOOL_REGISTRY.values():
         assert hasattr(model, 'model_json_schema') and callable(function)

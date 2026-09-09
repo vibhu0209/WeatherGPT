@@ -56,12 +56,30 @@ class OfflineTest {
         assertTrue(cachedAlertIsActive(alert("2026-09-09T11:00:00Z","2026-09-09T13:00:00Z"),now))
         assertFalse(cachedAlertIsActive(alert("2026-09-09T12:30:00Z","2026-09-09T13:00:00Z"),now))
         assertFalse(cachedAlertIsActive(alert(null,"2026-09-09T12:00:00Z"),now))
-    }    @Test fun officialSeverityMapsToAlertTone() {
+    }
+    @Test fun officialSeverityMapsToAlertTone() {
         assertEquals(AlertLevel.RED,alertLevel("Extreme"))
         assertEquals(AlertLevel.RED,alertLevel("Severe"))
         assertEquals(AlertLevel.ORANGE,alertLevel("Moderate"))
         assertEquals(AlertLevel.YELLOW,alertLevel("Minor"))
-    }    @Test fun sharedBackendContractDeserializesInAndroid() {
+    }
+    @Test fun placePurposeMapsToScoreProfile() {
+        assertEquals("farming",purposeToProfile("farm"))
+        assertEquals("fishing",purposeToProfile("harbour"))
+        assertEquals("outdoor",purposeToProfile("work"))
+        assertEquals("general",purposeToProfile("home"))
+    }
+    @Test fun offlineSupportsTamilDraft() {
+        val (answer,_)=Offline.answer("Rain tomorrow?",bundle(),0,"ta")
+        assertTrue(answer.contains("சேமித்த") || answer.contains("வெப்பநிலை") || answer.contains("மழை"))
+    }
+    @Test fun availableEmptyAlertsStayHonestOffline() {
+        val cached=bundle().copy(official_status="available",alerts_status="available",official_alerts=emptyList())
+        val (answer,_)=Offline.answer("Any alerts?",cached,0)
+        assertTrue(answer.contains("no active official warning") || answer.contains("Refresh before"))
+        assertFalse(answer.contains("availability is unknown"))
+    }
+    @Test fun sharedBackendContractDeserializesInAndroid() {
         val json=checkNotNull(javaClass.classLoader?.getResource("weather_bundle.json")).readText()
         val bundle=com.google.gson.Gson().fromJson(json,BundleDto::class.java)
         assertEquals("Asia/Kolkata",bundle.location.timezone)

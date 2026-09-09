@@ -68,7 +68,7 @@
     <string name="dark_theme">Dark</string>
     <string name="large_text">Larger text</string>
     <string name="language">Your language</string>
-    <string name="language_help">Core controls are translated. Detailed answers currently use English or Hindi. Voice depends on your phone.</string>
+    <string name="language_help">Core controls are translated in all 11 languages. Online chat answers use English or Hindi first. Offline answers use your language when available. Voice depends on your phone.</string>
     <string name="use_for">What do you use weather for?</string>
     <string name="general">Everyday life / school</string>
     <string name="farming">Farming</string>
@@ -106,7 +106,7 @@
     <string name="clear_sky">Clear sky</string><string name="cloudy">Cloudy</string><string name="fog">Fog</string><string name="drizzle">Light drizzle</string><string name="rainy">Rain</string><string name="snow">Snow</string><string name="showers">Rain showers</string><string name="thunderstorm">Thunderstorm</string>
     <string name="use_current_location">Use my current location</string>
     <string name="current_location">Current location</string>
-    <string name="location_optional">Optional. You can keep using village or city search instead.</string>
+    <string name="location_optional">We prefer your phone location. Search is only if GPS is unavailable.</string>
     <string name="location_unavailable">Current location is unavailable. Please search for your village or city.</string>
     <string name="show_details">Why? Show weather details</string>
     <string name="hide_details">Hide weather details</string>
@@ -118,7 +118,46 @@
     <string name="marine_question">What are the marine conditions for fishing?</string>
     <string name="wave_question">What is the marine wave height for fishing?</string>
     <string name="next_hours_question">What is the weather for the next three hours?</string>
+    <string name="backend_online">WeatherGPT server connected</string>
+    <string name="backend_offline">WeatherGPT server is not reachable. Start the backend or check Settings.</string>
+    <string name="ask_weathergpt">Ask WeatherGPT</string>
+    <string name="retry_connection">Retry connection</string>
+    <string name="alerts_none_active">No active official warning in the connected feed for this place. Refresh before going out.</string>
+    <string name="home_alerts">Alerts</string>
+    <string name="compare_place">Compare with another saved place</string>
+    <string name="compare_with">Compare with %1$s</string>
+    <string name="place_purpose">How will you use this place?</string>
+    <string name="purpose_home">Home</string>
+    <string name="purpose_farm">Farm</string>
+    <string name="purpose_harbour">Harbour / fishing</string>
+    <string name="purpose_work">Work site</string>
+    <string name="action_hourly">Show hourly forecast</string>
+    <string name="action_warnings">Check warnings</string>
+    <string name="action_score">Weather score for me</string>
+    <string name="no_active_official">Connected feed reports no active official warning here.</string>
+    <string name="clearing_compare">Clear compare place</string>
+    <string name="onboard_intro">A few quick choices so WeatherGPT fits how you use weather.</string>
+    <string name="onboard_next">Continue</string>
+    <string name="onboard_back">Back</string>
+    <string name="onboard_finish">Start using WeatherGPT</string>
+    <string name="occupation_help">This changes your weather score, advice and chat suggestions. You can change it later in Settings.</string>
+    <string name="theme_help">Choose light, dark, or follow your phone. Larger text helps readability.</string>
+    <string name="permissions_title">Location and notifications</string>
+    <string name="permissions_help">WeatherGPT needs approximate location to load your weather. Notifications are optional for warnings and local risk estimates.</string>
+    <string name="grant_location">Allow location</string>
+    <string name="grant_notifications">Allow notifications</string>
+    <string name="locating">Finding your location…</string>
+    <string name="location_preferred">We use your phone location first. Search is only a backup if GPS is unavailable.</string>
+    <string name="search_place_fallback">Search village or city instead</string>
+    <string name="skip_for_now">Skip for now</string>
+    <string name="personalization">Personalize WeatherGPT</string>
+    <string name="step_of">Step %1$d of %2$d</string>
+    <string name="permissions_granted">Allowed</string>
+    <string name="permissions_needed">Not allowed yet</string>
 </resources>
+
+
+
 
 
 

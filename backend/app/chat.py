@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from .models import ChatRequest
+from .security import public_location
+from .decision import spray_window
 
 
 def select_time_rows(request: ChatRequest, bundle: dict, now: datetime | None = None):
@@ -51,9 +53,16 @@ def answer(request: ChatRequest, bundle: dict):
         else:
             message = 'आधिकारिक चेतावनी उपलब्धता पता नहीं है। बाहर जाने से पहले IMD की चेतावनी देखें।' if hindi else 'Official warning availability is unknown. Check the IMD warning for your area before going out.'
     elif any(w in text for w in ['fish','marine','समुद्र','मछली']):
-        message = 'Marine and fishermen warnings are unavailable. Check IMD and INCOIS before going to sea. Land weather cannot tell you whether fishing is safe.'
+        message = 'Ask about marine conditions while online for wave-height model guidance. Official IMD and INCOIS fishermen warnings still take precedence. Land weather cannot tell you whether fishing is safe.'
+    elif any(w in text for w in ['agromet','advisory','कृषि सलाह']):
+        message = 'Official IMD agromet advisory text is not connected. Use the farming weather score and local agricultural advice. Do not invent crop-specific guidance.'
+    elif any(w in text for w in ['spray','छिड़काव','स्प्रे']):
+        spray = spray_window(rows or bundle.get('hourly') or [], request.location.timezone)
+        message = spray['message'] + ' ' + spray['disclaimer']
+    elif any(w in text for w in ['compare','तुलना','vs ']):
+        message = 'To compare places, include a second location with your question. WeatherGPT compares verified daily forecasts only.'
     elif any(w in text for w in ['climate','years','monsoon','climate change']):
-        message = 'Historical climate analysis is not connected yet. I cannot calculate a climate trend from a short weather forecast.'
+        message = 'Historical climate trends use live ERA5 reanalysis. Reconnect online and ask again — short forecasts cannot invent climate trends.'
     elif not rows:
         message = 'इस समय का मौसम उपलब्ध नहीं है। इंटरनेट से जुड़कर फिर कोशिश करें।' if hindi else 'Weather for that time is unavailable. Connect to the internet and try again.'
     elif not any(w in text for w in ['weather','rain','temperature','wind','work','spray','morning','evening','afternoon','tonight','weekend','next three hours','next 3 hours','today','tomorrow','mausam','baarish','kal','मौसम','बारिश','कल','आज','सुबह','शाम']):
@@ -79,7 +88,7 @@ def answer(request: ChatRequest, bundle: dict):
         'retrieved_at':bundle['retrieved_at'], 'is_stale':bundle['is_stale'],
         'sources':bundle['sources'], 'agreement':bundle['agreement'],
         'conversation_context':{'conversation_id':str(request.conversation_id),
-            'resolved_location':request.location.model_dump(), 'resolved_day_offset':offset,
+            'resolved_location':public_location(request.location), 'resolved_day_offset':offset,
             'profile':request.profile, 'last_intent':intent,
             'last_weather_context_id':bundle['retrieved_at']}}
 
