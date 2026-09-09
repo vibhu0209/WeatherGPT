@@ -93,7 +93,7 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 76. DOCUMENTATION | IN PROGRESS | Core documentation provided; specialist docs pending. |
 | 77. DEVELOPMENT SCRIPTS | IN PROGRESS | Windows setup, run, test and Android build scripts. |
 | 78. OPTIONAL DOCKER | IMPLEMENTED | Optional backend Dockerfile and Compose service exist; Docker is absent locally, so container execution is unverified. |
-| 79. CI | IMPLEMENTED | GitHub Actions compiles/tests backend, validates localization integrity and required coverage, then assembles/tests/lints Android without repository secrets. |
+| 79. CI | TESTED | GitHub Actions run 34354104743 passed backend and Android jobs, including localization integrity, 75 backend tests, Android assembly, 12 JVM tests and lint. Actions use current official major releases; the Gradle wrapper is executable for Linux runners. |
 | 80. BUILD MILESTONES | IN PROGRESS | Environment, backend, Android build, cache, provider, fusion, chat and emulator-launch milestones are recorded; credential-dependent integrations remain. |
 | 81. BUILD FAILURE RULE | IMPLEMENTED | Failures are recorded as blockers and feasible work continues; Gradle download failure was solved with a checked local distribution. |
 | 82. NO FAKE IMPLEMENTATIONS | IMPLEMENTED | No demo weather or invented fallback values are served; missing validated data remains unavailable. |
