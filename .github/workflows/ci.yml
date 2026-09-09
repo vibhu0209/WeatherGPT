@@ -33,6 +33,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
+      - run: python scripts/check_localizations.py
       - run: gradle assembleDebug testDebugUnitTest lintDebug --console=plain
         working-directory: android
-

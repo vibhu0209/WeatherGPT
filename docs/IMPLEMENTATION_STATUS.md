@@ -93,13 +93,13 @@ User override: all work directly in D:/WeatherGPT; demo mode skipped; light/dark
 | 76. DOCUMENTATION | IN PROGRESS | Core documentation provided; specialist docs pending. |
 | 77. DEVELOPMENT SCRIPTS | IN PROGRESS | Windows setup, run, test and Android build scripts. |
 | 78. OPTIONAL DOCKER | IMPLEMENTED | Optional backend Dockerfile and Compose service exist; Docker is absent locally, so container execution is unverified. |
-| 79. CI | IMPLEMENTED | Secret-free GitHub Actions workflow compiles/tests backend and assembles/tests/lints Android; remote run awaits repository push. |
+| 79. CI | IMPLEMENTED | GitHub Actions compiles/tests backend, validates localization integrity and required coverage, then assembles/tests/lints Android without repository secrets. |
 | 80. BUILD MILESTONES | IN PROGRESS | Environment, backend, Android build, cache, provider, fusion, chat and emulator-launch milestones are recorded; credential-dependent integrations remain. |
 | 81. BUILD FAILURE RULE | IMPLEMENTED | Failures are recorded as blockers and feasible work continues; Gradle download failure was solved with a checked local distribution. |
 | 82. NO FAKE IMPLEMENTATIONS | IMPLEMENTED | No demo weather or invented fallback values are served; missing validated data remains unavailable. |
 | 83. EXTERNAL CREDENTIAL BLOCKERS | IMPLEMENTED | Missing IMD, Gemini, BHASHINI, Google Translation and push credentials are explicitly documented and do not block credential-free services. |
 | 84. UI STATES | IN PROGRESS | Loading, loaded, refreshing, offline/stale, empty, partial and error notices exist. Alert center includes yellow, orange, red, expired and unknown states. Chat shows distinct sending and verified-source checking states. |
-| 85. FINAL REPOSITORY AUDIT | IN PROGRESS | Repeatable secret/ignore scan passes; TODO/fake/debug/link and external-blocker audit remains before completion. |
+| 85. FINAL REPOSITORY AUDIT | IN PROGRESS | Repeatable secret/ignore scan and localization integrity gate pass. Tracked scratch translation scripts were identified; deletion was denied by automatic approval review, so they remain pending review. TODO/fake/debug/link audit continues. |
 | 86. REQUIRED VERIFICATION COMMANDS | IN PROGRESS | Backend import/server health/pytest and Android assemble/unit/lint ran successfully; fixed APK install and relaunch pass. Full interactive device checklist remains. |
 | 87. FINAL ACCEPTANCE CRITERIA | NOT STARTED | Not implemented in current execution path. |
 | 88. SIH DEMONSTRATION STORY | NOT STARTED | Not implemented in current execution path. |
