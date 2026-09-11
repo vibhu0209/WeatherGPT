@@ -1,41 +1,52 @@
 # Verification and accessibility checklist
 
-## Automated results
-- Backend: 74 tests passed on 2026-09-09.
-- Live fusion: the backend returned 161 hourly points from independent GFS and ECMWF IFS model families, reported disagreement, and produced explainable confidence 66/100. Official alerts correctly remained unavailable.
-- Android: `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed on 2026-09-09. Thirteen JVM tests passed and the debug APK was installed on a Pixel_10a emulator.
+Demo Mode (master spec §§68–69) is **skipped by user override** and is not required for this fork.
+A labelled **DEMO warning** notification in Settings is not Demo Mode weather.
 
-- Local latency sample on 2026-09-09: first live two-model Delhi bundle 800.6 ms; immediate in-process cache hit 37.5 ms; provider calls reported Open-Meteo GFS 641 ms and ECMWF IFS 735 ms. This is one development-machine sample, not a production benchmark.
-- Room v2-to-v3 emulator upgrade: the existing private database was upgraded in place; MainActivity resumed and the latest AndroidRuntime/Room log window contained no errors.
-- Conditional-download contract: backend ETag/304 behavior and Android rejection of 304 without matching local state are unit-tested. Room v4 adds validator/check timestamps; the existing emulator database upgraded and relaunched with no sampled Room, SQLite or runtime errors.
-- Notification deduplication: unit tests verify identical content is suppressed and changed content is eligible. Room v5 stores only receipt IDs, SHA-256 signatures and timestamps; the existing emulator database upgraded and relaunched without sampled Room, SQLite or runtime errors. Actual notification delivery remains unverified.
-- Low Data Mode device check: the Hindi control and explanation rendered, selection persisted through force-stop/relaunch, and the test setting was restored. Unit tests verify three-day/12-hour low-data policy versus seven-day/6-hour normal policy.
-- Theme static verification: all eight explicit foreground/background pairs exceed WCAG 4.5:1 (minimum measured 6.60:1). Resource references resolve.
-- Theme device persistence: dark, light and system selections each remained checked after a force-stop and relaunch on the Pixel_10a emulator. Visual review at varied display sizes remains.
-- Text scaling sample: the Hindi empty-chat screen was visually inspected at Android 200% font scale on 1080×2424. Its heading, body, location controls and five navigation labels remained visible without overlap; data-heavy screens remain unverified.
-- Accessibility-service smoke test: installed TalkBack was enabled, WeatherGPT relaunched and remained the resumed activity, and no AndroidRuntime/WeatherGPT errors appeared in the sampled logs. TalkBack was then disabled. Spoken reading order was not verified.
-- Voice prerequisites: the emulator resolves one speech-recognition activity and one Google TTS service. End-to-end capture and playback remain unverified.
+## Automated results (2026-09-11 dead-code pass)
+
+- Backend: **174** pytest passed.
+- Android unit: **52** (`OfflineTest` 27 + `NetworkTest` 25), including alert-rule allow/block/dedup. `lintDebug` passed (0 errors, 35 warnings, 2 hints). `assembleDebug` produced `android/app/build/outputs/apk/debug/app-debug.apk` (19.86 MB) including Home/Forecast/chat wiring and alert-rule gating.
+- Localization: **11 × 170/170**. Contrast: **14 pairs, min 6.37:1** (supersedes the older 6.60:1 / eight-pair figure).
+- Live fusion (this environment, with keys): Open-Meteo, OpenWeather, WeatherAPI, ECMWF IFS — four **live model sources**. IMD forecasts remain a **probe**, not a fourth live agency provider. CAP warnings live when `CAP_ALERT_URL` is set.
+
+## Emulator run (Pixel_10a, `sdk_gphone16k_x86_64`, API 37)
+
+Installed debug APK via `adb reverse tcp:8000` and `http://127.0.0.1:8000/`.
+
+| Check | Result |
+|---|---|
+| Fresh install / onboarding Hindi → Farming → Delhi | PASS |
+| Language choice | PASS (Hindi, later Bengali) |
+| Occupation | PASS (Farming, later Fishing) |
+| Location permission granted | PASS (city pick; GPS deny not separately recorded) |
+| Location permission denied | UNVERIFIED |
+| Home | PASS |
+| Chat text | PASS |
+| Forecast + source disagreement | PASS (66/100, 4 sources) |
+| Alerts screen | PASS (honest none-active + IMD link) |
+| Saved locations add | PASS (Delhi, Mumbai) |
+| Compare locations | PASS (Mumbai vs Delhi on screen) |
+| Voice input | PARTIAL — Google Speech UI launched (Bangla); spoken question not sent |
+| TTS | PARTIAL — Listen tapped; mixer ran; words not confirmed by ear |
+| Notification permission / DEMO notification | PASS (labelled DEMO, not official weather) |
+| Notification shade tap | UNVERIFIED (`contentIntent` / `open_tab=3` verified in code) |
+| App restart + cached data | PASS |
+| Offline: fetch → airplane + reverse remove → kill → relaunch | PASS |
+| Offline banner + cached chat | PASS |
+| Reconnect + refresh | PASS |
+| TalkBack reading order | UNVERIFIED (older smoke test only) |
+| WorkManager periodic fire | UNVERIFIED |
 
 ## Device checks still required
-The emulator verifies installation, clean launch, resumed activity and the eleven-language onboarding hierarchy. The following hands-on checks remain; do not present them as passed.
-1. Fresh install: choose English/Hindi, test GPS allow/deny/unavailable paths, select a village/town manually, and download weather.
-2. Theme and app larger-text preferences persist through relaunch. Inspect data-heavy screens with larger text enabled.
-3. The Hindi empty-chat screen passed at 200% phone text size; inspect forecast, alerts, history and settings at narrow width and landscape.
-4. TalkBack enable/relaunch smoke test passed. Verify spoken reading order, labelled controls, selection state and touch targets by listening.
-5. Speak a question; review transcript; send; listen; test missing speech engine/language.
-6. Restart without network. Downloaded forecast remains visible with timestamp. Ask tomorrow, then morning. Missing periods must show unavailable.
-7. Disconnect with empty cache. No weather numbers appear.
-8. Open warnings. It must say warnings are not connected, never “no warnings”. Open IMD link.
-9. Clear chat. Clear all data with confirmation. Location, preferences and cache should disappear.
-10. Wi-Fi-only background sync respects network constraints. WorkManager scheduling is not exact.
 
-No elderly-user or child usability study has been performed. The current accessibility choices are large labelled controls, readable themed contrast, scrolling screens, scalable text and plain wording, not a claim of validated usability for every population.
+Do not present these as passed:
 
+1. Location permission **denied** / GPS unavailable path.
+2. Spoken voice question → transcript → send; heard TTS in the target language.
+3. Physical notification-shade tap.
+4. TalkBack spoken reading order on forecast/alerts.
+5. Data-heavy screens at 200% text / landscape.
+6. Rebuilding the APK after the alert-rule read-path (source is TESTED on JVM only).
 
-
-
-
-
-
-
-
+No elderly-user or child usability study has been performed.
