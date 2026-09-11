@@ -1,4 +1,8 @@
-"""Optional alert delivery transports. SMS and FCM require external credentials."""
+"""Optional alert delivery transports. SMS and FCM require external credentials.
+
+These providers are registered in `/v1/capabilities` as disabled until credentials exist.
+Nothing in the request path sends SMS or FCM today; Android uses local notifications.
+"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

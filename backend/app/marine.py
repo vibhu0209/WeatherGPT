@@ -1,9 +1,13 @@
 from datetime import datetime, timezone
+import asyncio
 
 import httpx
 from pydantic import BaseModel, Field, field_validator
 
+from .cache import MemoryCacheBackend
+from .metrics import metrics
 from .models import Location
+from .security import weather_cache_key
 
 
 class MarinePoint(BaseModel):
@@ -23,13 +27,50 @@ class MarinePoint(BaseModel):
 class MarineService:
     endpoint = 'https://marine-api.open-meteo.com/v1/marine'
 
+    def __init__(self):
+        self.cache = MemoryCacheBackend(max_entries=128)
+        self._inflight: dict[str, asyncio.Future] = {}
+
+    def _cache_key(self, location: Location, hours: int) -> str:
+        grid, _zone = weather_cache_key(location.latitude, location.longitude, location.timezone)
+        return f'marine:{grid}:{hours}'
+
     async def forecast(self, location: Location, hours: int = 48) -> dict:
+        key = self._cache_key(location, hours)
+        cached = self.cache.get(key)
+        if cached:
+            metrics.inc('marine_cache_hit')
+            return {**cached, 'location': location.model_dump()}
+        existing = self._inflight.get(key)
+        if existing is not None:
+            shared = await existing
+            return {**shared, 'location': location.model_dump()}
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        future.add_done_callback(lambda done: done.cancelled() or done.exception())
+        self._inflight[key] = future
+        try:
+            result = await self._fetch(location, hours)
+            self.cache.set(key, result, ttl_seconds=900)
+            metrics.inc('marine_cache_miss')
+            if not future.done():
+                future.set_result(result)
+            return {**result, 'location': location.model_dump()}
+        except Exception as error:
+            if not future.done():
+                future.set_exception(error)
+            raise
+        finally:
+            self._inflight.pop(key, None)
+
+    async def _fetch(self, location: Location, hours: int) -> dict:
         params = {'latitude':location.latitude, 'longitude':location.longitude, 'timezone':'UTC',
             'forecast_hours':hours, 'cell_selection':'sea',
             'hourly':'wave_height,wave_direction,wave_period,swell_wave_height,sea_surface_temperature'}
         async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
             response = await client.get(self.endpoint, params=params)
             response.raise_for_status()
+        metrics.inc('provider_http')
         data = response.json()
         hourly = data.get('hourly') or {}
         rows = []
@@ -45,7 +86,7 @@ class MarineService:
                 rows.append(point.model_dump(mode='json'))
         if not rows:
             raise ValueError('Marine forecast is unavailable for this location. Choose a point at sea near the harbour.')
-        return {'location':location.model_dump(), 'hourly':rows, 'retrieved_at':datetime.now(timezone.utc).isoformat(),
+        return {'hourly':rows, 'retrieved_at':datetime.now(timezone.utc).isoformat(),
             'is_stale':False, 'sources':['Open-Meteo Marine API'],
             'limitations':['Model guidance only; not suitable for coastal navigation.',
                 'Official IMD and INCOIS fishermen, cyclone and sea-state warnings take precedence.']}

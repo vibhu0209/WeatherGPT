@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import httpx
-from .models import Forecast, Point, Location, Settings
+from .models import Forecast, Point, Location, Settings, MS_TO_KMH
 
 def openweather_to_wmo(code: int | None) -> int | None:
     if code is None: return None
@@ -52,6 +52,8 @@ class WeatherProvider(ABC):
             try:
                 response = await self.client.get(url, params=params)
                 response.raise_for_status()
+                if len(response.content) > 2_000_000:
+                    raise ValueError("Provider payload too large")
                 return response.json()
             except (httpx.TimeoutException, httpx.ConnectError):
                 if attempt: raise
@@ -109,7 +111,8 @@ class OpenWeather(WeatherProvider):
     async def forecast(self, loc):
         data = await self.json('https://api.openweathermap.org/data/2.5/forecast', {
             'lat':loc.latitude, 'lon':loc.longitude, 'appid':self.settings.openweather_api_key, 'units':'metric'})
-        # Three-hour precipitation is NOT mixed with one-hour rainfall totals.
+        # Three-hour precipitation totals are not hourly millimetres and must
+        # not enter fusion beside Open-Meteo / ECMWF 1-hour rain_mm.
         return Forecast(provider=self.id, model_family='openweather-unknown', hourly=[Point(
             time=datetime.fromtimestamp(v['dt'], timezone.utc), temperature=v['main']['temp'],
             apparent_temperature=v['main'].get('feels_like'), wind_ms=v['wind']['speed'],
@@ -117,7 +120,7 @@ class OpenWeather(WeatherProvider):
             humidity=v['main']['humidity'], pressure_hpa=v['main'].get('pressure'),
             visibility_m=v.get('visibility'), cloud_cover=v.get('clouds',{}).get('all'),
             rain_chance=(v.get('pop') * 100) if v.get('pop') is not None else None,
-            rain_mm=(v.get('rain') or {}).get('3h') if (v.get('rain') or {}).get('3h') is not None else (v.get('snow') or {}).get('3h'),
+            rain_mm=None,
             weather_code=openweather_to_wmo(v.get('weather',[{}])[0].get('id'))) for v in data['list']])
 
 class WeatherApi(WeatherProvider):
@@ -129,12 +132,15 @@ class WeatherApi(WeatherProvider):
     async def forecast(self, loc):
         data = await self.json('https://api.weatherapi.com/v1/forecast.json', {
             'key':self.settings.weatherapi_key, 'q':f'{loc.latitude},{loc.longitude}', 'days':3})
+        def kmh_to_ms(value):
+            return None if value is None else value / MS_TO_KMH
         return Forecast(provider=self.id, model_family='weatherapi-unknown', hourly=[Point(
             time=datetime.fromtimestamp(v['time_epoch'], timezone.utc), temperature=v['temp_c'],
             rain_chance=v.get('chance_of_rain'), rain_mm=v.get('precip_mm'),
-            wind_ms=v['wind_kph']/3.6, wind_direction=v.get('wind_degree'),
-            wind_gust_ms=v.get('gust_kph',0)/3.6, humidity=v.get('humidity'),
-            apparent_temperature=v.get('feelslike_c'), visibility_m=v.get('vis_km',0)*1000,
+            wind_ms=kmh_to_ms(v.get('wind_kph')), wind_direction=v.get('wind_degree'),
+            wind_gust_ms=kmh_to_ms(v.get('gust_kph')), humidity=v.get('humidity'),
+            apparent_temperature=v.get('feelslike_c'),
+            visibility_m=None if v.get('vis_km') is None else v.get('vis_km') * 1000,
             pressure_hpa=v.get('pressure_mb'), cloud_cover=v.get('cloud'), uv_index=v.get('uv'))
             for d in data['forecast']['forecastday'] for v in d['hour']])
 

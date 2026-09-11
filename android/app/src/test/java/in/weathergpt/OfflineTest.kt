@@ -50,6 +50,10 @@ class OfflineTest {
         assertEquals(R.string.thunderstorm,conditionResource(95))
         assertNull(conditionResource(999))
     }
+    @Test fun windDisplayConvertsMetresPerSecondToKilometresPerHour() {
+        assertEquals("36", formatWindKmh(10.0, java.util.Locale.US))
+        assertNull(formatWindKmh(null, java.util.Locale.US))
+    }
     @Test fun cachedAlertLifecycleUsesEffectiveAndExpiry() {
         val now=Instant.parse("2026-09-09T12:00:00Z")
         fun alert(effective:String?,expires:String?)=OfficialAlert("id","official","IMD",null,"Rain","Rain warning",null,"Stay inside","severe","immediate","likely",effective,expires,listOf("Delhi"),"CAP 1.2")
@@ -63,15 +67,50 @@ class OfflineTest {
         assertEquals(AlertLevel.ORANGE,alertLevel("Moderate"))
         assertEquals(AlertLevel.YELLOW,alertLevel("Minor"))
     }
+    @Test fun weatherScoreTalkBackNamesTheScore() {
+        assertEquals(
+            "Weather score for the next 24 hours, 72 / 100, Moderate agreement",
+            weatherScoreTalkBack("Weather score for the next 24 hours",72,"Moderate agreement","Unavailable"),
+        )
+        assertEquals(
+            "Weather score for the next 24 hours, Unavailable, Waiting for weather",
+            weatherScoreTalkBack("Weather score for the next 24 hours",null,"Waiting for weather","Unavailable"),
+        )
+    }
+    @Test fun officialWarningTalkBackIncludesSeverity() {
+        val spoken=officialWarningTalkBack("Official weather warning","severe","Heavy rain in Delhi","Stay indoors")
+        assertTrue(spoken.contains("Official weather warning"))
+        assertTrue(spoken.contains("Severe"))
+        assertTrue(spoken.contains("Heavy rain in Delhi"))
+        assertTrue(spoken.contains("Stay indoors"))
+    }
+    @Test fun hourlyTalkBackIncludesUnitsAndRain() {
+        assertEquals(
+            "3 PM, 31°C, Chance of rain 40%",
+            hourlyTalkBack("3 PM","31°C","Chance of rain","40%"),
+        )
+    }
     @Test fun placePurposeMapsToScoreProfile() {
         assertEquals("farming",purposeToProfile("farm"))
         assertEquals("fishing",purposeToProfile("harbour"))
         assertEquals("outdoor",purposeToProfile("work"))
         assertEquals("general",purposeToProfile("home"))
     }
-    @Test fun offlineSupportsTamilDraft() {
-        val (answer,_)=Offline.answer("Rain tomorrow?",bundle(),0,"ta")
-        assertTrue(answer.contains("சேமித்த") || answer.contains("வெப்பநிலை") || answer.contains("மழை"))
+    @Test fun offlineSupportsEveryLanguageDraft() {
+        for (lang in listOf("en","hi","bn","te","mr","ta","gu","kn","ml","pa","or")) {
+            val (answer,_)=Offline.answer("Rain tomorrow?",bundle(),0,lang)
+            assertTrue(lang, answer.contains("31.0") || answer.contains("31"))
+            assertTrue(lang, answer.contains("65.0%") || answer.contains("65%"))
+            assertTrue(lang, answer.contains("°C"))
+            if (lang!="en") {
+                assertFalse(lang, answer.startsWith("Saved forecast from"))
+            }
+        }
+    }
+    @Test fun speechLocaleTagsAreRegional() {
+        assertEquals("hi-IN", speechLocaleTag("hi"))
+        assertEquals("or-IN", speechLocaleTag("or"))
+        assertEquals("en-IN", speechLocaleTag("en"))
     }
     @Test fun availableEmptyAlertsStayHonestOffline() {
         val cached=bundle().copy(official_status="available",alerts_status="available",official_alerts=emptyList())
@@ -108,6 +147,37 @@ class OfflineTest {
         assertTrue(shouldDeliverNotification(null,signature))
         assertFalse(shouldDeliverNotification(NotificationReceipt("official:id",signature,1),signature))
         assertTrue(shouldDeliverNotification(NotificationReceipt("official:id",signature,1),notificationContentSignature("Flood warning","extreme","Move now")))
+    }
+    @Test fun enabledAlertRuleAllowsMatchingChannel() {
+        val rule=AlertRule("delhi:severe","delhi",ALERT_CHANNEL_OFFICIAL,true)
+        assertTrue(alertRuleAllows(listOf(rule),"delhi",ALERT_CHANNEL_OFFICIAL,false))
+    }
+    @Test fun disabledAlertRuleBlocksMatchingChannel() {
+        val rule=AlertRule("delhi:severe","delhi",ALERT_CHANNEL_OFFICIAL,false)
+        assertFalse(alertRuleAllows(listOf(rule),"delhi",ALERT_CHANNEL_OFFICIAL,true))
+    }
+    @Test fun otherPlaceOrChannelDoesNotMatch() {
+        val rule=AlertRule("delhi:severe","delhi",ALERT_CHANNEL_OFFICIAL,true)
+        assertFalse(alertRuleAllows(listOf(rule),"mumbai",ALERT_CHANNEL_OFFICIAL,false))
+        assertFalse(alertRuleAllows(listOf(rule),"delhi",ALERT_CHANNEL_RISK,false))
+    }
+    @Test fun missingRuleFallsBackToPreference() {
+        assertTrue(alertRuleAllows(emptyList(),"delhi",ALERT_CHANNEL_OFFICIAL,true))
+        assertFalse(alertRuleAllows(emptyList(),"delhi",ALERT_CHANNEL_OFFICIAL,false))
+    }
+    @Test fun matchingRuleStillDeduplicatesUnchangedContent() {
+        val rule=AlertRule("delhi:severe","delhi",ALERT_CHANNEL_OFFICIAL,true)
+        val signature=notificationContentSignature("Flood warning","severe","Move")
+        val previous=NotificationReceipt("official:flood",signature,1)
+        assertFalse(shouldNotifyForChannel(listOf(rule),"delhi",ALERT_CHANNEL_OFFICIAL,true,previous,signature))
+        assertTrue(shouldNotifyForChannel(listOf(rule),"delhi",ALERT_CHANNEL_OFFICIAL,true,null,signature))
+        assertFalse(shouldNotifyForChannel(listOf(rule.copy(enabled=false)),"delhi",ALERT_CHANNEL_OFFICIAL,true,null,signature))
+    }
+    @Test fun shouldPromptForPlaceOnlyAfterPreferencesLoadWithoutAPlace() {
+        assertFalse(shouldPromptForPlace(false,null))
+        assertFalse(shouldPromptForPlace(true,"{\"name\":\"Delhi\"}"))
+        assertTrue(shouldPromptForPlace(true,null))
+        assertTrue(shouldPromptForPlace(true,""))
     }
 }
 

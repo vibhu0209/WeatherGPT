@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone, timedelta
+from functools import lru_cache
 from pathlib import Path
 from statistics import median
 import httpx
@@ -11,14 +12,18 @@ from .models import Settings, Location, Forecast
 from .providers import PROVIDERS
 from .decision import ALL_PROFILES, current_point, daily_summary, recommendations, weather_score
 from .risks import estimate_risks
-from .cache import CacheBackend, MemoryCacheBackend
+from .cache import CacheBackend, MemoryCacheBackend, build_cache
+from .metrics import metrics
 from .security import weather_cache_key
 from .marine import marine_service
 
 audit_log = logging.getLogger('weathergpt.weather')
 _WEIGHTS_PATH = Path(__file__).resolve().parent / 'config' / 'provider_weights.yaml'
+WEATHER_FRESH_SECONDS = 900
+WEATHER_SWR_SECONDS = 1800
 
 
+@lru_cache(maxsize=1)
 def load_provider_weights() -> dict:
     if not _WEIGHTS_PATH.exists():
         return {'defaults': {}, 'variables': {}}
@@ -53,7 +58,7 @@ def weighted_median(values: list[tuple[float, float]]) -> float | None:
 class WeatherService:
     def __init__(self, cache: CacheBackend | None = None):
         self.settings = Settings()
-        self.cache = cache or MemoryCacheBackend(max_entries=256)
+        self.cache = cache or build_cache(max_entries=256)
         self.failures = {}
         self._inflight: dict[str, asyncio.Future] = {}
         self._provider_semaphores: dict[str, asyncio.Semaphore] = {}
@@ -67,25 +72,45 @@ class WeatherService:
             self._provider_semaphores[provider_id] = asyncio.Semaphore(4)
         return self._provider_semaphores[provider_id]
 
+    def _age_seconds(self, cached: dict, now: datetime) -> float:
+        retrieved = cached.get('retrieved_at')
+        if not retrieved:
+            return WEATHER_SWR_SECONDS
+        return (now - datetime.fromisoformat(retrieved)).total_seconds()
+
     async def bundle(self, loc: Location):
         key = self._cache_key(loc)
         now = datetime.now(timezone.utc)
         cached = self.cache.get(key)
-        if cached and (now - datetime.fromisoformat(cached['retrieved_at'])).total_seconds() < 900:
-            audit_log.info('weather_cache_hit source_count=%s grid=%s', cached.get('source_count', 0), key.split(':')[1])
-            return {**cached, 'location':loc.model_dump()}
+        if cached:
+            age = self._age_seconds(cached, now)
+            if age < WEATHER_FRESH_SECONDS:
+                metrics.inc('weather_cache_hit')
+                audit_log.info('weather_cache_hit source_count=%s grid=%s', cached.get('source_count', 0), key.split(':')[1])
+                return {**cached, 'location': loc.model_dump()}
+            if age < WEATHER_SWR_SECONDS:
+                metrics.inc('weather_cache_swr')
+                audit_log.info('weather_cache_swr source_count=%s grid=%s', cached.get('source_count', 0), key.split(':')[1])
+                if key not in self._inflight:
+                    asyncio.create_task(self._refresh(loc, now, cached))
+                return {**cached, 'location': loc.model_dump()}
+        return await self._refresh(loc, now, cached)
+
+    async def _refresh(self, loc: Location, now: datetime, cached):
+        key = self._cache_key(loc)
         existing = self._inflight.get(key)
         if existing is not None:
             audit_log.info('weather_cache_coalesce grid=%s', key.split(':')[1])
             shared = await existing
-            return {**shared, 'location':loc.model_dump()}
+            return {**shared, 'location': loc.model_dump()}
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
+        future.add_done_callback(lambda done: done.cancelled() or done.exception())
         self._inflight[key] = future
         try:
             result = await self._fetch_bundle(loc, now, cached)
             future.set_result(result)
-            return {**result, 'location':loc.model_dump()}
+            return {**result, 'location': loc.model_dump()}
         except Exception as error:
             if not future.done():
                 future.set_exception(error)
@@ -95,9 +120,9 @@ class WeatherService:
 
     async def _fetch_bundle(self, loc: Location, now: datetime, cached):
         audit_log.info('weather_cache_miss')
-        # Re-check after joining the single-flight lane.
+        metrics.inc('weather_cache_miss')
         fresh = self.cache.get(self._cache_key(loc))
-        if fresh and (now - datetime.fromisoformat(fresh['retrieved_at'])).total_seconds() < 900:
+        if fresh and self._age_seconds(fresh, now) < WEATHER_FRESH_SECONDS:
             return fresh
         async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
             providers = [p(client, self.settings) for p in PROVIDERS]
@@ -109,11 +134,18 @@ class WeatherService:
                 try:
                     async with self._provider_limit(p.id):
                         result = await asyncio.wait_for(p.forecast(loc), 14)
+                    metrics.inc('provider_http')
                     return result, {'provider':p.id, 'status':'available', 'latency_ms':round((time.monotonic()-started)*1000,1)}
                 except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError, TimeoutError):
                     self.failures[p.id] = now + timedelta(seconds=60)
+                    metrics.inc('provider_http')
                     return None, {'provider':p.id, 'status':'unavailable', 'latency_ms':round((time.monotonic()-started)*1000,1)}
+            marine_task = asyncio.create_task(marine_service.forecast(loc, 48))
             results = await asyncio.gather(*(fetch(p) for p in providers))
+            try:
+                marine = await marine_task
+            except Exception:
+                marine = None
         forecasts = [r for r,s in results if r]
         if not forecasts:
             audit_log.warning('weather_all_providers_unavailable stale_fallback=%s', bool(cached))
@@ -134,22 +166,34 @@ class WeatherService:
         result['current'] = current_point(hourly)
         result['daily'] = daily_summary(hourly, loc.timezone)
         marine_rows: list[dict] = []
-        try:
-            marine = await marine_service.forecast(loc, 48)
+        if marine:
             marine_rows = marine.get('hourly') or []
-            result['marine'] = {'available': True, 'sources': marine.get('sources', []), 'limitations': marine.get('limitations', [])}
-        except Exception:
-            result['marine'] = {'available': False, 'sources': [], 'limitations': ['Marine model unavailable for this point']}
+            result['marine'] = {
+                'available': True,
+                'sources': marine.get('sources', []),
+                'limitations': marine.get('limitations', []),
+                'hourly': marine_rows[:24],
+            }
+        else:
+            result['marine'] = {
+                'available': False, 'sources': [], 'hourly': [],
+                'limitations': ['Marine model unavailable for this point'],
+            }
         result['scores'] = {
             profile: weather_score(hourly, profile, marine_rows if profile == 'fishing' else None)
             for profile in ALL_PROFILES
         }
         result['recommendations'] = {
-            profile: recommendations(hourly, profile, marine_rows if profile == 'fishing' else None)
+            profile: recommendations(
+                hourly, profile, marine_rows if profile == 'fishing' else None,
+                timezone_name=loc.timezone, agreement=result.get('agreement'),
+                confidence=result.get('confidence'), sources=result.get('sources'),
+                marine_available=result['marine']['available'],
+            )
             for profile in ALL_PROFILES
         }
         result['risk_estimates'] = estimate_risks(hourly)
-        self.cache.set(self._cache_key(loc), result, ttl_seconds=900)
+        self.cache.set(self._cache_key(loc), result, ttl_seconds=WEATHER_SWR_SECONDS)
         return result
 
 def circular_mean(values: list[float]) -> float | None:

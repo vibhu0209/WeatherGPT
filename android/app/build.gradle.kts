@@ -3,6 +3,28 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
+
+/**
+ * The single source of truth for the backend address. Override per machine without editing code:
+ *
+ *   gradlew installDebug -Pweathergpt.apiUrl=http://192.168.1.10:8000/
+ *
+ * or put `weathergpt.apiUrl=...` in `local.properties` / `~/.gradle/gradle.properties`.
+ * The backend address is not a secret, so BuildConfig is the right home for it.
+ *
+ * Default is the Android emulator's alias for the host machine. `localhost` inside an emulator
+ * is the emulator itself, so it can never reach a backend running on Windows.
+ */
+fun apiUrl(property: String, fallback: String): String {
+    val value = (project.findProperty(property) as String?)?.trim().orEmpty().ifEmpty { fallback }
+    // Retrofit resolves endpoint paths relative to the base URL and throws at build time if the
+    // base does not end in '/'. Failing here names the property instead of crashing at startup.
+    require(value.endsWith("/")) { "$property must end with '/' (Retrofit base URL rule), got: $value" }
+    return value
+}
+
+val debugApiUrl = apiUrl("weathergpt.apiUrl", "http://10.0.2.2:8000/")
+val releaseApiUrl = apiUrl("weathergpt.releaseApiUrl", "https://localhost/")
 android {
     namespace = "in.weathergpt"
     compileSdk { version = release(37) { minorApiLevel = 0 } }
@@ -18,8 +40,8 @@ android {
     bundle { language { enableSplit = false } }
     lint { disable += "MissingTranslation" }
     buildTypes {
-        debug { buildConfigField("String", "API_URL", "\"http://10.0.2.2:8000/\"") }
-        release { buildConfigField("String", "API_URL", "\"https://localhost/\"") }
+        debug { buildConfigField("String", "API_URL", "\"$debugApiUrl\"") }
+        release { buildConfigField("String", "API_URL", "\"$releaseApiUrl\"") }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 }
@@ -42,6 +64,8 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }
 
 android.sourceSets.getByName("test").resources.directories.add("../../contracts")

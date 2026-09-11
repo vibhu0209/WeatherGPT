@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 
-from app.alerts import _rss_or_atom_links, parse_cap
+import httpx
+import pytest
+
+from app.alerts import AlertService, _rss_or_atom_links, parse_cap
+from app.cache import MemoryCacheBackend
 from app.models import Location
 
 
@@ -41,3 +45,85 @@ def test_rss_index_exposes_cap_document_links():
         "https://cap-sources.s3.amazonaws.com/in-imd-en/sample.xml",
         "https://cap-sources.s3.amazonaws.com/in-imd-en/sample2.xml",
     ]
+
+
+@pytest.mark.asyncio
+async def test_official_alerts_are_cached_and_still_filtered_per_location(monkeypatch):
+    """One feed fetch must serve many callers without widening the polygon filter."""
+    service = AlertService(cache=MemoryCacheBackend(max_entries=8))
+    monkeypatch.setattr(service.settings, 'cap_alert_url', 'https://cap.example.in/feed.xml')
+    calls = {'count': 0}
+
+    async def fake_network():
+        calls['count'] += 1
+        return [CAP]
+
+    monkeypatch.setattr(service, '_documents', fake_network)
+    inside = Location(name="Delhi", latitude=28.6, longitude=77.2)
+    outside = Location(name="Mumbai", latitude=19.0, longitude=72.8)
+    assert (await service.official(inside))['status'] == 'available'
+    assert (await service.official(outside))['alerts'] == []
+
+
+@pytest.mark.asyncio
+async def test_document_cache_collapses_repeat_feed_fetches(monkeypatch):
+    service = AlertService(cache=MemoryCacheBackend(max_entries=8))
+    monkeypatch.setattr(service.settings, 'cap_alert_url', 'https://cap.example.in/feed.xml')
+    monkeypatch.setattr(service.settings, 'cap_alert_allowed_hosts', 'cap.example.in')
+    calls = {'count': 0}
+
+    async def fake_fetch(client, index_xml):
+        calls['count'] += 1
+        return [CAP]
+
+    class FakeResponse:
+        text = '<rss version="2.0"><channel></channel></rss>'
+
+        def raise_for_status(self):
+            return None
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def get(self, url):
+            return FakeResponse()
+
+    monkeypatch.setattr(service, '_fetch_cap_documents', fake_fetch)
+    monkeypatch.setattr('app.alerts.httpx.AsyncClient', lambda **kwargs: FakeClient())
+
+    delhi = Location(name="Delhi", latitude=28.6, longitude=77.2)
+    for _ in range(5):
+        assert (await service.official(delhi))['status'] == 'available'
+    assert calls['count'] == 1, 'repeat requests for one area must reuse the cached authority feed'
+
+
+@pytest.mark.asyncio
+async def test_feed_outage_is_cached_briefly_and_never_implies_no_warnings(monkeypatch):
+    service = AlertService(cache=MemoryCacheBackend(max_entries=8))
+    monkeypatch.setattr(service.settings, 'cap_alert_url', 'https://cap.example.in/feed.xml')
+    monkeypatch.setattr(service.settings, 'cap_alert_allowed_hosts', 'cap.example.in')
+    calls = {'count': 0}
+
+    class FailingClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def get(self, url):
+            calls['count'] += 1
+            raise httpx.ConnectError('feed down')
+
+    monkeypatch.setattr('app.alerts.httpx.AsyncClient', lambda **kwargs: FailingClient())
+    delhi = Location(name="Delhi", latitude=28.6, longitude=77.2)
+    for _ in range(4):
+        result = await service.official(delhi)
+        assert result['status'] == 'unavailable'
+        assert result['alerts'] == []
+        assert 'does not mean there are no warnings' in result['message']
+    assert calls['count'] == 1, 'a failing authority feed must not be re-hit on every request'

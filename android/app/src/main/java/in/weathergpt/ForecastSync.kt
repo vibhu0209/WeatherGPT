@@ -1,5 +1,7 @@
 package `in`.weathergpt
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.work.*
 import kotlinx.coroutines.flow.first
@@ -8,6 +10,39 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+
+fun notificationTapIntent(context:Context, tab:Int):PendingIntent {
+    val intent=Intent(context,MainActivity::class.java).apply {
+        flags=Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        putExtra("open_tab", tab)
+    }
+    return PendingIntent.getActivity(context, tab+100, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+}
+
+fun uiStrings(context:Context):Context {
+    val locales=androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+    val locale=if(locales.isEmpty) java.util.Locale.getDefault() else locales[0]!!
+    val config=android.content.res.Configuration(context.resources.configuration)
+    config.setLocale(locale)
+    return context.createConfigurationContext(config)
+}
+
+fun postDemoWarning(context:Context) {
+    if(android.os.Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) return
+    val strings=uiStrings(context)
+    val title=strings.getString(R.string.demo_warning_title)
+    val body=strings.getString(R.string.demo_warning_body)
+    val notification=NotificationCompat.Builder(context,"official_warnings")
+        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+        .setContentTitle(title)
+        .setContentText(body)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+        .setContentIntent(notificationTapIntent(context,3))
+        .setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .build()
+    NotificationManagerCompat.from(context).notify("demo-warning".hashCode(),notification)
+}
 
 fun syncIntervalHours(lowData:Boolean)=if(lowData)12L else 6L
 
@@ -19,6 +54,8 @@ class CachedAlertReminder(context:Context,params:WorkerParameters):CoroutineWork
         val key=inputData.getString("place_key")?:return Result.success()
         val alertId=inputData.getString("alert_id")?:return Result.success()
         val repo=Repository(applicationContext)
+        val rules=repo.dao.alertRulesOnce(key)
+        if(!alertRuleAllows(rules,key,ALERT_CHANNEL_OFFICIAL,prefs[stringPreferencesKey("official_notifications")]=="true")) return Result.success()
         val bundle=repo.dao.weatherOnce(key)?.let { repo.gson.fromJson(it.json,BundleDto::class.java) }?:return Result.success()
         val alert=bundle.official_alerts.orEmpty().firstOrNull { it.id==alertId && cachedAlertIsActive(it) }?:return Result.success()
         val message=alert.instruction?:alert.description?:alert.event
@@ -28,6 +65,7 @@ class CachedAlertReminder(context:Context,params:WorkerParameters):CoroutineWork
         val notification=NotificationCompat.Builder(applicationContext,"official_warnings")
             .setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle(alert.headline)
             .setContentText(message).setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setContentIntent(notificationTapIntent(applicationContext,3))
             .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build()
         NotificationManagerCompat.from(applicationContext).notify(alert.id.hashCode(),notification)
         repo.dao.saveNotificationReceipt(NotificationReceipt(receiptId,signature,System.currentTimeMillis()))
@@ -53,11 +91,13 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
         val saved=prefs[stringPreferencesKey("place")]?:return Result.success()
         return try {
             val p=repo.gson.fromJson(saved,Place::class.java)
-            repo.refresh(p,prefs[stringPreferencesKey("server")]?:BuildConfig.API_URL,prefs[stringPreferencesKey("low_data")]=="true")
+            repo.refresh(p,normalizeBaseUrl(prefs[stringPreferencesKey("server")],BuildConfig.API_URL),prefs[stringPreferencesKey("low_data")]=="true")
             val bundle=repo.dao.weatherOnce(repo.key(p))?.let { repo.gson.fromJson(it.json,BundleDto::class.java) }
             bundle?.let { scheduleCachedAlerts(applicationContext,p,it) }
+            val placeKey=repo.key(p)
+            val rules=repo.dao.alertRulesOnce(placeKey)
             val official=bundle?.official_alerts?.firstOrNull { Freshness.officialAlert(bundle.retrieved_at,it.expires)==FreshnessState.FRESH }
-            if(official!=null && prefs[stringPreferencesKey("official_notifications")] == "true" && (android.os.Build.VERSION.SDK_INT<33 || ContextCompat.checkSelfPermission(applicationContext,android.Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)) {
+            if(official!=null && alertRuleAllows(rules,placeKey,ALERT_CHANNEL_OFFICIAL,prefs[stringPreferencesKey("official_notifications")]=="true") && (android.os.Build.VERSION.SDK_INT<33 || ContextCompat.checkSelfPermission(applicationContext,android.Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)) {
                 val message=official.instruction?:official.description?:official.event
                 val receiptId="official:${official.id}"
                 val signature=notificationContentSignature(official.headline,official.severity,message,official.effective,official.expires)
@@ -66,12 +106,13 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
                     .setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle(official.headline)
                     .setContentText(message)
                     .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                    .setContentIntent(notificationTapIntent(applicationContext,3))
                     .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build()
                 NotificationManagerCompat.from(applicationContext).notify(official.id.hashCode(),notification)
                 repo.dao.saveNotificationReceipt(NotificationReceipt(receiptId,signature,System.currentTimeMillis()))
                 }
             }
-            if(prefs[stringPreferencesKey("risk_notifications")] == "true") {
+            if(alertRuleAllows(rules,placeKey,ALERT_CHANNEL_RISK,prefs[stringPreferencesKey("risk_notifications")]=="true")) {
                 val risk=bundle?.risk_estimates?.firstOrNull()
                 if(risk!=null && (android.os.Build.VERSION.SDK_INT<33 || ContextCompat.checkSelfPermission(applicationContext,android.Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)) {
                     val receiptId="risk:${risk.id}"
@@ -82,6 +123,7 @@ fun scheduleCachedAlerts(context:Context,place:Place,bundle:BundleDto) {
                         .setContentTitle(applicationContext.getString(R.string.risk_notification_title))
                         .setContentText(risk.message)
                         .setStyle(NotificationCompat.BigTextStyle().bigText("${risk.message}. ${risk.rationale}. ${applicationContext.getString(R.string.risk_notification_not_official)}"))
+                        .setContentIntent(notificationTapIntent(applicationContext,3))
                         .setAutoCancel(true).build()
                     NotificationManagerCompat.from(applicationContext).notify(risk.id.hashCode(),notification)
                     repo.dao.saveNotificationReceipt(NotificationReceipt(receiptId,signature,System.currentTimeMillis()))

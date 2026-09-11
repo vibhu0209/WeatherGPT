@@ -3,7 +3,9 @@ import json
 import hashlib
 import math
 import logging
+import os
 import uuid
+import asyncio
 import httpx
 from fastapi import FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -13,12 +15,16 @@ from fastapi.middleware.gzip import GZipMiddleware
 from .models import Location, ChatRequest, Settings
 from .weather import service
 from .chat import answer
-from .decision import current_point, daily_summary, weather_score
+from .chat_tools import run_chat
+from .ai import validate_translation
+from .decision import current_point, daily_summary, weather_score, apply_official_warning_limit, recommendations
 from .climate import climate_service
 from .risks import estimate_risks
+from .metrics import metrics
 from .alerts import alert_service
 from .marine import marine_service
 from .ai import gemini_polisher
+from .delivery import delivery_chain
 from .language import language_service, BhashiniProvider, GoogleTranslationProvider
 from .subscriptions import (
     authenticate as authenticate_device,
@@ -28,8 +34,9 @@ from .subscriptions import (
     register as register_device_record,
     revoke as revoke_device,
 )
-from .security import SlidingWindowLimiter, public_location
-from pydantic import BaseModel, Field
+from .cache import RedisRateLimitBackend
+from .security import SlidingWindowLimiter, public_location, finite_coordinate
+from pydantic import BaseModel, Field, field_validator
 
 app = FastAPI(title='WeatherGPT', version='0.1.0')
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -45,7 +52,38 @@ if _cors_origins:
         expose_headers=['ETag', 'X-Request-Id'],
         max_age=600,
     )
-rate_limiter = SlidingWindowLimiter(limit=90, window_seconds=60, max_keys=4096)
+def build_rate_limiter():
+    if _settings.redis_url:
+        try:
+            return RedisRateLimitBackend(_settings.redis_url, 90, 60)
+        except Exception:
+            pass
+    return SlidingWindowLimiter(limit=90, window_seconds=60, max_keys=4096)
+
+
+rate_limiter = build_rate_limiter()
+register_limiter = SlidingWindowLimiter(limit=10, window_seconds=60, max_keys=4096)
+
+
+def configure_logging(level: str | None = None) -> None:
+    """Attach a stream handler to the weathergpt loggers.
+
+    Uvicorn configures only its own loggers, so without this the request,
+    provider-latency, cache and fusion records are dropped at WARNING and the
+    service runs with no observability. Records stay propagating so pytest's
+    caplog and any parent handlers still see them.
+    """
+    resolved = (level or os.getenv('LOG_LEVEL') or 'INFO').upper()
+    logger = logging.getLogger('weathergpt')
+    logger.setLevel(getattr(logging, resolved, logging.INFO))
+    if not any(getattr(handler, 'name', '') == 'weathergpt' for handler in logger.handlers):
+        handler = logging.StreamHandler()
+        handler.name = 'weathergpt'
+        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
+        logger.addHandler(handler)
+
+
+configure_logging()
 audit_log = logging.getLogger('weathergpt.request')
 
 
@@ -61,6 +99,11 @@ async def validation_error(request: Request, error: RequestValidationError):
         'details': [{'field': '.'.join(str(part) for part in item['loc'][1:]), 'message': item['msg']} for item in error.errors()]}, 422)
 
 
+@app.exception_handler(404)
+async def not_found(request: Request, _error):
+    return error_response(request, 'not_found', 'That resource was not found.', False, 404)
+
+
 @app.exception_handler(Exception)
 async def unexpected_error(request: Request, error: Exception):
     audit_log.exception('unhandled_error request_id=%s path=%s', getattr(request.state, 'request_id', None), request.url.path)
@@ -74,7 +117,8 @@ async def limits(request: Request, call_next):
     request_id = supplied if 0 < len(supplied) <= 80 and supplied.replace('-', '').isalnum() else str(uuid.uuid4())
     request.state.request_id = request_id
     ip = request.client.host if request.client else 'unknown'
-    if not rate_limiter.allow(ip):
+    health_path = request.url.path in {'/health', '/ready'}
+    if not health_path and not rate_limiter.allow(ip):
         response = JSONResponse({'code': 'rate_limited', 'message': 'Please wait a minute and try again.', 'retryable': True, 'request_id': request_id}, 429)
         response.headers['x-request-id'] = request_id
         return response
@@ -109,40 +153,70 @@ def health():
 def ready():
     return {
         'status': 'ready',
-        'cache': 'memory',
+        'cache': type(service.cache).__name__.replace('CacheBackend', '').lower(),
+        'store': __import__('os').getenv('WEATHERGPT_STORE') or service.settings.store_backend or 'memory',
         'gemini': gemini_polisher.enabled,
         'cap_alerts': bool(service.settings.cap_alert_url),
+        'performance': metrics.snapshot(),
         'time': datetime.now(timezone.utc).isoformat(),
     }
 
 
 @app.get('/v1/capabilities')
 def capabilities():
-    return {'forecast': True, 'chat': 'deterministic', 'official_alerts': bool(service.settings.cap_alert_url), 'marine': True,
+    settings = service.settings
+    live_translation = bool(
+        (settings.bhashini_compute_url and settings.bhashini_api_key and settings.bhashini_user_id and settings.bhashini_translation_service_id)
+        or settings.google_translate_api_key
+    )
+    return {
+        'forecast': True, 'chat': 'deterministic', 'official_alerts': bool(settings.cap_alert_url), 'marine': True,
         'climate': True, 'cloud_voice': False, 'gemini': gemini_polisher.enabled, 'demo_mode': False,
-        'answer_languages': ['en', 'hi']}
+        'answer_languages': ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or'],
+        'live_translation': live_translation,
+        'alert_delivery': [{'transport': provider.transport, 'status': 'disabled'} for provider in delivery_chain],
+    }
 
 
 @app.get('/v1/languages/capabilities')
 def language_capabilities():
     settings = service.settings
     providers = [BhashiniProvider(None, settings), GoogleTranslationProvider(None, settings)]
-    return {'ui_languages': ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or'],
+    live = any(provider.enabled for provider in providers)
+    return {
+        'ui_languages': ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or'],
+        'answer_languages': ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or'],
+        'answer_mode': 'deterministic_templates',
+        'live_translation': live,
         'providers': [provider.health() for provider in providers],
-        'fallback': {'translation': 'original text or English', 'asr': 'Android installed recognizer', 'tts': 'Android installed TTS'}}
+        'fallback': {
+            'translation': 'deterministic templates in the selected language; original text if a live translator fails',
+            'asr': 'Android installed recognizer',
+            'tts': 'Android installed TTS',
+        },
+        'cloud_voice': False,
+    }
 
 
 async def finalize_chat(request: ChatRequest, result: dict):
     result['answer'] = await gemini_polisher.polish(request.text, result['answer'], result['language'])
-    if request.language not in ('en', 'hi'):
-        translated = await language_service.translate(result['answer'], 'en', request.language)
-        if not translated['fallback'] and __import__('app.ai', fromlist=['validate_polish']).validate_polish(result['answer'], translated['text']):
+    target = request.language
+    current = result.get('language', 'en')
+    if target != current:
+        translated = await language_service.translate(result['answer'], current if current in ('en', 'hi') else 'en', target)
+        if not translated['fallback'] and validate_translation(result['answer'], translated['text']):
             result['answer'] = translated['text']
-            result['language'] = request.language
+            result['language'] = target
             result['language_provider'] = translated['provider']
         else:
-            result['language'] = 'en'
-            result['language_provider'] = 'original'
+            # Deterministic templates already cover all 11 UI languages when
+            # answer() ran in the requested language. Otherwise keep the
+            # verified draft and say which fallback was used.
+            result['language_provider'] = 'deterministic' if current == target else 'original'
+            if current != target and current in ('en', 'hi'):
+                result['language'] = current
+    else:
+        result['language_provider'] = result.get('language_provider') or 'deterministic'
     if 'conversation_context' in result and 'resolved_location' in result['conversation_context']:
         result['conversation_context']['resolved_location'] = public_location(request.location)
     return result
@@ -167,6 +241,14 @@ class LocationBody(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     name: str = Field(default='Current location', min_length=1, max_length=120)
+    @field_validator('latitude')
+    @classmethod
+    def finite_lat(cls, value):
+        return finite_coordinate(value, -90, 90)
+    @field_validator('longitude')
+    @classmethod
+    def finite_lon(cls, value):
+        return finite_coordinate(value, -180, 180)
 
 
 class BundleBody(BaseModel):
@@ -175,6 +257,14 @@ class BundleBody(BaseModel):
     name: str = Field(default='Selected place', min_length=1, max_length=120)
     timezone: str = Field(default='Asia/Kolkata', max_length=64)
     hours: int = Field(default=168, ge=24, le=168)
+    @field_validator('latitude')
+    @classmethod
+    def finite_lat(cls, value):
+        return finite_coordinate(value, -90, 90)
+    @field_validator('longitude')
+    @classmethod
+    def finite_lon(cls, value):
+        return finite_coordinate(value, -180, 180)
 
 
 async def _resolve_location(request: Request, latitude: float, longitude: float, name: str):
@@ -196,21 +286,54 @@ async def resolve_location_post(request: Request, body: LocationBody):
     return await _resolve_location(request, body.latitude, body.longitude, body.name)
 
 
+ADVICE_ETAG_REVISION = '2'
+
+
+def bundle_etag(data: dict, official: dict, hours: int) -> str:
+    alert_ids = ','.join(sorted(str(alert.get('id') or '') for alert in official.get('alerts') or []))
+    material = '|'.join([
+        str(data.get('retrieved_at') or ''),
+        str(bool(data.get('is_stale'))),
+        str(data.get('source_count') or 0),
+        str(data.get('agreement') or ''),
+        str(official.get('status') or ''),
+        alert_ids,
+        str(hours),
+        ADVICE_ETAG_REVISION,
+    ])
+    return '"' + hashlib.sha256(material.encode()).hexdigest() + '"'
+
+
 async def _weather_bundle(request: Request, response: Response, latitude: float, longitude: float, name: str, timezone_name: str, hours: int):
     try:
         loc = Location(name=name, latitude=latitude, longitude=longitude, timezone=timezone_name)
     except ValueError:
         return error_response(request, 'invalid_location', 'Please check the location and timezone.', False, 422)
-    data = await service.bundle(loc)
-    official = await alert_service.official(loc)
-    payload = {**data, 'hourly': data.get('hourly', [])[:hours], 'daily': data.get('daily', [])[:math.ceil(hours / 24)],
-        'alerts_status': official['status'], 'official_status': official['status'],
-        'alerts': official['alerts'], 'official_alerts': official['alerts'], 'alerts_message': official['message']}
-    digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':'), default=str).encode()).hexdigest()
-    etag = f'"{digest}"'
+    data, official = await asyncio.gather(service.bundle(loc), alert_service.official(loc))
+    etag = bundle_etag(data, official, hours)
     headers = {'etag': etag, 'cache-control': 'private, max-age=300'}
     if request.headers.get('if-none-match') == etag:
         return Response(status_code=304, headers=headers)
+    scores = {
+        profile: apply_official_warning_limit(score, official['alerts'])
+        for profile, score in (data.get('scores') or {}).items()
+    }
+    marine_hourly = ((data.get('marine') or {}).get('hourly') or [])
+    advice = {
+        profile: recommendations(
+            data.get('hourly') or [], profile,
+            marine_hourly if profile == 'fishing' else None,
+            timezone_name=loc.timezone, official_alerts=official['alerts'],
+            official_status=official['status'], agreement=data.get('agreement'),
+            confidence=data.get('confidence'), is_stale=bool(data.get('is_stale')),
+            sources=data.get('sources'), marine_available=(data.get('marine') or {}).get('available'),
+        )
+        for profile in (data.get('scores') or {})
+    }
+    payload = {**data, 'hourly': data.get('hourly', [])[:hours], 'daily': data.get('daily', [])[:math.ceil(hours / 24)],
+        'scores': scores, 'recommendations': advice,
+        'alerts_status': official['status'], 'official_status': official['status'],
+        'alerts': official['alerts'], 'official_alerts': official['alerts'], 'alerts_message': official['message']}
     response.headers.update(headers)
     return payload
 
@@ -325,81 +448,7 @@ async def voice_synthesize(request: Request):
 
 @app.post('/v1/chat/message')
 async def chat(request: ChatRequest):
-    lowered = request.text.lower()
-    if any(word in lowered for word in ('compare', 'तुलना', ' vs ')) and request.secondary_location is not None:
-        from .tools import CompareInput, compare_locations
-        compared = await compare_locations(CompareInput(locations=[request.location, request.secondary_location], day_offset=request.day_offset))
-        parts = ['Comparing verified daily forecasts:']
-        for item in (compared.data or {}).get('comparisons', []):
-            day = item.get('daily') or {}
-            place = (item.get('location') or {}).get('name', 'Place')
-            if day:
-                parts.append(
-                    f"{place}: high {day.get('temperature_max')}°C, rain chance {day.get('rain_chance_max')}%, "
-                    f"wind {None if day.get('wind_max_ms') is None else round(day['wind_max_ms']*3.6)} km/h."
-                )
-            else:
-                parts.append(f'{place}: daily forecast unavailable.')
-        parts.append('Official warnings still take precedence for each place.')
-        return await finalize_chat(request, {
-            'answer': '\n'.join(parts), 'language': 'en', 'day_offset': request.day_offset,
-            'retrieved_at': compared.retrieved_at, 'is_stale': compared.is_stale, 'sources': compared.sources,
-            'agreement': 'multi_location_compare',
-            'conversation_context': {
-                'conversation_id': str(request.conversation_id), 'resolved_location': public_location(request.location),
-                'resolved_day_offset': request.day_offset, 'profile': request.profile, 'last_intent': 'compare',
-                'last_weather_context_id': compared.retrieved_at,
-            },
-        })
-    if any(word in lowered for word in ('fish', 'marine', 'समुद्र', 'मछली')):
-        try:
-            result = await marine_service.forecast(request.location, 48)
-            rows = result['hourly'][:24]
-            waves = [row['wave_height_m'] for row in rows if row['wave_height_m'] is not None]
-            periods = [row['wave_period_s'] for row in rows if row['wave_period_s'] is not None]
-            official = await alert_service.official(request.location)
-            facts = []
-            official_sources = []
-            if official['alerts']:
-                for alert in official['alerts']:
-                    facts.append(f"Official warning: {alert['headline']}. Severity: {alert['severity']}. {alert.get('instruction') or alert.get('description') or ''}" + (f" Expires: {alert['expires']}." if alert.get('expires') else ''))
-                    if alert.get('sender'):
-                        official_sources.append(alert['sender'])
-            elif official['status'] != 'available':
-                facts.append('Official fishermen-warning availability is unknown. Check IMD and INCOIS before going to sea.')
-            else:
-                facts.append('The connected official feed reports no active warning here. Refresh before going to sea.')
-            facts.append(f'Marine model near {request.location.name} for the next 24 hours.')
-            if waves:
-                facts.append(f'Highest significant wave height: {max(waves):g} m.')
-            if periods:
-                facts.append(f'Longest mean wave period: {max(periods):g} seconds.')
-            facts.append('This model is not a navigation or safety clearance. Check official IMD and INCOIS fishermen warnings before going to sea.')
-            return await finalize_chat(request, {'answer': '\n\n'.join(facts), 'language': 'en', 'day_offset': request.day_offset, 'retrieved_at': result['retrieved_at'], 'is_stale': False, 'sources': result['sources'] + list(dict.fromkeys(official_sources)), 'agreement': 'single_marine_model',
-                'conversation_context': {'conversation_id': str(request.conversation_id), 'resolved_location': public_location(request.location), 'resolved_day_offset': request.day_offset, 'profile': request.profile, 'last_intent': 'marine', 'last_weather_context_id': result['retrieved_at']}}
-            )
-        except (httpx.HTTPError, ValueError):
-            pass
-    if any(word in lowered for word in ('climate', 'hotter', 'years', 'monsoon', 'जलवायु', 'साल')):
-        metric = 'rainfall' if any(word in lowered for word in ('rain', 'monsoon', 'बारिश')) else 'temperature'
-        try:
-            result = await climate_service.summary(request.location, metric, 10)
-            unit = '°C per decade' if metric == 'temperature' else 'mm per decade'
-            if request.language == 'hi':
-                message = f"{request.location.name} के ERA5 पुनर्विश्लेषण में {result['period']['start_year']}–{result['period']['end_year']} का रुझान {result['trend_per_decade']:+g} {unit} है। डेटा कवरेज {result['coverage']*100:.1f}% है। यह कारण साबित नहीं करता और स्थानीय स्टेशन से अलग हो सकता है।"
-            else:
-                message = f"For {request.location.name}, ERA5 reanalysis shows a {result['trend_per_decade']:+g} {unit} trend from {result['period']['start_year']} to {result['period']['end_year']}. Data coverage is {result['coverage']*100:.1f}%. This does not attribute a cause and may differ from a local station."
-            return await finalize_chat(request, {'answer': message, 'language': request.language if request.language in ('en', 'hi') else 'en', 'day_offset': request.day_offset, 'retrieved_at': result['generated_at'], 'is_stale': False, 'sources': [result['source']], 'agreement': 'single_reanalysis_source',
-                'conversation_context': {'conversation_id': str(request.conversation_id), 'resolved_location': public_location(request.location),
-                    'resolved_day_offset': request.day_offset, 'profile': request.profile, 'last_intent': 'climate', 'last_weather_context_id': result['generated_at']}}
-            )
-        except (httpx.HTTPError, ValueError):
-            pass
-    data = await service.bundle(request.location)
-    official = await alert_service.official(request.location)
-    data = {**data, 'official_status': official['status'], 'alerts_status': official['status'], 'official_alerts': official['alerts'], 'alerts': official['alerts']}
-    result = answer(request, data)
-    return await finalize_chat(request, result)
+    return await finalize_chat(request, await run_chat(request))
 
 
 class DeviceRegistration(BaseModel):
@@ -411,11 +460,27 @@ class AlertSubscriptionRequest(BaseModel):
     longitude: float = Field(ge=-180, le=180)
     timezone: str = Field(default='Asia/Kolkata', max_length=64)
     channels: list[str] = Field(default_factory=lambda: ['severe'])
+    @field_validator('latitude')
+    @classmethod
+    def finite_lat(cls, value):
+        return finite_coordinate(value, -90, 90)
+    @field_validator('longitude')
+    @classmethod
+    def finite_lon(cls, value):
+        return finite_coordinate(value, -180, 180)
 
 
 @app.post('/v1/device/register')
-def register_device(body: DeviceRegistration | None = None):
-    return register_device_record(body.device_id if body else None)
+def register_device(request: Request, body: DeviceRegistration | None = None):
+    ip = request.client.host if request.client else 'unknown'
+    if not register_limiter.allow(ip):
+        return error_response(request, 'rate_limited', 'Please wait a minute and try again.', True, 429)
+    try:
+        return register_device_record(body.device_id if body else None)
+    except PermissionError:
+        return error_response(request, 'device_id_taken', 'That device id is already registered. Register without a device id to get a new one.', False, 409)
+    except ValueError:
+        return error_response(request, 'invalid_device_id', 'The device id is not valid.', False, 422)
 
 
 @app.post('/v1/device/revoke')

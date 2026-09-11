@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Production policy: HTTPS only.
+
+  Debug builds replace this whole file with src/debug/res/xml/network_security_config.xml so a
+  local http:// backend can be reached during development. Do not add a <debug-overrides> block
+  here: it accepts only <trust-anchors>, so a <base-config> nested inside it is silently ignored
+  and cleartext stays blocked in debug too.
+-->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
-    <debug-overrides>
-        <base-config cleartextTrafficPermitted="true" />
-    </debug-overrides>
 </network-security-config>

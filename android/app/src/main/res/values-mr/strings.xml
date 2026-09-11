@@ -10,7 +10,6 @@
     <string name="alerts">इशारे</string>
     <string name="settings">सेटिंग्ज</string>
     <string name="choose_place">तुमचे ठिकाण निवडा</string>
-    <string name="welcome_tag">दररोजचा हवामान साथी</string>
     <string name="welcome">नमस्कार! मी कशी मदत करू?</string>
     <string name="intro">हवामानाबद्दल तुमच्या शब्दांत विचारा. लिहा किंवा बोला. खाते लागत नाही.</string>
     <string name="rain_question">आज पाऊस पडेल का?</string>
@@ -29,14 +28,11 @@
     <string name="minutes_ago">मिनिटांपूर्वी</string>
     <string name="single_source">एक हवामान स्रोत उपलब्ध. हा अंदाज आहे, हमी नाही.</string>
     <string name="disagree">हवामान स्रोत वेगळे आहेत. योजना बदलावी लागू शकते.</string>
-    <string name="saved_weather">तुमचा डाउनलोड केलेला अंदाज</string>
     <string name="no_saved">अजून हवामान जतन नाही. ठिकाण निवडून अंदाज डाउनलोड करा.</string>
     <string name="download">हवामान डाउनलोड / ताजे करा</string>
     <string name="forecast_help">पुढील तीन दिवस, तास तासाने. पावसाची शक्यता त्या तासासाठी.</string>
     <string name="no_places">ठिकाण सापडले नाही. जवळचे शहर किंवा दुसरी शब्दलेखन पहा.</string>
     <string name="search_failed">ठिकाण शोधता आले नाही. इंटरनेट तपासून पुन्हा प्रयत्न करा.</string>
-    <string name="refresh_failed">नवीन हवामान मिळाले नाही. आधी डाउनलोड केलेले उपलब्ध राहील.</string>
-    <string name="place_help">तुमचे गाव, कसबा किंवा शहर शोधा. लोकेशन परवानगी लागत नाही.</string>
     <string name="city_village">गाव, कसबा किंवा शहर</string>
     <string name="saved_places">जतन केलेली ठिकाणे</string>
     <string name="search">ठिकाण शोधा</string>
@@ -68,7 +64,7 @@
     <string name="dark_theme">गडद</string>
     <string name="large_text">मोठी अक्षरे</string>
     <string name="language">तुमची भाषा</string>
-    <string name="language_help">मुख्य बटणे भाषांतरित. सविस्तर उत्तरे सध्या मराठी, हिंदी किंवा इंग्रजीत. आवाज फोनवर अवलंबून.</string>
+    <string name="language_help">मुख्य बटणे आणि चॅट उत्तरे तुमच्या निवडलेल्या भाषेत. हवामान आकडे, एकके, वेळ आणि अधिकृत इशार्‍याचा अर्थ बदलत नाही. आवाज फोनवर अवलंबून. लाइव्ह भाषांतर फक्त कॉन्फिगर असेल तर.</string>
     <string name="use_for">तुम्हाला हवामान माहिती कशासाठी हवी?</string>
     <string name="general">दैनंदिन जीवन / शाळा</string>
     <string name="farming">शेती</string>
@@ -113,7 +109,6 @@
     <string name="thunderstorm">वादळ</string>
     <string name="use_current_location">माझे सध्याचे ठिकाण वापरा</string>
     <string name="current_location">सध्याचे ठिकाण</string>
-    <string name="location_optional">आम्ही फोनचे स्थान पसंत करतो. GPS नसल्यासच शोध.</string>
     <string name="location_unavailable">सध्याचे ठिकाण उपलब्ध नाही. तुमचे गाव किंवा शहर शोधा.</string>
     <string name="show_details">का? हवामान तपशील पहा</string>
     <string name="hide_details">हवामान तपशील लपवा</string>
@@ -141,26 +136,11 @@
     <string name="action_hourly">तासन् तास अंदाज दाखवा</string>
     <string name="action_warnings">इशारे तपासा</string>
     <string name="action_score">माझ्यासाठी हवामान गुण</string>
-    <string name="no_active_official">जोडलेली फीड येथे सक्रिय अधिकृत इशारा नसल्याचे सांगते.</string>
     <string name="clearing_compare">तुलना ठिकाण काढा</string>
-    <string name="onboard_intro">WeatherGPT तुमच्या हवामान वापराशी जुळेल असे काही सोपे पर्याय.</string>
     <string name="onboard_next">पुढे जा</string>
     <string name="onboard_back">मागे</string>
-    <string name="onboard_finish">WeatherGPT सुरू करा</string>
-    <string name="occupation_help">यामुळे तुमचा हवामान गुण, सल्ला आणि चॅट सूचना बदलतात. नंतर सेटिंग्जमध्ये बदलता येईल.</string>
-    <string name="theme_help">हलका, गडद किंवा फोननुसार निवडा. मोठा मजकूर वाचायला मदत करतो.</string>
-    <string name="permissions_title">स्थान आणि सूचना</string>
-    <string name="permissions_help">तुमचे हवामान आणण्यासाठी अंदाजे स्थान हवे. इशारे आणि स्थानिक जोखमीसाठी सूचना पर्यायी आहेत.</string>
-    <string name="grant_location">स्थान परवानगी द्या</string>
-    <string name="grant_notifications">सूचना परवानगी द्या</string>
     <string name="locating">तुमचे स्थान शोधत आहे…</string>
-    <string name="location_preferred">आम्ही आधी फोनचे स्थान वापरतो. GPS नसल्यासच शोध बॅकअप आहे.</string>
-    <string name="search_place_fallback">त्याऐवजी गाव किंवा शहर शोधा</string>
-    <string name="skip_for_now">आत्ता वगळा</string>
-    <string name="personalization">WeatherGPT तुमच्याप्रमाणे बनवा</string>
     <string name="step_of">पायरी %1$d / %2$d</string>
-    <string name="permissions_granted">परवानगी मिळाली</string>
-    <string name="permissions_needed">अजून परवानगी नाही</string>
     <string name="messages_count">%1$d संदेश</string>
     <string name="server_url_label">सर्व्हर URL</string>
     <string name="downloaded_prefix">डाउनलोड: </string>
@@ -178,6 +158,17 @@
     <string name="or_pick_city">किंवा मोठे शहर निवडा</string>
     <string name="location_backup_help">फोन स्थान पर्यायी आहे. अडकले तर वर शोधा.</string>
     <string name="tap_to_ask">एक प्रश्न दाबा</string>
+    <string name="notice_offline_cached">ऑफलाइन — आधी डाउनलोड केलेले हवामान दाखवत आहोत.</string>
+    <string name="notice_cant_connect">WeatherGPT शी संपर्क होत नाही. जतन केलेले हवामान दाखवत आहोत.</string>
+    <string name="notice_provider_down">हवामान स्रोत तात्पुरता उपलब्ध नाही. शेवटचा जतन केलेला अंदाज दाखवत आहोत.</string>
+    <string name="notice_no_data">सध्या हवामान माहिती उपलब्ध नाही. तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</string>
+    <string name="notice_check_settings">WeatherGPT या उपकरणाची पडताळणी करू शकले नाही. कनेक्शन सेटिंग्ज पहा.</string>
+    <string name="connection_unknown">सर्व्हर तपासत आहोत...</string>
+    <string name="connection_last">शेवटचा संपर्क: </string>
+    <string name="connection_never">या उपकरणावर अद्याप संपर्क झालेला नाही.</string>
+    <string name="demo_warning_title">DEMO · इशारे</string>
+    <string name="demo_warning_body">याचा अर्थ इशारे नाहीत असा नाही. बाहेर जाण्यापूर्वी तुमच्या भागाचे IMD इशारे पहा. IMD.</string>
+    <string name="demo_warning_action">DEMO · पाठवा</string>
 </resources>
 
 

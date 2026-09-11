@@ -10,7 +10,6 @@
     <string name="alerts">മുന്നറിയിപ്പുകൾ</string>
     <string name="settings">ക്രമീകരണങ്ങൾ</string>
     <string name="choose_place">നിങ്ങളുടെ സ്ഥലം തിരഞ്ഞെടുക്കുക</string>
-    <string name="welcome_tag">എല്ലാ ദിവസത്തെയും കാലാവസ്ഥാ കൂട്ടാളി</string>
     <string name="welcome">നമസ്കാരം! എങ്ങനെ സഹായിക്കാം?</string>
     <string name="intro">കാലാവസ്ഥയെക്കുറിച്ച് നിങ്ങളുടെ വാക്കുകളിൽ ചോദിക്കുക. എഴുതാം അല്ലെങ്കിൽ സംസാരിക്കാം. അക്കൗണ്ട് വേണ്ട.</string>
     <string name="rain_question">ഇന്ന് മഴ പെയ്യുമോ?</string>
@@ -29,14 +28,11 @@
     <string name="minutes_ago">മിനിറ്റ് മുമ്പ്</string>
     <string name="single_source">ഒരു കാലാവസ്ഥാ ഉറവിടം ലഭ്യമാണ്. ഇത് പ്രവചനമാണ്, ഉറപ്പല്ല.</string>
     <string name="disagree">കാലാവസ്ഥാ ഉറവിടങ്ങൾ വ്യത്യസ്തമാണ്. പദ്ധതി മാറ്റേണ്ടി വന്നേക്കാം.</string>
-    <string name="saved_weather">നിങ്ങളുടെ ഡൗൺലോഡ് പ്രവചനം</string>
     <string name="no_saved">ഇതുവരെ കാലാവസ്ഥ സേവ് ചെയ്തിട്ടില്ല. സ്ഥലം തിരഞ്ഞെടുത്ത് പ്രവചനം ഡൗൺലോഡ് ചെയ്യുക.</string>
     <string name="download">കാലാവസ്ഥ ഡൗൺലോഡ് / പുതുക്കുക</string>
     <string name="forecast_help">അടുത്ത മൂന്ന് ദിവസം, മണിക്കൂർ തോറും. മഴ സാധ്യത ആ മണിക്കൂറിന്.</string>
     <string name="no_places">സ്ഥലം കണ്ടെത്തിയില്ല. അടുത്തുള്ള പട്ടണം അല്ലെങ്കിൽ മറ്റ് അക്ഷരവിന്യാസം ശ്രമിക്കുക.</string>
     <string name="search_failed">സ്ഥലം തിരയാനായില്ല. ഇന്റർനെറ്റ് നോക്കി വീണ്ടും ശ്രമിക്കുക.</string>
-    <string name="refresh_failed">പുതിയ കാലാവസ്ഥ ലഭിച്ചില്ല. മുമ്പ് ഡൗൺലോഡ് ചെയ്തത് ലഭ്യമായിരിക്കും.</string>
-    <string name="place_help">നിങ്ങളുടെ ഗ്രാമം, പട്ടണം അല്ലെങ്കിൽ നഗരം തിരയുക. ലൊക്കേഷൻ അനുമതി വേണ്ട.</string>
     <string name="city_village">ഗ്രാമം, പട്ടണം അല്ലെങ്കിൽ നഗരം</string>
     <string name="saved_places">സേവ് ചെയ്ത സ്ഥലങ്ങൾ</string>
     <string name="search">സ്ഥലം തിരയുക</string>
@@ -68,7 +64,7 @@
     <string name="dark_theme">ഡാർക്ക്</string>
     <string name="large_text">വലിയ അക്ഷരം</string>
     <string name="language">നിങ്ങളുടെ ഭാഷ</string>
-    <string name="language_help">പ്രധാന ബട്ടണുകൾ വിവർത്തനം ചെയ്തിട്ടുണ്ട്. വിശദമായ ഉത്തരങ്ങൾ ഇപ്പോൾ മലയാളം, ഹിന്ദി അല്ലെങ്കിൽ ഇംഗ്ലീഷിൽ. ശബ്ദം ഫോണിനെ ആശ്രയിച്ചിരിക്കുന്നു.</string>
+    <string name="language_help">പ്രധാന ബട്ടണുകളും ചാറ്റ് ഉത്തരങ്ങളും നിങ്ങൾ തിരഞ്ഞെടുത്ത ഭാഷയിൽ. കാലാവസ്ഥാ അക്കങ്ങൾ, യൂണിറ്റുകൾ, സമയം, ഔദ്യോഗിക മുന്നറിയിപ്പ് അർത്ഥം മാറില്ല. ശബ്ദം ഫോണിനെ ആശ്രയിച്ചിരിക്കുന്നു. ലൈവ് വിവർത്തനം ക്രമീകരിച്ചാൽ മാത്രം.</string>
     <string name="use_for">കാലാവസ്ഥാ വിവരം എന്തിനാണ് വേണ്ടത്?</string>
     <string name="general">ദൈനംദിന ജീവിതം / സ്കൂൾ</string>
     <string name="farming">കൃഷി</string>
@@ -113,7 +109,6 @@
     <string name="thunderstorm">ഇടിമിന്നലുള്ള മഴ</string>
     <string name="use_current_location">എന്റെ നിലവിലെ സ്ഥലം ഉപയോഗിക്കുക</string>
     <string name="current_location">നിലവിലെ സ്ഥലം</string>
-    <string name="location_optional">ഞങ്ങൾ ഫോൺ സ്ഥാനത്തിന് മുൻഗണന നൽകുന്നു. GPS ഇല്ലെങ്കിൽ മാത്രം തിരയൽ.</string>
     <string name="location_unavailable">നിലവിലെ സ്ഥലം ലഭ്യമല്ല. നിങ്ങളുടെ ഗ്രാമം അല്ലെങ്കിൽ നഗരം തിരയുക.</string>
     <string name="show_details">എന്തുകൊണ്ട്? കാലാവസ്ഥാ വിശദാംശങ്ങൾ കാണിക്കുക</string>
     <string name="hide_details">കാലാവസ്ഥാ വിശദാംശങ്ങൾ മറയ്ക്കുക</string>
@@ -141,26 +136,11 @@
     <string name="action_hourly">മണിക്കൂർ തിരിച്ചുള്ള പ്രവചനം കാണിക്കുക</string>
     <string name="action_warnings">മുന്നറിയിപ്പുകൾ പരിശോധിക്കുക</string>
     <string name="action_score">എനിക്കുള്ള കാലാവസ്ഥാ സ്കോർ</string>
-    <string name="no_active_official">ബന്ധിപ്പിച്ച ഫീഡ് ഇവിടെ സജീവ ഔദ്യോഗിക മുന്നറിയിപ്പില്ലെന്ന് പറയുന്നു.</string>
     <string name="clearing_compare">താരതമ്യ സ്ഥലം നീക്കം ചെയ്യുക</string>
-    <string name="onboard_intro">WeatherGPT നിങ്ങളുടെ കാലാവസ്ഥാ ഉപയോഗത്തിന് അനുയോജ്യമാകാൻ ചില ലളിത ഓപ്ഷനുകൾ.</string>
     <string name="onboard_next">തുടരുക</string>
     <string name="onboard_back">പുറകോട്ട്</string>
-    <string name="onboard_finish">WeatherGPT ആരംഭിക്കുക</string>
-    <string name="occupation_help">ഇതുവഴി നിങ്ങളുടെ കാലാവസ്ഥാ സ്കോർ, ഉപദേശം, ചാറ്റ് നിർദ്ദേശങ്ങൾ മാറും. പിന്നീട് ക്രമീകരണത്തിൽ മാറ്റാം.</string>
-    <string name="theme_help">ലൈറ്റ്, ഡാർക്ക് അല്ലെങ്കിൽ ഫോൺ പിന്തുടരുക. വലിയ അക്ഷരം വായനയ്ക്ക് സഹായിക്കും.</string>
-    <string name="permissions_title">സ്ഥാനവും അറിയിപ്പുകളും</string>
-    <string name="permissions_help">നിങ്ങളുടെ കാലാവസ്ഥ കൊണ്ടുവരാൻ ഏകദേശ സ്ഥാനം വേണം. മുന്നറിയിപ്പുകൾക്കും പ്രാദേശിക അപകടങ്ങൾക്കും അറിയിപ്പുകൾ ഐച്ഛികം.</string>
-    <string name="grant_location">സ്ഥാന അനുമതി നൽകുക</string>
-    <string name="grant_notifications">അറിയിപ്പ് അനുമതി നൽകുക</string>
     <string name="locating">നിങ്ങളുടെ സ്ഥാനം കണ്ടെത്തുന്നു…</string>
-    <string name="location_preferred">ഞങ്ങൾ ആദ്യം ഫോൺ സ്ഥാനം ഉപയോഗിക്കുന്നു. GPS ഇല്ലെങ്കിൽ മാത്രം തിരച്ചിൽ ബാക്കപ്പ്.</string>
-    <string name="search_place_fallback">പകരം ഗ്രാമമോ നഗരമോ തിരയുക</string>
-    <string name="skip_for_now">ഇപ്പോൾ ഒഴിവാക്കുക</string>
-    <string name="personalization">WeatherGPT നിങ്ങൾക്ക് അനുയോജ്യമാക്കുക</string>
     <string name="step_of">ഘട്ടം %1$d / %2$d</string>
-    <string name="permissions_granted">അനുമതി ലഭിച്ചു</string>
-    <string name="permissions_needed">ഇതുവരെ അനുമതിയില്ല</string>
     <string name="messages_count">%1$d സന്ദേശങ്ങൾ</string>
     <string name="server_url_label">സെർവർ URL</string>
     <string name="downloaded_prefix">ഡൗൺലോഡ്: </string>
@@ -178,6 +158,17 @@
     <string name="or_pick_city">അല്ലെങ്കിൽ വലിയ നഗരം തിരഞ്ഞെടുക്കുക</string>
     <string name="location_backup_help">ഫോൺ സ്ഥാനം ഐച്ഛികം. കുടുങ്ങിയാൽ മുകളിൽ തിരയുക.</string>
     <string name="tap_to_ask">ഒരു ചോദ്യം അമർത്തുക</string>
+    <string name="notice_offline_cached">ഓഫ്‌ലൈൻ — നേരത്തെ ഡൗൺലോഡ് ചെയ്ത കാലാവസ്ഥ കാണിക്കുന്നു.</string>
+    <string name="notice_cant_connect">WeatherGPT-യുമായി ബന്ധപ്പെടാൻ കഴിയുന്നില്ല. സൂക്ഷിച്ച കാലാവസ്ഥ കാണിക്കുന്നു.</string>
+    <string name="notice_provider_down">കാലാവസ്ഥാ സ്രോതസ്സ് താൽക്കാലികമായി ലഭ്യമല്ല. അവസാനം സൂക്ഷിച്ച പ്രവചനം കാണിക്കുന്നു.</string>
+    <string name="notice_no_data">ഇപ്പോൾ കാലാവസ്ഥാ വിവരം ലഭ്യമല്ല. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.</string>
+    <string name="notice_check_settings">WeatherGPT-ന് ഈ ഉപകരണം സ്ഥിരീകരിക്കാൻ കഴിഞ്ഞില്ല. കണക്ഷൻ ക്രമീകരണം നോക്കുക.</string>
+    <string name="connection_unknown">സെർവർ പരിശോധിക്കുന്നു...</string>
+    <string name="connection_last">അവസാന ബന്ധം: </string>
+    <string name="connection_never">ഈ ഉപകരണത്തിൽ ഇതുവരെ ബന്ധപ്പെട്ടിട്ടില്ല.</string>
+    <string name="demo_warning_title">DEMO · മുന്നറിയിപ്പുകൾ</string>
+    <string name="demo_warning_body">മുന്നറിയിപ്പുകളില്ല എന്ന അർത്ഥമല്ല. പുറത്ത് പോകുന്നതിന് മുമ്പ് നിങ്ങളുടെ പ്രദേശത്തെ IMD മുന്നറിയിപ്പുകൾ നോക്കുക. IMD.</string>
+    <string name="demo_warning_action">DEMO · അയയ്ക്കുക</string>
 </resources>
 
 

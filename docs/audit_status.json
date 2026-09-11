@@ -1,0 +1,198 @@
+{
+  "schema_version": "1.0",
+  "project": "WeatherGPT",
+  "problem_statement": "SIH 2026 / PS 26068",
+  "audit_date": "2026-09-11",
+  "overall_status": "READY WITH MINOR NON-DEMO ISSUES",
+  "completion_percent": 82,
+  "p0_blockers": 0,
+  "p0_blockers_fixed_this_pass": 2,
+  "p1_issues": 5,
+  "p2_issues": 7,
+  "demo_blockers": [
+    "Gemini key remains free-tier; circuit-breaker and polish-skip now keep the app usable on 429/503/timeout",
+    "Spoken voice question was not completed (Google Speech UI launched in Bangla)",
+    "Gradle wrapper still uses a machine-local zip; official distribution URL timed out in this environment",
+    "Live BHASHINI/Google Translation credentials still absent; non-en/hi climate/marine prose stays English",
+    "Demo depends on live internet and third-party keys; demo mode is skipped by user override of master spec sections 68-69"
+  ],
+  "verification": {
+    "backend_tests": { "command": "backend/.venv/Scripts/python -m pytest -q", "result": "PASSED", "passed": 174, "failed": 0 },
+    "android_unit_tests": { "command": "gradlew testDebugUnitTest", "result": "PASSED", "passed": 52, "failed": 0, "classes": ["in.weathergpt.OfflineTest", "in.weathergpt.NetworkTest"], "note": "52 after a11y helpers and dead-code pass; APK rebuilt" },
+    "android_assemble": { "command": "gradlew assembleDebug", "result": "PASSED", "artifact": "android/app/build/outputs/apk/debug/app-debug.apk", "size_mb": 19.86 },
+    "android_lint": { "command": "gradlew lintDebug", "result": "PASSED", "errors": 0, "warnings": 35, "note": "green after audit F2; 35 warnings after unused-string removal" },
+    "localization_gate": { "command": "python scripts/check_localizations.py", "result": "PASSED", "languages": 11, "strings_per_language": 170 },
+    "accessibility_gate": { "command": "python scripts/check_accessibility.py", "result": "PASSED", "contrast_pairs": 14, "min_ratio": 6.37, "note": "was CRASHING with StopIteration before this pass" },
+    "live_backend": { "result": "PASSED", "health": "ok", "ready": { "gemini": true, "cap_alerts": true, "cache": "memory" } },
+    "live_fusion": { "result": "PASSED", "source_count": 4, "sources": ["open-meteo", "openweather", "weatherapi", "ecmwf-ifs"], "agreement": "sources_disagree", "confidence_score": 60, "calibrated_probability": false },
+    "adversarial_ai": { "result": "PASSED", "prompts_tested": 6, "fabrications": 0 },
+    "resilience": { "result": "PASSED", "scenarios_tested": 13, "crashes": 0 },
+    "apk_secret_scan": { "result": "PASSED", "secrets_found": 0, "values_checked": 4 },
+    "coordinate_log_scan": { "result": "PASSED", "log_lines_with_coordinates": 0 },
+    "android_device_run": { "result": "PASSED_PARTIAL", "device": "Pixel_10a emulator-5554 sdk_gphone16k_x86_64 API 37", "apk_installed": true, "walkthrough": "onboarding Hindi Farming Delhi, chat, compare Mumbai/Delhi, offline restart, DEMO notification, Bengali Fishing home, ERA5 climate, forecast disagreement, Google Speech UI; spoken question not completed" },
+    "docker": { "result": "NOT_TESTED", "reason": "Docker is not installed in this environment" }
+  },
+  "performance_measured": {
+    "backend_cold_start_to_health_seconds": 12,
+    "cold_bundle_four_live_providers_seconds": 4.45,
+    "warm_bundle_before_alert_cache_seconds": 2.98,
+    "warm_bundle_after_alert_cache_seconds": 0.018,
+    "chat_with_gemini_attempt_seconds": 2.0,
+    "chat_cache_hit_no_ai_seconds": 0.02,
+    "provider_latency_ms": { "open-meteo": 656, "openweather": 453, "weatherapi": 609, "ecmwf-ifs": 828 },
+    "not_measured": ["android_cold_start", "room_query_timing", "compose_recomposition_count", "android_memory"]
+  },
+  "categories": {
+    "android": {
+      "status": "PARTIAL",
+      "completion_percent": 82,
+      "done": ["Kotlin", "Compose", "Material 3", "Room v7 with migrations 1-7", "DataStore", "WorkManager", "Retrofit/OkHttp", "coroutines and Flow", "coarse-only location", "5 navigation destinations", "onboarding", "offline/stale/error/loading/empty states", "assembleDebug and APK", "lint green"],
+      "partial": ["MVVM layering is flat with a large MainActivity", "Gradle wrapper points at a machine-local zip", "spoken voice turn unfinished"],
+      "missing": ["instrumentation tests", "app icon"],
+      "unverified": ["location permission denied path", "spoken STT transcript send", "heard TTS", "notification shade tap", "WorkManager firing", "TalkBack order"]
+    },
+    "backend": {
+      "status": "DONE",
+      "completion_percent": 90,
+      "done": ["FastAPI routes all live-verified", "health/ready/capabilities", "validation and error envelopes", "gzip", "ETag and 304 on GET and POST", "rate limiting", "security headers", "request coalescing", "geohash cache grouping", "provider concurrency limits", "CAP document caching"],
+      "partial": ["canonical models mix Pydantic and typed dicts", "circuit breaking is a fixed cooldown", "/ready never reports not-ready"],
+      "missing": ["notification fan-out worker", "PostgreSQL in production (SQLite/memory used locally)"],
+      "dead_code": ["removed: tasks.py, unused Android Retrofit ready/translate, unused daily_forecast channel, leftover onboarding strings", "kept as honest stubs: delivery.py listed disabled on /v1/capabilities, cloud voice 501, IMD probe, get_agromet_advisory unavailable"]
+    },
+    "chatbot": {
+      "status": "PARTIAL",
+      "completion_percent": 82,
+      "done": ["chat is navigation destination 0", "Ask WeatherGPT on Home", "text chat", "time context for tomorrow/morning/evening/weekend/next-3-hours", "location context persists", "grounded answers only", "never sends weather questions straight to Gemini", "all 12 TOOL_REGISTRY tools reachable from POST /v1/chat/message"],
+      "partial": ["multi-turn context is day_offset plus location round-tripped by the client with no server-side history", "suggestions are pre-seeded not ranked"],
+      "missing": ["model-driven tool orchestration"],
+      "unverified": []
+    },
+    "weather": {
+      "status": "PARTIAL",
+      "completion_percent": 75,
+      "live_providers": ["open-meteo (gfs)", "openweather", "weatherapi", "ecmwf-ifs"],
+      "done": ["4 live adapters", "normalization to validated Point models", "provenance and per-field source counts", "per-provider timeout, isolation and 60s failure cooldown", "no hard-coded secrets", "unit and timezone correctness"],
+      "partial": ["IMD is an intentional access probe that always raises, not a live fourth provider", "canonical model naming incomplete"],
+      "missing": ["INCOIS official marine feed", "IMD normalized forecasts", "IMD nowcast", "IMD agromet text"]
+    },
+    "fusion": {
+      "status": "DONE",
+      "completion_percent": 85,
+      "done": ["multi-provider weighted median", "configurable per-field weights", "weighted circular mean for wind direction", "weighted plurality vote for categories with no averaging", "duplicate model-family exclusion", "stale and out-of-range exclusion", "disagreement thresholds 5C/40pp/8ms plus category mismatch", "explainable uncalibrated confidence", "official warnings never averaged"],
+      "partial": ["all weights still equal and uncalibrated", "two-provider weighted median returns the lower value causing a systematic low bias", "no explicit outlier rejection beyond median robustness", "forecast horizon does not affect confidence"]
+    },
+    "offline": {
+      "status": "PARTIAL",
+      "completion_percent": 88,
+      "done": ["Room is the observed source of truth", "full fused bundle cached including scores, risks and official alerts", "transactional writes", "response validated before caching", "ETag and 304 with local-copy guard", "freshness bands and stale labelling", "cached data never presented as live", "Low Data Mode 72h/12h vs 168h/6h", "WorkManager constraints and exponential backoff"],
+      "unverified": [],
+      "unverified_reason": "emulator airplane-mode + force-stop relaunch observed cached forecast and offline chat"
+    },
+    "languages": {
+      "status": "PARTIAL",
+      "completion_percent": 78,
+      "ui_languages_complete": 11,
+      "strings_per_language": 170,
+      "done": ["all 11 UI string packs complete with an English-leftover gate", "runtime locale switching", "two provider adapters with ordered fallback", "deterministic chat drafts in all 11 languages preserving numbers/units", "no crash when credentials are missing"],
+      "partial": ["BHASHINI/Google unused without credentials so climate/marine prose may stay English", "native-speaker review outstanding"],
+      "missing": ["live BHASHINI credentials", "live Google Translation credentials"],
+      "per_capability": {
+        "ui_strings": "DONE for all 11",
+        "translation": "PARTIAL - adapters fixture-tested, no credentials",
+        "stt": "PARTIAL - Google Speech UI launched on emulator, spoken question not sent",
+        "tts": "PARTIAL - Listen tapped, words not confirmed by ear",
+        "chat_responses": "DONE deterministic drafts for 11; live translation CREDENTIAL-BLOCKED",
+        "offline_fallback": "PARTIAL - stronger packs for en/hi/bn/te/ta/mr"
+      }
+    },
+    "voice": {
+      "status": "UNVERIFIED",
+      "completion_percent": 70,
+      "done": ["microphone permission not required because the system recognizer activity is used", "transcript shown before send", "language passed from preferences", "ActivityNotFoundException handled with a toast", "TTS language failure handled with a toast", "raw audio never stored", "cloud voice honestly returns 501"],
+      "unverified": ["spoken question sent", "heard TTS words", "per-language engine availability"]
+    },
+    "alerts": {
+      "status": "PARTIAL",
+      "completion_percent": 86,
+      "done": ["official warning and WeatherGPT risk estimate strictly separated", "CAP 1.2 parsing with status, msgType, effective/expires and polygon filtering", "severity ordering", "full provenance including sender and area descriptions", "unavailable never means no warnings across API, UI and offline", "Gemini cannot alter severity or fabricate a warning", "red/orange/yellow mapping with icon and text not colour alone", "assertive live region", "expired alerts hidden with a notice", "offline cached alert replay", "separate opt-in notification channels", "SHA-256 content deduplication"],
+      "partial": ["alert-rule gating is in the rebuilt debug APK; live official-alert fire via a saved rule is UNVERIFIED ON DEVICE"],
+      "missing": ["FCM delivery", "SMS delivery", "daily briefing notifications (intentionally not faked)"],
+      "unverified": ["notification shade tap", "rule-gated official alert on a rebuilt APK"]
+    },
+    "ai": {
+      "status": "PARTIAL",
+      "completion_percent": 80,
+      "done": ["called only from the backend", "no key in the APK, verified by scanning every entry", "model configurable", "structured JSON output with a response schema", "system guardrail prompt", "number-set, number-unit-pair, protected-source and severity-set validation", "false all-clear rejection", "coordinate redaction before the prompt", "18s timeout", "per-minute budget now charged on failure", "retry only on transient 500/502/503/504", "deterministic fallback verified under real 503 and 429", "truthful fine-tuning documentation with no fake tuned model"],
+      "partial": ["free-tier quota still limited; skip + circuit keep the app usable", "AI evaluation dataset has deterministic assertions only"],
+      "missing": ["model-driven tool calling", "fine-tuning pipeline (correctly declared NOT STARTED)"],
+      "adversarial_result": "6 of 6 prompts failed to induce any fabricated number, severity or warning"
+    },
+    "security": {
+      "status": "DONE",
+      "completion_percent": 90,
+      "fixed_this_pass": ["unauthenticated device-ID re-registration takeover that also deleted the victim's severe-weather alert subscriptions"],
+      "done": ["no committed secrets and .env untracked", "no keys in the APK", "coordinate and request validation", "16KB body and 1000-char text limits", "sliding-window rate limiting with bounded memory", "CORS disabled unless configured with no wildcard", "no SQL on the backend and Room bound parameters only", "no user input reaches a filesystem path", "HTTPS allowlisting blocking private, loopback, link-local, reserved and metadata hosts", "secret and coordinate redaction in logs", "sanitized errors with correlation ids", "hashed device tokens with constant-time comparison", "exactly one exported Android component", "minimum permissions with coarse location only", "cleartext traffic disabled", "no WebView", "security headers"],
+      "residual_risks": ["without REDIS_URL / WEATHERGPT_STORE=sqlite, device records and subscriptions are in-memory", "Android device_token stored unencrypted in DataStore", "Room is unencrypted with no SQLCipher", "alert subscriptions necessarily retain precise coordinates", "CAP feed text flows into the Gemini prompt as trusted input", "rule_store.py stores precise coordinates scoped by owner", "route-level 404s bypass the error envelope"]
+    },
+    "privacy": {
+      "status": "DONE",
+      "completion_percent": 88,
+      "done": ["location requested only on explicit user action", "one-shot location with a 7s timeout and no requestLocationUpdates", "no background location permission", "no location history or trail", "zero coordinates in logs, verified by grepping the live server log", "no analytics SDK at all", "public_location nulls lat/lon for AI and client context with precision label_only", "pasted coordinates redacted before the prompt", "POST bodies keep coordinates out of URLs for the Android paths", "short backend retention of 15min weather and 120s CAP documents", "one device cannot read another device's location, verified live"],
+      "partial": ["GET endpoints still accept query coordinates for development convenience"]
+    },
+    "scalability": {
+      "status": "PARTIAL",
+      "completion_percent": 72,
+      "done": ["routes are stateless", "cache backend abstraction", "single-flight request coalescing for weather and CAP documents", "geohash-5 cache grouping so nearby users share entries", "per-provider concurrency semaphores", "per-provider failure cooldown", "AI budget control", "health and readiness endpoints", "observability logging now emitting"],
+      "fixed_this_pass": ["the authority CAP feed was re-fetched as 1 index plus 9 documents on every weather request; now cached 120s and shared, cutting warm bundle latency from 2.98s to 0.018s"],
+      "partial": ["circuit breaking is a fixed cooldown not a half-open breaker", "/ready never reports not-ready"],
+      "missing": ["PostgreSQL in typical production", "notification fan-out worker", "durable background job queue"],
+      "blocking_horizontal_scale": true
+    },
+    "demo": {
+      "status": "SKIPPED",
+      "completion_percent": null,
+      "reason": "Demo mode explicitly skipped by user override of master spec sections 68-69; no demo weather or invented fallback is served",
+      "consequence": "a venue network failure yields honest unavailable messaging plus whatever is already cached in Room, not a scripted demo"
+    },
+    "testing": {
+      "status": "PARTIAL",
+      "completion_percent": 78,
+      "backend_unit_and_integration": 174,
+      "android_unit": 52,
+      "android_instrumentation": 0,
+      "done": ["backend unit and route integration tests across 23 files", "AI guardrail tests", "security and subscription isolation tests", "offline honesty tests", "shared contract tests validated by both Pydantic and Gson"],
+      "missing": ["Android Repository.refresh tests for ETag reuse, coordinate mismatch and range rejection", "WeatherViewModel offline fallback tests", "ForecastSync and notification dedup end-to-end tests", "Room migration 1-7 tests", "any Compose UI or navigation test", "fusion property tests for two-provider bias and weight sensitivity", "load and concurrency test", "live language provider contract tests"]
+    }
+  },
+  "fixes_applied": [
+    { "id": "F1", "priority": "P0", "area": "security", "files": ["backend/app/subscriptions.py", "backend/app/main.py", "backend/tests/test_subscriptions.py"], "summary": "register() now rejects a live device_id with 409, preventing unauthenticated token rotation and deletion of a victim's severe-weather subscriptions; revoked ids are reclaimable without inheriting subscriptions", "verified_by": "2 new regression tests plus live reproduction before the fix" },
+    { "id": "F2", "priority": "P0", "area": "build", "files": ["android/app/src/main/java/in/weathergpt/DeviceLocation.kt"], "summary": "annotated the two guarded location call sites so lintDebug passes; the runtime permission check and SecurityException handling are unchanged", "verified_by": "gradlew assembleDebug testDebugUnitTest lintDebug BUILD SUCCESSFUL" },
+    { "id": "F3", "priority": "P1", "area": "observability", "files": ["backend/app/main.py"], "summary": "added configure_logging() with LOG_LEVEL so request, provider latency, cache and fusion records actually emit; previously all were dropped at WARNING with no root handler", "verified_by": "live log shows weather_fusion, official_alerts_cache_hit and structured http_request JSON" },
+    { "id": "F4", "priority": "P1", "area": "scalability", "files": ["backend/app/alerts.py", "backend/tests/test_alerts.py"], "summary": "cached the location-independent CAP documents for 120s (30s negative) behind a single-flight guard while keeping per-location polygon filtering exact", "verified_by": "3 new tests; warm bundle latency 2.98s to 0.018s" },
+    { "id": "F5", "priority": "P1", "area": "tooling", "files": ["scripts/check_accessibility.py"], "summary": "rewrote the crashing contrast checker to parse lightColorScheme/darkColorScheme blocks, scan all 9 Kotlin files for R.string references, add the errorContainer pair and report failures instead of raising", "verified_by": "passes with 14 pairs, minimum 6.37:1" },
+    { "id": "F6", "priority": "P1", "area": "ai", "files": ["backend/app/ai.py", "backend/tests/test_security.py"], "summary": "retry once on transient 500/502/503/504 but never on 429 quota, and charge every outbound call to the per-minute budget so an outage cannot be retried without limit", "verified_by": "2 new tests" },
+    { "id": "F7", "priority": "P2", "area": "hygiene", "files": ["backend/app/weather.py", "backend/app/alerts.py"], "summary": "single-flight futures now mark their exception retrieved, removing spurious asyncio warnings", "verified_by": "test suite runs clean" }
+  ],
+  "documentation_drift": [
+    { "doc": "docs/IMPLEMENTATION_STATUS.md", "section": "dead-code pass", "claim": "prior 190-string / 111-test / unread-rule / unused-channel claims", "reality": "corrected to 170 strings, 174 pytest, 52 Android unit tests; Home/Forecast/chat paths connected; daily_forecast channel and tasks.py removed" }
+  ],
+  "top_5_next_actions": [
+    { "priority": "P0", "action": "Run the full journey on an emulator via scripts/run_sih.ps1 and record pass/fail for onboarding, chat, voice, notifications and airplane-mode offline" },
+    { "priority": "P0", "action": "Resolve the Gemini free-tier quota before the demo, or rehearse the template fallback as a deliberate safety talking point" },
+    { "priority": "P1", "action": "Make the AI pass land on the forecast path by keeping the Place-and-date header out of the AI-visible draft, without relaxing validate_polish" },
+    { "priority": "P1", "action": "Wire the three orphaned Android features: compare-place picker, per-place delete and re-purpose, and notification setContentIntent" },
+    { "priority": "P1", "action": "Route chat through TOOL_REGISTRY instead of keyword branching so the ten unreachable typed tools become real capabilities" }
+  ],
+  "environment": {
+    "repo_root": "D:/WeatherGPT",
+    "python": "3.12.14 in backend/.venv",
+    "jdk": "Android Studio JBR",
+    "gradle": "9.3.1",
+    "android_sdk_platform": "android-37.0",
+    "android_build_tools": "36.0.0",
+    "credentials_present": ["OPENWEATHER_API_KEY", "WEATHERAPI_KEY", "GEMINI_API_KEY", "GEMINI_MODEL", "CAP_ALERT_URL", "CAP_ALERT_ALLOWED_HOSTS"],
+    "credentials_absent": ["BHASHINI_*", "GOOGLE_TRANSLATE_API_KEY", "GOOGLE_PLACES_API_KEY", "GOOGLE_MAPS_API_KEY", "MAPPLS_ACCESS_TOKEN", "FIREBASE_*", "SMS_*", "REDIS_URL", "CORS_ORIGINS"],
+    "blockers": ["no emulator or physical device available in this session", "Docker not installed", "Gemini key is free tier with a ~20 request quota"]
+  }
+}

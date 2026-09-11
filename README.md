@@ -33,12 +33,12 @@ Open-Meteo (+ IFS) · OpenWeather* · WeatherAPI* · IMD probe*
 - Chat-first Q&A over verified weather tools (current, hourly, daily, alerts, score, climate, marine)
 - Multi-model fusion with explainable confidence (uncalibrated; not a probability)
 - Official CAP path when configured; local risk estimates always labelled separately
-- 11 UI languages with full string packs (162/162); offline drafts cover multiple Indian languages with English fallback where needed
+- 11 UI languages with full string packs (**170/170**); deterministic chat drafts in all 11; BHASHINI/Google Translation stay off without credentials
 - On-device voice input/playback where the phone supports it; cloud voice endpoints return 501 until configured
 - Offline Room cache, stale labelling, Low Data Mode, Wi-Fi-preferring background sync
-- Full-screen onboarding: language, occupation, theme, permissions, device location first
+- Full-screen onboarding: language → occupation → location (theme and large text are set automatically; notification permission is requested in Settings)
 - Light / dark / system theme, larger text, large labelled controls
-- Device-token authenticated alert subscriptions (no IDOR listing of other devices’ coordinates)
+- Device-token authenticated alert subscriptions (no IDOR listing of other devices’ coordinates; re-registering a live device id is refused with 409)
 
 ## Tech stack
 
@@ -62,8 +62,10 @@ Open http://localhost:8000/docs. Open-Meteo works without a key. No demonstratio
 
 Open **D:\WeatherGPT\android** in Android Studio (SDK API 37.0 / build-tools 36.0.0 / AGP 9.1.1). Build with `scripts/build_android.ps1`. The Gradle wrapper uses the checked local distribution under `.tools\` when present.
 
-- Emulator API base: `http://10.0.2.2:8000/`
-- Physical device on same LAN: Settings → Connection settings → e.g. `http://192.168.1.10:8000/` (trailing `/` required)
+- Emulator API base: `http://10.0.2.2:8000/` (`localhost` inside the emulator is the emulator itself, not Windows)
+- If the emulator cannot reach `10.0.2.2` (Windows Firewall often blocks `python.exe`), run `adb reverse tcp:8000 tcp:8000` and set the app URL to `http://127.0.0.1:8000/`
+- Physical device on the same LAN: Settings → Connection settings → `http://<PC-IPv4>:8000/` (trailing `/` required). Find the PC address with `ipconfig` → IPv4. The backend must bind `0.0.0.0:8000` (`scripts/run_backend.ps1` already does).
+- Override at build time: `gradlew installDebug -Pweathergpt.apiUrl=http://192.168.1.10:8000/` or set `weathergpt.apiUrl` in `local.properties`
 - Release builds need a real HTTPS backend URL before distribution
 
 CI runs backend and Android jobs without production secrets. Run `scripts/audit_repository.ps1` before release.
@@ -74,7 +76,7 @@ CI runs backend and Android jobs without production secrets. Run `scripts/audit_
 powershell -ExecutionPolicy Bypass -File D:\WeatherGPT\scripts\run_sih.ps1
 ```
 
-Starts the backend on `:8000`, boots `Pixel_10a` if needed, installs the debug APK, and launches WeatherGPT. Emulator uses `http://10.0.2.2:8000/`.
+Starts the backend on `0.0.0.0:8000`, boots `Pixel_10a` if needed, installs the debug APK, and launches WeatherGPT. Uses `http://10.0.2.2:8000/` when that route works; otherwise `adb reverse` plus `http://127.0.0.1:8000/` so Windows Firewall does not have to be opened.
 
 ## Environment variables
 
@@ -114,13 +116,14 @@ Saved forecasts and messages live in Room; preferences in DataStore. Offline ans
 
 ## Known limitations
 
-- **No demo mode** (user override of master spec §§68–69). Real providers or clear unavailability only.
-- IMD is probe/mapping-incomplete — do not count it as a live completed fourth integration.
+- **No Demo Mode** (user override of master spec §§68–69). Real providers or clear unavailability only. Settings can post a labelled **DEMO warning** notification; that is not demo weather.
+- **Adapters vs live providers:** Open-Meteo, OpenWeather, WeatherAPI and ECMWF IFS were live-fused here. IMD **forecasts** are a probe only — not a completed fourth live agency provider. IMD **CAP warnings** work when `CAP_ALERT_URL` is configured.
 - INCOIS official marine feed is not live; Open-Meteo Marine is model sea state only.
-- Gemini, BHASHINI, Google Translation, FCM and SMS are not live without credentials.
-- CAP parser is tested; a trusted live feed URL is still required for authoritative push of official alerts.
+- BHASHINI, Google Translation, FCM and SMS are not live without credentials. Gemini wording is optional and never weather ground truth.
 - Provider consensus confidence is uncalibrated, not a safety score.
-- Device checklist (voice, TalkBack reading order, airplane mode, notification delivery) remains open — see `docs/EVALUATION.md` and `docs/IMPLEMENTATION_STATUS.md`.
+- Spoken voice turn, TalkBack reading order, notification-shade tap and WorkManager fire remain UNVERIFIED or PARTIAL — see `docs/EVALUATION.md`.
+- Gradle wrapper may use a machine-local zip when the official distribution URL is unreachable.
+- See `docs/FINAL_AUDIT.md`, `docs/REMAINING_WORK.md`, `docs/audit_status.json` and `docs/IMPLEMENTATION_STATUS.md` (must agree).
 
 ## Further reading
 

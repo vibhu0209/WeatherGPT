@@ -26,31 +26,28 @@ data class Hour(val time:String, val temperature:Double?, val rain_chance:Double
 data class Day(val date:String, val temperature_min:Double?, val temperature_max:Double?, val rain_chance_max:Double?, val rain_total_mm:Double?, val wind_max_ms:Double?, val humidity_average:Double?, val source_count:Int=0)
 data class ScoreComponent(val name:String, val penalty:Int, val reason:String)
 data class WeatherScore(val score:Int?, val label:String, val profile:String, val time_window:String?=null, val components:List<ScoreComponent>?=null, val limiting_factors:List<String>?=null, val calculated_at:String?=null, val disclaimer:String)
-data class Recommendation(val severity:String, val message:String)
+data class Recommendation(val severity:String, val message:String, val variable:String?=null, val time_window:String?=null, val rule:String?=null, val source:String?=null)
 data class RiskEstimate(val id:String, val classification:String, val kind:String, val severity:String, val message:String, val valid_at:String, val supporting_value:Double, val unit:String, val rationale:String, val calculated_at:String, val disclaimer:String)
 data class OfficialAlert(val id:String, val classification:String, val sender:String?, val sent:String?, val event:String, val headline:String, val description:String?, val instruction:String?, val severity:String, val urgency:String, val certainty:String, val effective:String?, val expires:String?, val area_descriptions:List<String>?, val source_format:String)
 data class Confidence(val score:Int, val label:String, val calibrated_probability:Boolean, val reasons:List<String>)
 data class BundleDto(val location:Place, val hourly:List<Hour>, val retrieved_at:String, val is_stale:Boolean, val sources:List<String>, val source_count:Int, val agreement:String, val alerts_status:String, val current:Hour?=null, val daily:List<Day>?=null, val scores:Map<String,WeatherScore>?=null, val recommendations:Map<String,List<Recommendation>>?=null, val risk_estimates:List<RiskEstimate>?=null, val confidence:Confidence?=null, val disagreement_reasons:List<String>?=null, val official_status:String?=null, val official_alerts:List<OfficialAlert>?=null, val alerts_message:String?=null)
 data class SearchDto(val locations:List<Place>)
 data class ResolvedPlace(val location:Place)
-data class ChatBody(val text:String, val location:Place, val language:String, val profile:String, val day_offset:Int, val conversation_id:String, val secondary_location:Place?=null)
+data class ChatBody(val text:String, val location:Place, val language:String, val profile:String, val day_offset:Int, val conversation_id:String, val secondary_location:Place?=null, val saved_locations:List<Place> = emptyList())
 data class AnswerDto(val answer:String, val language:String, val day_offset:Int, val retrieved_at:String, val is_stale:Boolean, val sources:List<String>, val agreement:String)
 data class ResolveBody(val latitude:Double, val longitude:Double, val name:String)
 data class BundleBody(val latitude:Double, val longitude:Double, val name:String, val timezone:String, val hours:Int)
 data class DeviceRegistrationBody(val device_id:String?=null)
 data class DeviceRegistrationDto(val device_id:String, val device_token:String, val status:String)
 data class AlertSubscriptionBody(val latitude:Double, val longitude:Double, val timezone:String, val channels:List<String>)
-data class TranslateBody(val text:String, val source:String, val target:String)
 interface Api {
     @GET("health") suspend fun health():Map<String,Any>
-    @GET("ready") suspend fun ready():Map<String,Any>
     @GET("v1/locations/search") suspend fun search(@HttpQuery("q") query:String,@HttpQuery("language") language:String): SearchDto
     @POST("v1/locations/resolve") suspend fun resolve(@Body body:ResolveBody):ResolvedPlace
     @POST("v1/weather/bundle") suspend fun bundle(@Body body:BundleBody,@Header("If-None-Match") etag:String?):Response<BundleDto>
     @POST("v1/chat/message") suspend fun chat(@Body body:ChatBody):AnswerDto
     @POST("v1/device/register") suspend fun registerDevice(@Body body:DeviceRegistrationBody=DeviceRegistrationBody()):DeviceRegistrationDto
     @POST("v1/alerts/subscriptions") suspend fun createSubscription(@Body body:AlertSubscriptionBody,@Header("X-Device-Id") deviceId:String,@Header("Authorization") authorization:String):Map<String,Any>
-    @POST("v1/translate") suspend fun translate(@Body body:TranslateBody):Map<String,Any>
 }
 @Entity(tableName="weather") data class SavedWeather(@PrimaryKey val key:String, val json:String)
 @Entity(tableName="sync_metadata") data class SyncMetadata(@PrimaryKey val key:String, val etag:String?, val lastCheckedAt:Long, val lastChangedAt:Long)
@@ -59,6 +56,16 @@ fun canReuseNotModified(responseCode:Int,metadata:SyncMetadata?,weather:SavedWea
 fun bundleHorizonHours(lowData:Boolean)=if(lowData)72 else 168
 fun notificationContentSignature(vararg values:String?)=MessageDigest.getInstance("SHA-256").digest(values.joinToString("\u001f"){it.orEmpty()}.toByteArray()).joinToString(""){"%02x".format(it.toInt() and 0xff)}
 fun shouldDeliverNotification(previous:NotificationReceipt?,signature:String)=previous?.contentSignature!=signature
+const val ALERT_CHANNEL_OFFICIAL="severe"
+const val ALERT_CHANNEL_RISK="rain"
+fun shouldPromptForPlace(preferencesLoaded:Boolean,placeJson:String?)=preferencesLoaded && placeJson.isNullOrBlank()
+fun alertRuleAllows(rules:List<AlertRule>,placeKey:String,channel:String,fallback:Boolean):Boolean {
+    val rule=rules.firstOrNull { it.placeKey==placeKey && it.channel==channel }
+    return rule?.enabled ?: fallback
+}
+fun shouldNotifyForChannel(rules:List<AlertRule>,placeKey:String,channel:String,fallback:Boolean,previous:NotificationReceipt?,signature:String):Boolean {
+    return alertRuleAllows(rules,placeKey,channel,fallback) && shouldDeliverNotification(previous,signature)
+}
 @Entity(tableName="messages") data class Message(@PrimaryKey(autoGenerate=true) val id:Long=0, val role:String, val text:String, val language:String, val timestamp:Long=System.currentTimeMillis(), val conversationId:String="", val resolvedLocationId:String?=null, val weatherContextTimestamp:String?=null)
 data class ConversationSummary(val conversationId:String, val lastTimestamp:Long, val messageCount:Int)
 @Entity(tableName="saved_places") data class SavedPlace(@PrimaryKey val key:String, val label:String, val name:String, val latitude:Double, val longitude:Double, val timezone:String, val purpose:String="home") {
@@ -88,11 +95,11 @@ data class ConversationSummary(val conversationId:String, val lastTimestamp:Long
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun savePlace(place:SavedPlace)
     @Query("DELETE FROM saved_places") suspend fun clearPlaces()
     @Query("DELETE FROM saved_places WHERE `key` = :key") suspend fun deletePlace(key:String)
-    @Query("SELECT * FROM alert_rules ORDER BY channel") fun alertRules():Flow<List<AlertRule>>
     @Query("SELECT * FROM alert_rules WHERE placeKey = :placeKey") suspend fun alertRulesOnce(placeKey:String):List<AlertRule>
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun saveAlertRule(rule:AlertRule)
     @Query("DELETE FROM alert_rules") suspend fun clearAlertRules()
     @Query("DELETE FROM alert_rules WHERE id = :id") suspend fun deleteAlertRule(id:String)
+    @Query("DELETE FROM alert_rules WHERE placeKey = :placeKey") suspend fun deleteAlertRulesForPlace(placeKey:String)
 }
 @Database(entities=[SavedWeather::class,Message::class,SavedPlace::class,SyncMetadata::class,NotificationReceipt::class,AlertRule::class],version=7,exportSchema=false)
 abstract class WeatherDb:RoomDatabase() { abstract fun dao():LocalDao
@@ -123,28 +130,81 @@ abstract class WeatherDb:RoomDatabase() { abstract fun dao():LocalDao
         }
     }
 }
+/**
+ * Accept a bundle only if it is usable, and say precisely why when it is not.
+ *
+ * The backend answers 200 with an empty bundle when every provider failed, so that case has to
+ * become [ProviderUnavailableException]. Reporting it as a transport error would tell the user
+ * to start a backend that already answered.
+ */
+fun validateBundle(data:BundleDto?,p:Place):BundleDto {
+    if(data==null) throw MalformedWeatherException("Weather response was empty")
+    if(data.hourly.isEmpty() || data.source_count==0) throw ProviderUnavailableException("No provider returned weather")
+    if(data.location.latitude!=p.latitude || data.location.longitude!=p.longitude) throw MalformedWeatherException("Weather is for a different place")
+    if(!data.hourly.all { java.time.Instant.parse(it.time).epochSecond>0 && (it.temperature==null || it.temperature in -90.0..65.0) }) throw MalformedWeatherException("Weather values are out of range")
+    return data
+}
 class Repository(context:Context) {
     val dao=WeatherDb.get(context).dao()
     val gson=Gson()
-    private val client=OkHttpClient.Builder().connectTimeout(12,TimeUnit.SECONDS).readTimeout(35,TimeUnit.SECONDS).build()
-    fun api(base:String):Api=Retrofit.Builder().baseUrl(base).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(Api::class.java)
+    private val client=OkHttpClient.Builder()
+        .connectTimeout(if(BuildConfig.DEBUG) 4 else 12,TimeUnit.SECONDS)
+        .readTimeout(35,TimeUnit.SECONDS)
+        .apply {
+            if(BuildConfig.DEBUG) addInterceptor { chain ->
+                val request=chain.request()
+                val origin="${request.url.scheme}://${request.url.host}:${request.url.port}/"
+                try {
+                    val response=chain.proceed(request)
+                    val kind=when {
+                        response.isSuccessful || response.code==304 -> NetFailure.NONE
+                        else -> failureForStatus(response.code)
+                    }
+                    NetLog.call("http",origin,request.url.encodedPath,response.code,kind)
+                    response
+                } catch(error:Exception) {
+                    NetLog.call("http",origin,request.url.encodedPath,null,classifyFailure(error,true),error)
+                    throw error
+                }
+            }
+        }
+        .build()
+    fun api(base:String):Api=Retrofit.Builder().baseUrl(normalizeBaseUrl(base,BuildConfig.API_URL)).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(Api::class.java)
+    @Volatile var workingBase:String?=null
+    /**
+     * Call [block] with a live client. In debug, a refused `10.0.2.2` connection is retried on
+     * `127.0.0.1` (the `adb reverse` tunnel) and vice versa. Provider HTTP errors are not retried.
+     */
+    suspend fun <T> call(base:String,block:suspend (Api)->T):T {
+        var last:Exception?=null
+        for(url in debugAlternateBases(workingBase?:base,BuildConfig.API_URL,BuildConfig.DEBUG)) {
+            try {
+                val result=block(api(url))
+                workingBase=url
+                return result
+            } catch(e:kotlinx.coroutines.CancellationException) { throw e }
+            catch(e:Exception) {
+                last=e
+                val kind=classifyFailure(e,true)
+                if(kind!=NetFailure.SERVER_UNREACHABLE && kind!=NetFailure.TIMEOUT && kind!=NetFailure.NO_NETWORK) throw e
+            }
+        }
+        throw last ?: java.io.IOException("WeatherGPT server is not reachable")
+    }
     fun key(p:Place)="${p.latitude},${p.longitude},${p.timezone}"
     suspend fun refresh(p:Place, base:String, lowData:Boolean=false) {
         val key=key(p)
         val existing=dao.syncOnce(key)
-        val response=api(base).bundle(BundleBody(p.latitude,p.longitude,p.name,p.timezone,bundleHorizonHours(lowData)),existing?.etag)
+        val response=call(base){ it.bundle(BundleBody(p.latitude,p.longitude,p.name,p.timezone,bundleHorizonHours(lowData)),existing?.etag) }
         val checkedAt=System.currentTimeMillis()
         if(response.code()==304) {
             val localWeather=dao.weatherOnce(key)
-            if(!canReuseNotModified(response.code(),existing,localWeather)) throw java.io.IOException("Server returned unchanged weather without a local copy")
+            if(!canReuseNotModified(response.code(),existing,localWeather)) throw MalformedWeatherException("Server returned unchanged weather without a local copy")
             dao.saveSync(checkNotNull(existing).copy(lastCheckedAt=checkedAt))
             return
         }
-        if(!response.isSuccessful) throw java.io.IOException("Weather request failed")
-        val data=response.body()?:throw java.io.IOException("Weather response was empty")
-        if(data.hourly.isEmpty()) throw java.io.IOException("Weather unavailable")
-        require(data.location.latitude==p.latitude && data.location.longitude==p.longitude)
-        require(data.hourly.all { java.time.Instant.parse(it.time).epochSecond>0 && (it.temperature==null || it.temperature in -90.0..65.0) })
+        if(!response.isSuccessful) throw BackendHttpException(response.code(),"Weather request failed")
+        val data=validateBundle(response.body(),p)
         dao.saveBundle(SavedWeather(key,gson.toJson(data)),SyncMetadata(key,response.headers()["etag"],checkedAt,checkedAt))
     }
 }

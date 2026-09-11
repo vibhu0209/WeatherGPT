@@ -3,8 +3,13 @@ from typing import Literal
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 from pydantic import BaseModel, Field, field_validator
+from .security import finite_coordinate
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Canonical internal units: °C, %, mm per hour, m/s, metres, hPa, WMO code.
+# Display converts wind to km/h only at the chat/UI boundary.
+MS_TO_KMH = 3.6
 
 _ROOT_ENV = Path(__file__).resolve().parents[2] / '.env'
 
@@ -28,12 +33,22 @@ class Settings(BaseSettings):
     mappls_access_token: str = ''
     cors_origins: str = ''
     redis_url: str = ''
+    store_backend: str = 'memory'
+    store_path: str = ''
 
 class Location(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     timezone: str = 'Asia/Kolkata'
+    @field_validator('latitude')
+    @classmethod
+    def finite_lat(cls, value):
+        return finite_coordinate(value, -90, 90)
+    @field_validator('longitude')
+    @classmethod
+    def finite_lon(cls, value):
+        return finite_coordinate(value, -180, 180)
     @field_validator('timezone')
     @classmethod
     def valid_zone(cls, value):

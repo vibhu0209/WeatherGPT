@@ -11,8 +11,12 @@ from ipaddress import ip_address
 _BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 _COORD_PATTERN = re.compile(
     r"(?i)(?:\b(?:lat(?:itude)?|lon(?:gitude)?|coords?)\b\s*[:=]?\s*)?"
-    r"[-+]?\d{1,3}\.\d{2,}\s*[,/]\s*[-+]?\d{1,3}\.\d{2,}"
+    r"[-+]?\d{1,3}\.\d+\s*[,/]\s*[-+]?\d{1,3}\.\d+"
+    r"|(?:[-+]?\d{1,3}\.\d{3,}\s+[-+]?\d{1,3}\.\d{3,})"
     r"|(?:\b(?:lat(?:itude)?|lon(?:gitude)?)\b\s*[:=]\s*[-+]?\d+(?:\.\d+)?)"
+)
+_UNSAFE_PLACE_NAME = re.compile(
+    r"(?i)official\s+warnings?|severity\s*:|evacuate|weathergpt risk|imd\b|incois\b"
 )
 _SECRET_QUERY_KEYS = {"key", "appid", "api_key", "apikey", "token", "access_token", "authorization"}
 _PRIVATE_HOST_FRAGMENTS = ("localhost", "metadata.google", "169.254.", "metadata.azure")
@@ -63,11 +67,20 @@ def redact_coordinates(text: str) -> str:
     return _COORD_PATTERN.sub("[location]", text or "")
 
 
+def display_place_name(name: str) -> str:
+    """Strip control characters and refuse names that impersonate official warnings."""
+    cleaned = "".join(ch for ch in (name or "") if ch.isprintable())
+    cleaned = " ".join(cleaned.split())[:80]
+    if not cleaned or _UNSAFE_PLACE_NAME.search(cleaned):
+        return "Selected place"
+    return cleaned
+
+
 def public_location(location) -> dict:
     """Client-facing location without precise GPS when only a label is needed for context."""
     payload = location.model_dump() if hasattr(location, "model_dump") else dict(location)
     return {
-        "name": payload.get("name"),
+        "name": display_place_name(payload.get("name") or "") if payload.get("name") else None,
         "timezone": payload.get("timezone"),
         "latitude": None,
         "longitude": None,

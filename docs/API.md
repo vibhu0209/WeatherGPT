@@ -58,7 +58,7 @@ GET and POST `/v1/weather/bundle` return a private ETag and `Cache-Control: priv
 | POST | `/v1/voice/transcribe` | **501** while cloud voice is disabled. Use on-device Android speech recognition. |
 | POST | `/v1/voice/synthesize` | **501** while cloud voice is disabled. Use on-device Android TTS. |
 
-`GET /v1/capabilities` reports `cloud_voice: false` and `demo_mode: false`.
+`GET /v1/capabilities` reports `cloud_voice: false`, `demo_mode: false`, and `alert_delivery` transports (`fcm`, `sms`) each with `status: disabled` until credentials exist. Those transports are not used to send; Android posts local notifications only.
 
 ## Device registration and alert subscriptions
 
@@ -83,6 +83,6 @@ Missing or invalid auth returns **401**. Cross-device token use is rejected. Pus
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/v1/capabilities` | Feature flags (forecast, chat mode, official_alerts, marine, climate, cloud_voice, gemini, demo_mode). |
+| GET | `/v1/capabilities` | Feature flags (forecast, chat mode, official_alerts, marine, climate, cloud_voice, gemini, demo_mode, live_translation, alert_delivery). |
 | GET | `/v1/languages/capabilities` | UI languages and language-provider health. |
 | GET | `/v1/providers/status` | Per-adapter health. |

@@ -17,7 +17,6 @@ class WeatherApplication:Application() {
                 NotificationChannel("official_warnings", "Official weather warnings", NotificationManager.IMPORTANCE_HIGH).apply {
                     description="Reserved for connected authoritative warning feeds."
                 },
-                NotificationChannel("daily_forecast", "Daily forecast", NotificationManager.IMPORTANCE_LOW)
             ))
         }
     }

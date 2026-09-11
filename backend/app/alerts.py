@@ -1,13 +1,37 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
 import httpx
 
+from .cache import CacheBackend, MemoryCacheBackend
+from .metrics import metrics
 from .models import Location, Settings
 from .security import assert_https_allowlisted
+
+audit_log = logging.getLogger('weathergpt.alerts')
+
+
+def _response_size(response) -> int:
+    content = getattr(response, 'content', None)
+    if content is not None:
+        return len(content)
+    text = getattr(response, 'text', '') or ''
+    return len(text.encode('utf-8'))
+
+# Official warnings are safety critical, so the window is short. It only has to
+# stop every request for the same area from re-fetching the authority feed.
+OFFICIAL_CACHE_TTL_SECONDS = 120
+OFFICIAL_FAILURE_TTL_SECONDS = 30
+MAX_CAP_BYTES = 1_000_000
+
+
+class CapFeedUnavailable(ValueError):
+    """Raised when a recent authority-feed failure is still cached."""
 
 
 CAP_NS = {"cap": "urn:oasis:names:tc:emergency:cap:1.2"}
@@ -117,9 +141,12 @@ def _rss_or_atom_links(xml: str) -> list[str]:
 
 
 class AlertService:
-    def __init__(self, settings: Settings | None = None, max_cap_documents: int = 15):
+    def __init__(self, settings: Settings | None = None, max_cap_documents: int = 15,
+                 cache: CacheBackend | None = None):
         self.settings = settings or Settings()
         self.max_cap_documents = max_cap_documents
+        self.cache = cache or MemoryCacheBackend(max_entries=512)
+        self._inflight: dict[str, asyncio.Future] = {}
 
     def _allowed_hosts(self) -> set[str] | None:
         configured = {host.strip().lower() for host in (self.settings.cap_alert_allowed_hosts or '').split(',') if host.strip()}
@@ -135,23 +162,72 @@ class AlertService:
         links = _rss_or_atom_links(index_xml)
         if not links:
             return [index_xml]
-        documents: list[str] = []
-        for link in links[: self.max_cap_documents]:
+        sem = asyncio.Semaphore(4)
+        async def one(link: str) -> str:
             assert_https_allowlisted(link, allowed)
-            response = await client.get(link)
-            response.raise_for_status()
-            documents.append(response.text)
-        return documents
+            async with sem:
+                response = await client.get(link)
+                response.raise_for_status()
+            if _response_size(response) > MAX_CAP_BYTES:
+                raise ValueError("CAP document too large")
+            return response.text
+        return await asyncio.gather(*(one(link) for link in links[: self.max_cap_documents]))
 
-    async def official(self, location: Location) -> dict:
-        if not self.settings.cap_alert_url:
-            return {"status": "unavailable", "alerts": [], "message": "Official warning data is not connected. This does not mean there are no warnings."}
+    async def _documents(self) -> list[str]:
+        """Fetch the authority feed once per window and share it across requests.
+
+        The documents are location independent, so caching them saves the
+        network round trips while each caller still runs the exact per-location
+        polygon and lifecycle filter in ``parse_cap``.
+        """
+        key = f'official_documents:{self.settings.cap_alert_url}'
+        cached = self.cache.get(key)
+        if cached is not None:
+            if cached.get('error'):
+                audit_log.info('official_alerts_cached_failure')
+                raise CapFeedUnavailable(cached['error'])
+            audit_log.info('official_alerts_cache_hit documents=%s', len(cached['documents']))
+            metrics.inc('official_cache_hit')
+            return cached['documents']
+        existing = self._inflight.get(key)
+        if existing is not None:
+            audit_log.info('official_alerts_coalesce')
+            return await asyncio.shield(existing)
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        # Without a waiter the failure is reported by `raise` below, so mark the
+        # future's exception retrieved to avoid a spurious asyncio warning.
+        future.add_done_callback(lambda done: done.cancelled() or done.exception())
+        self._inflight[key] = future
         try:
             assert_https_allowlisted(self.settings.cap_alert_url, self._allowed_hosts())
             async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
                 response = await client.get(self.settings.cap_alert_url)
                 response.raise_for_status()
+                if _response_size(response) > MAX_CAP_BYTES:
+                    raise ValueError("CAP document too large")
                 documents = await self._fetch_cap_documents(client, response.text)
+            self.cache.set(key, {'documents': documents}, ttl_seconds=OFFICIAL_CACHE_TTL_SECONDS)
+            audit_log.info('official_alerts_cache_miss documents=%s', len(documents))
+            metrics.inc('official_cache_miss')
+            if not future.done():
+                future.set_result(documents)
+            return documents
+        except BaseException as error:
+            # Briefly remember an outage so a down authority feed is not hammered.
+            # Callers still report "unavailable", never "no warnings".
+            self.cache.set(key, {'error': type(error).__name__}, ttl_seconds=OFFICIAL_FAILURE_TTL_SECONDS)
+            if not future.done():
+                future.set_exception(error)
+            raise
+        finally:
+            self._inflight.pop(key, None)
+
+    async def official(self, location: Location) -> dict:
+        if not self.settings.cap_alert_url:
+            return {"status": "unavailable", "alerts": [], "message": "Official warning data is not connected. This does not mean there are no warnings."}
+        try:
+            documents = await self._documents()
             alerts: list[dict] = []
             seen: set[str] = set()
             for document in documents:

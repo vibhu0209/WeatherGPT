@@ -1,11 +1,15 @@
 """Backend-only external language adapters with original-text fallback."""
 from abc import ABC, abstractmethod
+from hashlib import sha256
 from urllib.parse import urlparse
 
 import httpx
 
+from .cache import MemoryCacheBackend
+from .metrics import metrics
 from .models import Settings
-from .security import assert_https_allowlisted
+from .ai import validate_translation
+from .security import assert_https_allowlisted, redact_coordinates
 
 
 LANGUAGES = {'en','hi','bn','te','mr','ta','gu','kn','ml','pa','or'}
@@ -62,15 +66,40 @@ class GoogleTranslationProvider(LanguageProvider):
 
 
 class LanguageService:
-    async def translate(self,text,source,target):
-        if source==target: return {'text':text,'provider':'original','fallback':False}
-        settings=Settings()
-        async with httpx.AsyncClient(timeout=15,follow_redirects=False) as client:
-            for provider in (BhashiniProvider(client,settings),GoogleTranslationProvider(client,settings)):
-                if not provider.enabled: continue
-                try: return {'text':await provider.translate(text,source,target),'provider':provider.id,'fallback':False}
-                except (httpx.HTTPError,ValueError,KeyError,IndexError,RuntimeError): continue
-        return {'text':text,'provider':'original','fallback':True}
+    def __init__(self):
+        self._cache = MemoryCacheBackend(max_entries=128)
+
+    def _cache_key(self, text: str, source: str, target: str) -> str | None:
+        if redact_coordinates(text) != text:
+            return None
+        digest = sha256(f'{source}\n{target}\n{text}'.encode('utf-8')).hexdigest()
+        return f'translate:{digest}'
+
+    async def translate(self, text, source, target):
+        if source == target:
+            return {'text': text, 'provider': 'original', 'fallback': False}
+        if redact_coordinates(text) != text:
+            return {'text': text, 'provider': 'original', 'fallback': True}
+        key = self._cache_key(text, source, target)
+        if key:
+            cached = self._cache.get(key)
+            if cached:
+                metrics.inc('language_cache_hit')
+                return cached
+        settings = Settings()
+        async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+            for provider in (BhashiniProvider(client, settings), GoogleTranslationProvider(client, settings)):
+                if not provider.enabled:
+                    continue
+                try:
+                    result = {'text': await provider.translate(text, source, target), 'provider': provider.id, 'fallback': False}
+                    if key:
+                        self._cache.set(key, result, ttl_seconds=86400)
+                    metrics.inc('language_cache_miss')
+                    return result
+                except (httpx.HTTPError, ValueError, KeyError, IndexError, RuntimeError):
+                    continue
+        return {'text': text, 'provider': 'original', 'fallback': True}
 
 
 language_service=LanguageService()

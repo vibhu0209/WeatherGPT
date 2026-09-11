@@ -1,7 +1,23 @@
 # Language support
 
-The app has Android string resources for all 11 requested language identifiers: en, hi, bn, te, mr, ta, gu, kn, ml, pa, or. **Every locale packs the full UI string set (126/126)** — core controls, settings, weather labels and condition names. Localization integrity (`scripts/check_localizations.py`) passes with full coverage. Native-speaker review remains required before claiming linguistic quality.
+The Android UI has complete string packs for all 11 requested language identifiers: `en`, `hi`, `bn`, `te`, `mr`, `ta`, `gu`, `kn`, `ml`, `pa`, `or` (**170/170** keys). Localization integrity (`scripts/check_localizations.py`) gates missing keys, placeholder mismatch, and leftover identical-to-English copy. Unused leftover onboarding/permission copy from an older 5-step flow was removed; every remaining key is referenced from Kotlin or layouts.
 
-Online deterministic drafts: English and Hindi. BHASHINI and Google Cloud Translation adapters can translate verified English drafts into the other configured UI languages; both are disabled without backend credentials, and failure keeps the English text. Numeric preservation is validated before translated text is returned. Free-text intent understanding outside English/Hindi remains limited. The app explains this in Settings. Speech input delegates to the installed Android recognizer activity, provides the selected language tag, and returns editable text before sending. Availability and offline capability depend on the installed engine. Playback checks installed TTS support and reports failure without crashing. No raw audio is stored by WeatherGPT. Cloud voice (`POST /v1/voice/transcribe` and `/v1/voice/synthesize`) returns **501** until configured.
+## Runtime path
 
-Offline chat currently answers in English and Hindi and explicitly labels the cached forecast. External translation needs connectivity. BHASHINI and Google translation request contracts are fixture-tested but not live-tested because credentials are absent. Their absence does not block typing, reading or Android speech on supported phones.
+Selected language is stored in DataStore, applied to the UI locale, and sent as `language` on `POST /v1/chat/message`.
+
+1. Intent is resolved from the user text (including native-script rain/today/tomorrow chips).
+2. Typed weather tools execute against canonical provider data.
+3. A deterministic template in the selected language wraps verified numbers, units, timestamps, source names and official-alert fields.
+4. Gemini may reword unprotected prose only. It cannot change numbers, units, severity tokens or source names.
+5. BHASHINI / Google Translate run only when credentials exist **and** the draft language still differs from the request. Failure keeps the deterministic draft.
+
+Official CAP headline, instruction and severity stay verbatim (usually English from the feed). Wrappers are localized; the meaning is not rewritten.
+
+## Honesty
+
+- **Live translation is not complete** without BHASHINI or Google credentials. Adapters remain; `/v1/languages/capabilities` reports `live_translation: false` and `answer_mode: deterministic_templates`.
+- Cloud STT/TTS (`POST /v1/voice/*`) returns **501**. On-device recognition and playback use `xx-IN` locale tags. Availability depends on the phone’s installed engines and is not claimed as complete.
+- Native-speaker review of template quality remains required.
+
+Offline chat uses the same selected language against the Room cache and never invents weather values.

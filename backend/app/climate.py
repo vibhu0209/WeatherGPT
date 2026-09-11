@@ -1,9 +1,11 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from statistics import mean
+import asyncio
 
 import httpx
 
+from .metrics import metrics
 from .models import Location
 
 
@@ -70,6 +72,7 @@ def calculate_summary(payload: dict, metric: str, start_year: int, end_year: int
 class ClimateService:
     def __init__(self):
         self.cache: dict[tuple, tuple[datetime, dict]] = {}
+        self._inflight: dict[tuple, asyncio.Future] = {}
 
     async def summary(self, location: Location, metric: str, years: int) -> dict:
         if metric not in {"temperature", "rainfall"}:
@@ -80,7 +83,34 @@ class ClimateService:
         cached = self.cache.get(key)
         now = datetime.now(timezone.utc)
         if cached and now - cached[0] < timedelta(days=7):
-            return cached[1]
+            metrics.inc('climate_cache_hit')
+            payload = dict(cached[1])
+            payload['location'] = location.model_dump()
+            return payload
+        existing = self._inflight.get(key)
+        if existing is not None:
+            return await existing
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        future.add_done_callback(lambda done: done.cancelled() or done.exception())
+        self._inflight[key] = future
+        try:
+            result = await self._fetch(location, metric, years, start_year, end_year)
+            self.cache[key] = (now, result)
+            metrics.inc('climate_cache_miss')
+            if len(self.cache) > 64:
+                self.cache.pop(next(iter(self.cache)))
+            if not future.done():
+                future.set_result(result)
+            return result
+        except Exception as error:
+            if not future.done():
+                future.set_exception(error)
+            raise
+        finally:
+            self._inflight.pop(key, None)
+
+    async def _fetch(self, location: Location, metric: str, years: int, start_year: int, end_year: int) -> dict:
         daily = "temperature_2m_mean" if metric == "temperature" else "precipitation_sum"
         async with httpx.AsyncClient(timeout=45, follow_redirects=False) as client:
             response = await client.get("https://archive-api.open-meteo.com/v1/archive", params={
@@ -93,11 +123,9 @@ class ClimateService:
                 "models": "era5",
             })
             response.raise_for_status()
+        metrics.inc('provider_http')
         result = calculate_summary(response.json(), metric, start_year, end_year)
         result["location"] = location.model_dump()
-        self.cache[key] = (now, result)
-        if len(self.cache) > 64:
-            self.cache.pop(next(iter(self.cache)))
         return result
 
 

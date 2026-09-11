@@ -10,7 +10,6 @@
     <string name="alerts">Warnings</string>
     <string name="settings">Settings</string>
     <string name="choose_place">Choose your place</string>
-    <string name="welcome_tag">YOUR EVERYDAY WEATHER COMPANION</string>
     <string name="welcome">Hello! How can I help?</string>
     <string name="intro">Ask about the weather in your own words. You can type or speak. No account needed.</string>
     <string name="rain_question">Will it rain today?</string>
@@ -29,14 +28,11 @@
     <string name="minutes_ago">minutes ago</string>
     <string name="single_source">One weather source available. This is a forecast, not a guarantee.</string>
     <string name="disagree">Weather sources disagree. Plans may need to change.</string>
-    <string name="saved_weather">Your downloaded forecast</string>
     <string name="no_saved">No saved weather yet. Choose a place and download its forecast.</string>
     <string name="download">Download / refresh weather</string>
     <string name="forecast_help">Next three days, hour by hour. Rain chance tells you how likely rain is during that hour.</string>
     <string name="no_places">No matching places found. Try a nearby town or another spelling.</string>
     <string name="search_failed">Place search could not connect. Check your internet and try again.</string>
-    <string name="refresh_failed">Could not get new weather. Saved weather is still available if downloaded before.</string>
-    <string name="place_help">Search for your village, town or city. Location permission is not needed.</string>
     <string name="city_village">Village, town or city</string>
     <string name="saved_places">Saved places</string>
     <string name="search">Find place</string>
@@ -68,7 +64,7 @@
     <string name="dark_theme">Dark</string>
     <string name="large_text">Larger text</string>
     <string name="language">Your language</string>
-    <string name="language_help">Core controls are translated in all 11 languages. Online chat answers use English or Hindi first. Offline answers use your language when available. Voice depends on your phone.</string>
+    <string name="language_help">Core controls and chat answers use your selected language. Weather numbers, units, times and official-alert meaning stay unchanged. Voice depends on your phone. Live BHASHINI or Google translation is used only when configured.</string>
     <string name="use_for">What do you use weather for?</string>
     <string name="general">Everyday life / school</string>
     <string name="farming">Farming</string>
@@ -92,7 +88,7 @@
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
     <string name="connection_settings">Connection settings</string>
-    <string name="server_help">For local setup: enter your WeatherGPT backend address, ending with /. On the emulator, use http://10.0.2.2:8000/.</string>
+    <string name="server_help">For local setup: enter the WeatherGPT backend address, ending with /. Emulator default: http://10.0.2.2:8000/. If that fails on Windows, run adb reverse tcp:8000 tcp:8000 and use http://127.0.0.1:8000/. On a phone, use this PC\'s LAN address, for example http://192.168.1.10:8000/.</string>
     <string name="save">Save</string>
     <string name="wifi_only">Download in the background on Wi-Fi only</string>
     <string name="low_data_mode">Low Data Mode</string>
@@ -106,7 +102,6 @@
     <string name="clear_sky">Clear sky</string><string name="cloudy">Cloudy</string><string name="fog">Fog</string><string name="drizzle">Light drizzle</string><string name="rainy">Rain</string><string name="snow">Snow</string><string name="showers">Rain showers</string><string name="thunderstorm">Thunderstorm</string>
     <string name="use_current_location">Use my current location</string>
     <string name="current_location">Current location</string>
-    <string name="location_optional">We prefer your phone location. Search is only if GPS is unavailable.</string>
     <string name="location_unavailable">Current location is unavailable. Please search for your village or city.</string>
     <string name="show_details">Why? Show weather details</string>
     <string name="hide_details">Hide weather details</string>
@@ -134,26 +129,11 @@
     <string name="action_hourly">Show hourly forecast</string>
     <string name="action_warnings">Check warnings</string>
     <string name="action_score">Weather score for me</string>
-    <string name="no_active_official">Connected feed reports no active official warning here.</string>
     <string name="clearing_compare">Clear compare place</string>
-    <string name="onboard_intro">A few quick choices so WeatherGPT fits how you use weather.</string>
     <string name="onboard_next">Continue</string>
     <string name="onboard_back">Back</string>
-    <string name="onboard_finish">Start using WeatherGPT</string>
-    <string name="occupation_help">This changes your weather score, advice and chat suggestions. You can change it later in Settings.</string>
-    <string name="theme_help">Choose light, dark, or follow your phone. Larger text helps readability.</string>
-    <string name="permissions_title">Location and notifications</string>
-    <string name="permissions_help">WeatherGPT needs approximate location to load your weather. Notifications are optional for warnings and local risk estimates.</string>
-    <string name="grant_location">Allow location</string>
-    <string name="grant_notifications">Allow notifications</string>
     <string name="locating">Finding your location…</string>
-    <string name="location_preferred">We use your phone location first. Search is only a backup if GPS is unavailable.</string>
-    <string name="search_place_fallback">Search village or city instead</string>
-    <string name="skip_for_now">Skip for now</string>
-    <string name="personalization">Personalize WeatherGPT</string>
     <string name="step_of">Step %1$d of %2$d</string>
-    <string name="permissions_granted">Allowed</string>
-    <string name="permissions_needed">Not allowed yet</string>
     <string name="messages_count">%1$d messages</string>
     <string name="server_url_label">Server URL</string>
     <string name="downloaded_prefix">Downloaded: </string>
@@ -171,6 +151,17 @@
     <string name="or_pick_city">Or tap a big city</string>
     <string name="location_backup_help">Phone location is optional. If it gets stuck, use search above.</string>
     <string name="tap_to_ask">Tap a question</string>
+    <string name="notice_offline_cached">Offline - showing the weather you downloaded earlier.</string>
+    <string name="notice_cant_connect">Cannot connect to WeatherGPT. Showing saved weather.</string>
+    <string name="notice_provider_down">Weather source is temporarily unavailable. Showing the latest saved forecast.</string>
+    <string name="notice_no_data">Weather data is not available right now. Check your connection and try again.</string>
+    <string name="notice_check_settings">WeatherGPT could not verify this device. Check Connection settings.</string>
+    <string name="connection_unknown">Checking the server...</string>
+    <string name="connection_last">Last connected: </string>
+    <string name="connection_never">Not connected yet on this device.</string>
+    <string name="demo_warning_title">DEMO warning (not official)</string>
+    <string name="demo_warning_body">This is a DEMO notification so you can practise the warning screen. It is not an IMD warning.</string>
+    <string name="demo_warning_action">Send DEMO warning</string>
 </resources>
 
 

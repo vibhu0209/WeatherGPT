@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from app.main import app
-from app.models import Point, Forecast, Location, ChatRequest, Settings
-from app.providers import OpenMeteo, EcmwfOpenMeteo, WeatherApi, openweather_to_wmo
+from app.models import Point, Forecast, Location, ChatRequest, Settings, MS_TO_KMH
+from app.providers import OpenMeteo, EcmwfOpenMeteo, OpenWeather, WeatherApi, Imd, openweather_to_wmo
 from app.weather import circular_mean, confidence_for, fuse, provider_weight, WeatherService
 from app.chat import answer
 NOW=datetime.now(timezone.utc).replace(minute=0,second=0,microsecond=0)
@@ -30,6 +30,33 @@ def test_robust_consensus():
 def test_stale_excluded():
     rows,_,_=fuse([Forecast(provider='a',model_family='a',retrieved_at=NOW-timedelta(hours=3),hourly=[Point(time=NOW,temperature=30)])],NOW)
     assert rows==[]
+
+
+def test_gfs_and_ecmwf_ifs_are_both_fused():
+    rows,_,_=fuse([
+        Forecast(provider='open-meteo', model_family='gfs', hourly=[Point(time=NOW, temperature=30)]),
+        Forecast(provider='ecmwf-ifs', model_family='ecmwf-ifs', hourly=[Point(time=NOW, temperature=32)]),
+        Forecast(provider='open-meteo-duplicate', model_family='gfs', hourly=[Point(time=NOW, temperature=10)]),
+    ], NOW)
+    assert rows[0]['source_count'] == 2
+    assert rows[0]['temperature'] in (30, 32)
+
+
+def test_missing_fields_stay_null_and_are_not_fused_as_zero():
+    rows,_,_=fuse([Forecast(provider='a', model_family='a', hourly=[Point(time=NOW, temperature=30)])], NOW)
+    assert rows[0]['temperature'] == 30
+    for field in ('rain_chance', 'rain_mm', 'wind_ms', 'wind_gust_ms', 'humidity', 'uv_index', 'visibility_m', 'pressure_hpa'):
+        assert rows[0][field] is None
+
+
+def test_hourly_rain_amount_is_not_replaced_by_a_three_hour_total():
+    rows,_,_=fuse([
+        Forecast(provider='open-meteo', model_family='gfs', hourly=[Point(time=NOW, rain_mm=1.0, rain_chance=40)]),
+        Forecast(provider='openweather', model_family='openweather-unknown', hourly=[Point(time=NOW, rain_mm=None, rain_chance=40)]),
+    ], NOW)
+    assert rows[0]['rain_mm'] == 1.0
+    assert rows[0]['rain_chance'] == 40
+    assert rows[0]['rain_mm_source_count'] == 1
 
 @pytest.mark.asyncio
 async def test_openmeteo():
@@ -91,6 +118,55 @@ async def test_weatherapi_units():
     async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r:httpx.Response(200,json={'forecast':{'forecastday':[{'hour':[{'time_epoch':NOW.timestamp(),'temp_c':30,'wind_kph':36}]}]}}))) as c:
         result=await WeatherApi(c,Settings()).forecast(LOC)
     assert result.hourly[0].wind_ms==10 and result.hourly[0].rain_chance is None
+    assert result.hourly[0].wind_gust_ms is None
+    assert result.hourly[0].visibility_m is None
+
+
+@pytest.mark.asyncio
+async def test_openweather_metric_wind_is_metres_per_second_and_3h_rain_is_dropped():
+    payload = {'list': [{
+        'dt': int(NOW.timestamp()),
+        'main': {'temp': 31.0, 'feels_like': 33.0, 'humidity': 70, 'pressure': 1008},
+        'wind': {'speed': 10.0, 'deg': 350, 'gust': 14.0},
+        'visibility': 8000,
+        'clouds': {'all': 40},
+        'pop': 0.4,
+        'rain': {'3h': 9.0},
+        'weather': [{'id': 500}],
+    }]}
+    async def handler(request):
+        assert request.url.params['units'] == 'metric'
+        return httpx.Response(200, json=payload)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await OpenWeather(client, Settings(openweather_api_key='k')).forecast(LOC)
+    hour = result.hourly[0]
+    assert hour.wind_ms == 10
+    assert hour.rain_chance == 40
+    assert hour.rain_mm is None
+    assert hour.temperature == 31
+    assert hour.weather_code == 61
+
+
+@pytest.mark.asyncio
+async def test_imd_does_not_emit_unmapped_station_observations():
+    async def handler(_request):
+        return httpx.Response(200, json=[{'station': 'too-far-away'}])
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match='station mapping'):
+            await Imd(client, Settings(imd_enabled=True)).forecast(LOC)
+
+
+def test_chat_converts_internal_metres_per_second_to_labelled_kmh():
+    bundle = {
+        'hourly': [{'time': NOW.isoformat(), 'temperature': 30, 'rain_chance': 10, 'wind_ms': 10}],
+        'is_stale': False, 'retrieved_at': NOW.isoformat(), 'sources': ['open-meteo'],
+        'agreement': 'single_source',
+    }
+    text = answer(ChatRequest(text='What is the weather today?', location=LOC), bundle)['answer']
+    assert f'{10 * MS_TO_KMH:.0f} km/h' in text
+    assert '10 km/h' not in text
+    assert 'Highest hourly chance of rain: 10%' in text
+    assert '30' in text and '°C' in text
 
 @pytest.mark.asyncio
 async def test_partial_and_total_failure(monkeypatch, caplog):

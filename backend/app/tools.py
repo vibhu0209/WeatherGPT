@@ -1,6 +1,7 @@
 """Typed, deterministic weather tools. These are the only weather-data boundary for a future LLM."""
 from datetime import datetime, timezone
 from typing import Any, Literal
+import asyncio
 
 from pydantic import BaseModel, Field
 
@@ -10,6 +11,7 @@ from .decision import current_point, daily_summary, weather_score
 from .marine import marine_service
 from .models import Location
 from .providers import PROVIDERS
+from .security import display_place_name
 from .weather import service
 
 
@@ -136,11 +138,11 @@ async def get_provider_status(_: ProviderStatusInput | None = None) -> ToolResul
 
 
 async def compare_locations(request: CompareInput) -> ToolResult:
+    bundles = await asyncio.gather(*(service.bundle(location) for location in request.locations))
     comparisons = []
     sources: set[str] = set()
     retrieved_at = None
-    for location in request.locations:
-        bundle = await service.bundle(location)
+    for location, bundle in zip(request.locations, bundles):
         daily_rows = bundle.get('daily') or daily_summary(bundle['hourly'], location.timezone)
         day = daily_rows[request.day_offset] if len(daily_rows) > request.day_offset else None
         comparisons.append({
@@ -176,7 +178,7 @@ async def set_alert_rule(request: AlertRuleInput) -> ToolResult:
     saved = upsert_rule(
         channels=channels,
         enabled=request.enabled,
-        location_name=(location.name if location else 'selected place'),
+        location_name=display_place_name(location.name) if location else 'selected place',
         latitude=(location.latitude if location else 0.0),
         longitude=(location.longitude if location else 0.0),
     )

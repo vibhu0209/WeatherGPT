@@ -10,7 +10,6 @@
     <string name="alerts">ಎಚ್ಚರಿಕೆಗಳು</string>
     <string name="settings">ಸೆಟ್ಟಿಂಗ್‌ಗಳು</string>
     <string name="choose_place">ನಿಮ್ಮ ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ</string>
-    <string name="welcome_tag">ಪ್ರತಿದಿನದ ಹವಾಮಾನ ಸಂಗಾತಿ</string>
     <string name="welcome">ನಮಸ್ಕಾರ! ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?</string>
     <string name="intro">ಹವಾಮಾನದ ಬಗ್ಗೆ ನಿಮ್ಮ ಮಾತುಗಳಲ್ಲಿ ಕೇಳಿ. ಬರೆಯಿರಿ ಅಥವಾ ಮಾತನಾಡಿ. ಖಾತೆ ಬೇಕಿಲ್ಲ.</string>
     <string name="rain_question">ಇಂದು ಮಳೆ ಬರುತ್ತದೆಯೇ?</string>
@@ -29,14 +28,11 @@
     <string name="minutes_ago">ನಿಮಿಷಗಳ ಹಿಂದೆ</string>
     <string name="single_source">ಒಂದು ಹವಾಮಾನ ಮೂಲ ಲಭ್ಯ. ಇದು ಮುನ್ಸೂಚನೆ, ಖಾತರಿ ಅಲ್ಲ.</string>
     <string name="disagree">ಹವಾಮಾನ ಮೂಲಗಳು ಭಿನ್ನವಾಗಿವೆ. ಯೋಜನೆ ಬದಲಾಗಬಹುದು.</string>
-    <string name="saved_weather">ನಿಮ್ಮ ಡೌನ್‌ಲೋಡ್ ಮುನ್ಸೂಚನೆ</string>
     <string name="no_saved">ಇನ್ನೂ ಹವಾಮಾನ ಉಳಿಸಿಲ್ಲ. ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ ಮುನ್ಸೂಚನೆ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ.</string>
     <string name="download">ಹವಾಮಾನ ಡೌನ್‌ಲೋಡ್ / ರಿಫ್ರೆಶ್</string>
     <string name="forecast_help">ಮುಂದಿನ ಮೂರು ದಿನಗಳು, ಗಂಟೆಗೊಮ್ಮೆ. ಮಳೆಯ ಸಾಧ್ಯತೆ ಆ ಗಂಟೆಗೆ.</string>
     <string name="no_places">ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ. ಹತ್ತಿರದ ಊರು ಅಥವಾ ಬೇರೆ ಕಾಗುಣಿತ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="search_failed">ಸ್ಥಳ ಹುಡುಕಲಾಗಲಿಲ್ಲ. ಇಂಟರ್ನೆಟ್ ನೋಡಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
-    <string name="refresh_failed">ಹೊಸ ಹವಾಮಾನ ಸಿಗಲಿಲ್ಲ. ಮೊದಲು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ್ದು ಲಭ್ಯವಿರುತ್ತದೆ.</string>
-    <string name="place_help">ನಿಮ್ಮ ಗ್ರಾಮ, ಪಟ್ಟಣ ಅಥವಾ ನಗರ ಹುಡುಕಿ. ಸ್ಥಳ ಅನುಮತಿ ಬೇಕಿಲ್ಲ.</string>
     <string name="city_village">ಗ್ರಾಮ, ಪಟ್ಟಣ ಅಥವಾ ನಗರ</string>
     <string name="saved_places">ಉಳಿಸಿದ ಸ್ಥಳಗಳು</string>
     <string name="search">ಸ್ಥಳ ಹುಡುಕಿ</string>
@@ -68,7 +64,7 @@
     <string name="dark_theme">ಗಾಢ</string>
     <string name="large_text">ದೊಡ್ಡ ಅಕ್ಷರ</string>
     <string name="language">ನಿಮ್ಮ ಭಾಷೆ</string>
-    <string name="language_help">ಮುಖ್ಯ ಬಟನ್‌ಗಳು ಅನುವಾದಿತ. ವಿವರ ಉತ್ತರಗಳು ಈಗ ಕನ್ನಡ, ಹಿಂದಿ ಅಥವಾ ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ. ಧ್ವನಿ ಫೋನ್ ಮೇಲೆ ಅವಲಂಬಿತ.</string>
+    <string name="language_help">ಮುಖ್ಯ ಬಟನ್‌ಗಳು ಮತ್ತು ಚಾಟ್ ಉತ್ತರಗಳು ನಿಮ್ಮ ಆಯ್ಕೆ ಭಾಷೆಯಲ್ಲಿ. ಹವಾಮಾನ ಸಂಖ್ಯೆಗಳು, ಘಟಕಗಳು, ಸಮಯ ಮತ್ತು ಅಧಿಕೃತ ಎಚ್ಚರಿಕೆ ಅರ್ಥ ಬದಲಾಗುವುದಿಲ್ಲ. ಧ್ವನಿ ಫೋನ್ ಮೇಲೆ ಅವಲಂಬಿತ. ಲೈವ್ ಅನುವಾದ ಕಾನ್ಫಿಗರ್ ಆದಾಗ ಮಾತ್ರ.</string>
     <string name="use_for">ಹವಾಮಾನ ಮಾಹಿತಿ ನಿಮಗೆ ಏಕೆ ಬೇಕು?</string>
     <string name="general">ದೈನಂದಿನ ಜೀವನ / ಶಾಲೆ</string>
     <string name="farming">ಕೃಷಿ</string>
@@ -113,7 +109,6 @@
     <string name="thunderstorm">ಗುಡುಗು ಮಿಂಚಿನ ಮಳೆ</string>
     <string name="use_current_location">ನನ್ನ ಪ್ರಸ್ತುತ ಸ್ಥಳ ಬಳಸಿ</string>
     <string name="current_location">ಪ್ರಸ್ತುತ ಸ್ಥಳ</string>
-    <string name="location_optional">ನಾವು ಫೋನ್ ಸ್ಥಳವನ್ನು ಆದ್ಯತೆ ನೀಡುತ್ತೇವೆ. GPS ಇಲ್ಲದಿದ್ದರೆ ಮಾತ್ರ ಹುಡುಕಾಟ.</string>
     <string name="location_unavailable">ಪ್ರಸ್ತುತ ಸ್ಥಳ ಲಭ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಗ್ರಾಮ ಅಥವಾ ನಗರ ಹುಡುಕಿ.</string>
     <string name="show_details">ಏಕೆ? ಹವಾಮಾನ ವಿವರಗಳನ್ನು ತೋರಿಸಿ</string>
     <string name="hide_details">ಹವಾಮಾನ ವಿವರಗಳನ್ನು ಮರೆಮಾಡಿ</string>
@@ -141,26 +136,11 @@
     <string name="action_hourly">ಗಂಟೆಯಂತೆ ಮುನ್ಸೂಚನೆ ತೋರಿಸಿ</string>
     <string name="action_warnings">ಎಚ್ಚರಿಕೆಗಳನ್ನು ನೋಡಿ</string>
     <string name="action_score">ನನಗಾಗಿ ಹವಾಮಾನ ಅಂಕ</string>
-    <string name="no_active_official">ಸಂಪರ್ಕಿತ ಫೀಡ್ ಇಲ್ಲಿ ಸಕ್ರಿಯ ಅಧಿಕೃತ ಎಚ್ಚರಿಕೆ ಇಲ್ಲ ಎನ್ನುತ್ತದೆ.</string>
     <string name="clearing_compare">ಹೋಲಿಕೆ ಸ್ಥಳ ತೆಗೆದುಹಾಕಿ</string>
-    <string name="onboard_intro">WeatherGPT ನಿಮ್ಮ ಹವಾಮಾನ ಬಳಕೆಗೆ ಹೊಂದಿಕೆಯಾಗುವಂತೆ ಕೆಲವು ಸರಳ ಆಯ್ಕೆಗಳು.</string>
     <string name="onboard_next">ಮುಂದುವರಿಸಿ</string>
     <string name="onboard_back">ಹಿಂದೆ</string>
-    <string name="onboard_finish">WeatherGPT ಪ್ರಾರಂಭಿಸಿ</string>
-    <string name="occupation_help">ಇದರಿಂದ ನಿಮ್ಮ ಹವಾಮಾನ ಅಂಕ, ಸಲಹೆ ಮತ್ತು ಚಾಟ್ ಸಲಹೆಗಳು ಬದಲಾಗುತ್ತವೆ. ನಂತರ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಬದಲಾಯಿಸಬಹುದು.</string>
-    <string name="theme_help">ಲೈಟ್, ಡಾರ್ಕ್ ಅಥವಾ ಫೋನ್ ಅನುಸರಿಸಿ. ದೊಡ್ಡ ಪಠ್ಯ ಓದಲು ಸಹಾಯ ಮಾಡುತ್ತದೆ.</string>
-    <string name="permissions_title">ಸ್ಥಳ ಮತ್ತು ಅಧಿಸೂಚನೆಗಳು</string>
-    <string name="permissions_help">ನಿಮ್ಮ ಹವಾಮಾನ ತರಲು ಅಂದಾಜು ಸ್ಥಳ ಬೇಕು. ಎಚ್ಚರಿಕೆ ಮತ್ತು ಸ್ಥಳೀಯ ಅಪಾಯಕ್ಕೆ ಅಧಿಸೂಚನೆಗಳು ಐಚ್ಛಿಕ.</string>
-    <string name="grant_location">ಸ್ಥಳ ಅನುಮತಿ ನೀಡಿ</string>
-    <string name="grant_notifications">ಅಧಿಸೂಚನೆ ಅನುಮತಿ ನೀಡಿ</string>
     <string name="locating">ನಿಮ್ಮ ಸ್ಥಳ ಹುಡುಕಲಾಗುತ್ತಿದೆ…</string>
-    <string name="location_preferred">ನಾವು ಮೊದಲು ಫೋನ್ ಸ್ಥಳ ಬಳಸುತ್ತೇವೆ. GPS ಇಲ್ಲದಿದ್ದರೆ ಮಾತ್ರ ಹುಡುಕಾಟ ಬ್ಯಾಕಪ್.</string>
-    <string name="search_place_fallback">ಬದಲಿಗೆ ಗ್ರಾಮ ಅಥವಾ ನಗರ ಹುಡುಕಿ</string>
-    <string name="skip_for_now">ಈಗ ಬಿಟ್ಟುಬಿಡಿ</string>
-    <string name="personalization">WeatherGPT ಅನ್ನು ನಿಮಗೆ ಹೊಂದಿಸಿ</string>
     <string name="step_of">ಹಂತ %1$d / %2$d</string>
-    <string name="permissions_granted">ಅನುಮತಿ ನೀಡಲಾಗಿದೆ</string>
-    <string name="permissions_needed">ಇನ್ನೂ ಅನುಮತಿ ಇಲ್ಲ</string>
     <string name="messages_count">%1$d ಸಂದೇಶಗಳು</string>
     <string name="server_url_label">ಸರ್ವರ್ URL</string>
     <string name="downloaded_prefix">ಡೌನ್‌ಲೋಡ್: </string>
@@ -178,6 +158,17 @@
     <string name="or_pick_city">ಅಥವಾ ದೊಡ್ಡ ನಗರವನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="location_backup_help">ಫೋನ್ ಸ್ಥಳ ಐಚ್ಛಿಕ. ಸಿಲುಕಿದರೆ ಮೇಲೆ ಹುಡುಕಿ.</string>
     <string name="tap_to_ask">ಒಂದು ಪ್ರಶ್ನೆ ಒತ್ತಿರಿ</string>
+    <string name="notice_offline_cached">ಆಫ್‌ಲೈನ್ — ಮೊದಲು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಹವಾಮಾನ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
+    <string name="notice_cant_connect">WeatherGPT ಗೆ ಸಂಪರ್ಕಿಸಲು ಆಗುತ್ತಿಲ್ಲ. ಉಳಿಸಿದ ಹವಾಮಾನ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
+    <string name="notice_provider_down">ಹವಾಮಾನ ಮೂಲ ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಭ್ಯವಿಲ್ಲ. ಕೊನೆಯ ಉಳಿಸಿದ ಮುನ್ಸೂಚನೆ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
+    <string name="notice_no_data">ಈಗ ಹವಾಮಾನ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="notice_check_settings">WeatherGPT ಈ ಸಾಧನವನ್ನು ಪರಿಶೀಲಿಸಲು ಆಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ನೋಡಿ.</string>
+    <string name="connection_unknown">ಸರ್ವರ್ ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇವೆ...</string>
+    <string name="connection_last">ಕೊನೆಯ ಸಂಪರ್ಕ: </string>
+    <string name="connection_never">ಈ ಸಾಧನದಲ್ಲಿ ಇನ್ನೂ ಸಂಪರ್ಕವಾಗಿಲ್ಲ.</string>
+    <string name="demo_warning_title">DEMO · ಎಚ್ಚರಿಕೆಗಳು</string>
+    <string name="demo_warning_body">ಎಚ್ಚರಿಕೆಗಳಿಲ್ಲ ಎಂದರ್ಥವಲ್ಲ. ಹೊರಗೆ ಹೋಗುವ ಮೊದಲು ನಿಮ್ಮ ಪ್ರದೇಶದ IMD ಎಚ್ಚರಿಕೆಗಳನ್ನು ನೋಡಿ. IMD.</string>
+    <string name="demo_warning_action">DEMO · ಕಳುಹಿಸಿ</string>
 </resources>
 
 

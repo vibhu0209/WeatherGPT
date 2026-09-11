@@ -1,5 +1,6 @@
 package `in`.weathergpt
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
@@ -14,6 +15,8 @@ object DeviceLocation {
     fun hasPermission(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    /** Callers reach this only after [hasPermission]; a revoked grant surfaces as SecurityException and yields null. */
+    @SuppressLint("MissingPermission")
     fun lastKnown(manager: LocationManager): Location? =
         runCatching {
             manager.getProviders(true)
@@ -21,6 +24,8 @@ object DeviceLocation {
                 .maxByOrNull { it.time }
         }.getOrNull()
 
+    /** Coarse location is checked below and every provider call is guarded, so a denied grant degrades to null. */
+    @SuppressLint("MissingPermission")
     fun request(context: Context, onResult: (Location?) -> Unit, timeoutMs: Long = 8000L) {
         if (!hasPermission(context)) {
             onResult(null)

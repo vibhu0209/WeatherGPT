@@ -1,9 +1,12 @@
 """Cache backend abstraction. Local development uses memory; production can swap in Redis."""
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
+from .models import Settings
 
 
 class CacheBackend(ABC):
@@ -47,19 +50,73 @@ class MemoryCacheBackend(CacheBackend):
 
 
 class RedisCacheBackend(CacheBackend):
-    """Placeholder for a shared Redis cache. Not required for local SQLite development."""
+    """Shared Redis cache. Optional — MemoryCacheBackend remains the local default."""
 
     def __init__(self, redis_url: str):
-        raise RuntimeError(
-            "RedisCacheBackend requires an installed Redis client and REDIS_URL. "
-            "Use MemoryCacheBackend for local development."
-        )
+        if not redis_url:
+            raise ValueError('REDIS_URL is required for RedisCacheBackend')
+        try:
+            import redis
+        except ImportError as error:
+            raise RuntimeError('redis package is not installed. Use MemoryCacheBackend for local development.') from error
+        self._client = redis.Redis.from_url(redis_url, decode_responses=True)
+        self._client.ping()
 
     def get(self, key: str) -> Any | None:
-        raise NotImplementedError
+        raw = self._client.get(key)
+        if raw is None:
+            return None
+        return json.loads(raw)
 
     def set(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
-        raise NotImplementedError
+        payload = json.dumps(value, default=str)
+        if ttl_seconds is None:
+            self._client.set(key, payload)
+        else:
+            self._client.setex(key, int(ttl_seconds), payload)
 
     def delete(self, key: str) -> None:
-        raise NotImplementedError
+        self._client.delete(key)
+
+
+class RateLimitBackend(ABC):
+    @abstractmethod
+    def allow(self, key: str) -> bool: ...
+
+
+class MemoryRateLimitBackend(RateLimitBackend):
+    def __init__(self, limiter):
+        self._limiter = limiter
+
+    def allow(self, key: str) -> bool:
+        return self._limiter.allow(key)
+
+
+class RedisRateLimitBackend(RateLimitBackend):
+    def __init__(self, redis_url: str, limit: int, window_seconds: float):
+        if not redis_url:
+            raise ValueError('REDIS_URL is required for RedisRateLimitBackend')
+        try:
+            import redis
+        except ImportError as error:
+            raise RuntimeError('redis package is not installed.') from error
+        self._client = redis.Redis.from_url(redis_url, decode_responses=True)
+        self.limit = limit
+        self.window_seconds = int(window_seconds)
+
+    def allow(self, key: str) -> bool:
+        redis_key = f'rl:{key}'
+        count = self._client.incr(redis_key)
+        if count == 1:
+            self._client.expire(redis_key, self.window_seconds)
+        return count <= self.limit
+
+
+def build_cache(max_entries: int = 256) -> CacheBackend:
+    url = Settings().redis_url
+    if url:
+        try:
+            return RedisCacheBackend(url)
+        except Exception:
+            pass
+    return MemoryCacheBackend(max_entries=max_entries)

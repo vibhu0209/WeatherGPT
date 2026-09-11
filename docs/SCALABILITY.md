@@ -37,12 +37,7 @@ Mitigations implemented:
 
 ## Background work
 
-`TaskQueue` / `InProcessTaskQueue` abstracts future Celery/RQ workers for:
-
-- provider refresh
-- CAP ingestion
-- notification fan-out
-- evaluation jobs
+Android WorkManager already runs the six-hour (or twelve-hour low-data) forecast refresh. A process-local Python task queue was removed because nothing enqueued jobs; production workers (Celery/RQ) remain a future swap, not a current feature.
 
 ## Horizontal readiness
 
@@ -50,7 +45,7 @@ Mitigations implemented:
 |---|---|---|
 | Cache | `MemoryCacheBackend` | Redis via `REDIS_URL` |
 | Devices/subscriptions | in-memory dict | PostgreSQL |
-| Tasks | in-process asyncio | Celery/RQ |
+| Tasks | Android WorkManager for refresh; no in-process Python queue | Celery/RQ if the API must fan out |
 | Rate limit | process-local | shared Redis limiter |
 
 ## Honest limits

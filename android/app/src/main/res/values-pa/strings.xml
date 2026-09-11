@@ -10,7 +10,6 @@
     <string name="alerts">ਚੇਤਾਵਨੀਆਂ</string>
     <string name="settings">ਸੈਟਿੰਗਾਂ</string>
     <string name="choose_place">ਆਪਣੀ ਥਾਂ ਚੁਣੋ</string>
-    <string name="welcome_tag">ਰੋਜ਼ਾਨਾ ਮੌਸਮ ਸਾਥੀ</string>
     <string name="welcome">ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਕਿਵੇਂ ਮਦਦ ਕਰਾਂ?</string>
     <string name="intro">ਮੌਸਮ ਬਾਰੇ ਆਪਣੇ ਸ਼ਬਦਾਂ ਵਿੱਚ ਪੁੱਛੋ। ਲਿਖੋ ਜਾਂ ਬੋਲੋ। ਖਾਤਾ ਲੋੜੀਂਦਾ ਨਹੀਂ।</string>
     <string name="rain_question">ਕੀ ਅੱਜ ਮੀਂਹ ਪਵੇਗਾ?</string>
@@ -29,14 +28,11 @@
     <string name="minutes_ago">ਮਿੰਟ ਪਹਿਲਾਂ</string>
     <string name="single_source">ਇੱਕ ਮੌਸਮ ਸਰੋਤ ਉਪਲਬਧ। ਇਹ ਅਨੁਮਾਨ ਹੈ, ਗਾਰੰਟੀ ਨਹੀਂ।</string>
     <string name="disagree">ਮੌਸਮ ਸਰੋਤ ਵੱਖਰੇ ਹਨ। ਯੋਜਨਾ ਬਦਲਣੀ ਪੈ ਸਕਦੀ ਹੈ।</string>
-    <string name="saved_weather">ਤੁਹਾਡਾ ਡਾਊਨਲੋਡ ਕੀਤਾ ਅਨੁਮਾਨ</string>
     <string name="no_saved">ਹਾਲੇ ਮੌਸਮ ਸੰਭਾਲਿਆ ਨਹੀਂ। ਥਾਂ ਚੁਣ ਕੇ ਅਨੁਮਾਨ ਡਾਊਨਲੋਡ ਕਰੋ।</string>
     <string name="download">ਮੌਸਮ ਡਾਊਨਲੋਡ / ਤਾਜ਼ਾ ਕਰੋ</string>
     <string name="forecast_help">ਅਗਲੇ ਤਿੰਨ ਦਿਨ, ਘੰਟੇ ਘੰਟੇ। ਮੀਂਹ ਦੀ ਸੰਭਾਵਨਾ ਉਸ ਘੰਟੇ ਲਈ।</string>
     <string name="no_places">ਥਾਂ ਨਹੀਂ ਮਿਲੀ। ਨੇੜਲੇ ਸ਼ਹਿਰ ਜਾਂ ਹੋਰ ਸਪੈਲਿੰਗ ਅਜ਼ਮਾਓ।</string>
     <string name="search_failed">ਥਾਂ ਖੋਜ ਨਹੀਂ ਸਕੇ। ਇੰਟਰਨੈੱਟ ਚੈੱਕ ਕਰਕੇ ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ।</string>
-    <string name="refresh_failed">ਨਵਾਂ ਮੌਸਮ ਨਹੀਂ ਮਿਲਿਆ। ਪਹਿਲਾਂ ਡਾਊਨਲੋਡ ਕੀਤਾ ਉਪਲਬਧ ਰਹੇਗਾ।</string>
-    <string name="place_help">ਆਪਣਾ ਪਿੰਡ, ਕਸਬਾ ਜਾਂ ਸ਼ਹਿਰ ਖੋਜੋ। ਟਿਕਾਣਾ ਇਜਾਜ਼ਤ ਲੋੜੀਂਦੀ ਨਹੀਂ।</string>
     <string name="city_village">ਪਿੰਡ, ਕਸਬਾ ਜਾਂ ਸ਼ਹਿਰ</string>
     <string name="saved_places">ਸੰਭਾਲੀਆਂ ਥਾਵਾਂ</string>
     <string name="search">ਥਾਂ ਖੋਜੋ</string>
@@ -68,7 +64,7 @@
     <string name="dark_theme">ਗੂੜ੍ਹਾ</string>
     <string name="large_text">ਵੱਡੇ ਅੱਖਰ</string>
     <string name="language">ਤੁਹਾਡੀ ਭਾਸ਼ਾ</string>
-    <string name="language_help">ਮੁੱਖ ਬਟਨ ਅਨੁਵਾਦਿਤ ਹਨ। ਵਿਸਤ੍ਰਿਤ ਜਵਾਬ ਹੁਣ ਪੰਜਾਬੀ, ਹਿੰਦੀ ਜਾਂ ਅੰਗਰੇਜ਼ੀ ਵਿੱਚ। ਆਵਾਜ਼ ਫ਼ੋਨ ਤੇ ਨਿਰਭਰ ਹੈ।</string>
+    <string name="language_help">ਮੁੱਖ ਬਟਨ ਅਤੇ ਚੈਟ ਜਵਾਬ ਤੁਹਾਡੀ ਚੁਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਹਨ। ਮੌਸਮ ਅੰਕੜੇ, ਇਕਾਈਆਂ, ਸਮਾਂ ਅਤੇ ਅਧਿਕਾਰਤ ਚੇਤਾਵਨੀ ਦਾ ਅਰਥ ਨਹੀਂ ਬਦਲਦਾ। ਆਵਾਜ਼ ਫ਼ੋਨ ਤੇ ਨਿਰਭਰ ਹੈ। ਲਾਈਵ ਅਨੁਵਾਦ ਸਿਰਫ਼ ਕੌਨਫਿਗਰ ਹੋਣ ਤੇ।</string>
     <string name="use_for">ਤੁਹਾਨੂੰ ਮੌਸਮ ਜਾਣਕਾਰੀ ਕਿਸ ਲਈ ਚਾਹੀਦੀ ਹੈ?</string>
     <string name="general">ਰੋਜ਼ਾਨਾ ਜੀਵਨ / ਸਕੂਲ</string>
     <string name="farming">ਖੇਤੀ</string>
@@ -113,7 +109,6 @@
     <string name="thunderstorm">ਗਰਜ ਵਾਲਾ ਤੂਫ਼ਾਨ</string>
     <string name="use_current_location">ਮੇਰੀ ਮੌਜੂਦਾ ਥਾਂ ਵਰਤੋ</string>
     <string name="current_location">ਮੌਜੂਦਾ ਥਾਂ</string>
-    <string name="location_optional">ਅਸੀਂ ਫ਼ੋਨ ਟਿਕਾਣੇ ਨੂੰ ਤਰਜੀਹ ਦਿੰਦੇ ਹਾਂ। GPS ਨਾ ਹੋਵੇ ਤਾਂ ਹੀ ਖੋਜ।</string>
     <string name="location_unavailable">ਮੌਜੂਦਾ ਥਾਂ ਉਪਲਬਧ ਨਹੀਂ। ਆਪਣਾ ਪਿੰਡ ਜਾਂ ਸ਼ਹਿਰ ਖੋਜੋ।</string>
     <string name="show_details">ਕਿਉਂ? ਮੌਸਮ ਵੇਰਵੇ ਵਿਖਾਓ</string>
     <string name="hide_details">ਮੌਸਮ ਵੇਰਵੇ ਲੁਕਾਓ</string>
@@ -141,26 +136,11 @@
     <string name="action_hourly">ਘੰਟੇਵਾਰ ਪੂਰਵ-ਅਨੁਮਾਨ ਵਿਖਾਓ</string>
     <string name="action_warnings">ਚੇਤਾਵਨੀਆਂ ਵੇਖੋ</string>
     <string name="action_score">ਮੇਰੇ ਲਈ ਮੌਸਮ ਸਕੋਰ</string>
-    <string name="no_active_official">ਜੁੜੀ ਫੀਡ ਇੱਥੇ ਕੋਈ ਸਰਗਰਮ ਅਧਿਕਾਰਤ ਚੇਤਾਵਨੀ ਨਹੀਂ ਦੱਸਦੀ।</string>
     <string name="clearing_compare">ਤੁਲਨਾ ਥਾਂ ਹਟਾਓ</string>
-    <string name="onboard_intro">WeatherGPT ਤੁਹਾਡੀ ਮੌਸਮ ਵਰਤੋਂ ਨਾਲ ਮੇਲ ਖਾਵੇ ਇਸ ਲਈ ਕੁਝ ਸਰਲ ਚੋਣਾਂ।</string>
     <string name="onboard_next">ਅੱਗੇ ਵਧੋ</string>
     <string name="onboard_back">ਪਿੱਛੇ</string>
-    <string name="onboard_finish">WeatherGPT ਸ਼ੁਰੂ ਕਰੋ</string>
-    <string name="occupation_help">ਇਸ ਨਾਲ ਤੁਹਾਡਾ ਮੌਸਮ ਸਕੋਰ, ਸਲਾਹ ਅਤੇ ਚੈਟ ਸੁਝਾਅ ਬਦਲਦੇ ਹਨ। ਬਾਅਦ ਵਿੱਚ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਬਦਲ ਸਕਦੇ ਹੋ।</string>
-    <string name="theme_help">ਹਲਕਾ, ਗੂੜ੍ਹਾ ਜਾਂ ਫ਼ੋਨ ਅਨੁਸਾਰ ਚੁਣੋ। ਵੱਡਾ ਲਿਖਤ ਪੜ੍ਹਨ ਵਿੱਚ ਮਦਦ ਕਰਦਾ ਹੈ।</string>
-    <string name="permissions_title">ਟਿਕਾਣਾ ਅਤੇ ਸੂਚਨਾਵਾਂ</string>
-    <string name="permissions_help">ਤੁਹਾਡਾ ਮੌਸਮ ਲਿਆਉਣ ਲਈ ਅੰਦਾਜ਼ਨ ਟਿਕਾਣਾ ਚਾਹੀਦਾ ਹੈ। ਚੇਤਾਵਨੀ ਅਤੇ ਸਥਾਨਕ ਖਤਰੇ ਲਈ ਸੂਚਨਾਵਾਂ ਵਿਕਲਪਕ ਹਨ।</string>
-    <string name="grant_location">ਟਿਕਾਣੇ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ</string>
-    <string name="grant_notifications">ਸੂਚਨਾਵਾਂ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ</string>
     <string name="locating">ਤੁਹਾਡਾ ਟਿਕਾਣਾ ਲੱਭਿਆ ਜਾ ਰਿਹਾ ਹੈ…</string>
-    <string name="location_preferred">ਅਸੀਂ ਪਹਿਲਾਂ ਫ਼ੋਨ ਦਾ ਟਿਕਾਣਾ ਵਰਤਦੇ ਹਾਂ। GPS ਨਾ ਮਿਲੇ ਤਾਂ ਹੀ ਖੋਜ ਬੈਕਅੱਪ ਹੈ।</string>
-    <string name="search_place_fallback">ਬਜਾਏ ਪਿੰਡ ਜਾਂ ਸ਼ਹਿਰ ਖੋਜੋ</string>
-    <string name="skip_for_now">ਹੁਣ ਛੱਡੋ</string>
-    <string name="personalization">WeatherGPT ਨੂੰ ਆਪਣੇ ਅਨੁਸਾਰ ਬਣਾਓ</string>
     <string name="step_of">ਕਦਮ %1$d / %2$d</string>
-    <string name="permissions_granted">ਇਜਾਜ਼ਤ ਮਿਲੀ</string>
-    <string name="permissions_needed">ਹਾਲੇ ਇਜਾਜ਼ਤ ਨਹੀਂ</string>
     <string name="messages_count">%1$d ਸੁਨੇਹੇ</string>
     <string name="server_url_label">ਸਰਵਰ URL</string>
     <string name="downloaded_prefix">ਡਾਊਨਲੋਡ: </string>
@@ -178,6 +158,17 @@
     <string name="or_pick_city">ਜਾਂ ਵੱਡਾ ਸ਼ਹਿਰ ਚੁਣੋ</string>
     <string name="location_backup_help">ਫ਼ੋਨ ਟਿਕਾਣਾ ਵਿਕਲਪਕ ਹੈ। ਅਟਕ ਜਾਵੇ ਤਾਂ ਉੱਪਰ ਖੋਜੋ।</string>
     <string name="tap_to_ask">ਇੱਕ ਸਵਾਲ ਦਬਾਓ</string>
+    <string name="notice_offline_cached">ਔਫਲਾਈਨ — ਪਹਿਲਾਂ ਡਾਊਨਲੋਡ ਕੀਤਾ ਮੌਸਮ ਦਿਖਾ ਰਹੇ ਹਾਂ।</string>
+    <string name="notice_cant_connect">WeatherGPT ਨਾਲ ਜੁੜ ਨਹੀਂ ਸਕੇ। ਸੰਭਾਲਿਆ ਮੌਸਮ ਦਿਖਾ ਰਹੇ ਹਾਂ।</string>
+    <string name="notice_provider_down">ਮੌਸਮ ਸਰੋਤ ਫਿਲਹਾਲ ਉਪਲਬਧ ਨਹੀਂ। ਆਖਰੀ ਸੰਭਾਲਿਆ ਅਨੁਮਾਨ ਦਿਖਾ ਰਹੇ ਹਾਂ।</string>
+    <string name="notice_no_data">ਹੁਣ ਮੌਸਮ ਜਾਣਕਾਰੀ ਉਪਲਬਧ ਨਹੀਂ। ਆਪਣਾ ਕਨੈਕਸ਼ਨ ਵੇਖੋ ਅਤੇ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।</string>
+    <string name="notice_check_settings">WeatherGPT ਇਸ ਡਿਵਾਈਸ ਦੀ ਪੁਸ਼ਟੀ ਨਹੀਂ ਕਰ ਸਕਿਆ। ਕਨੈਕਸ਼ਨ ਸੈਟਿੰਗਾਂ ਵੇਖੋ।</string>
+    <string name="connection_unknown">ਸਰਵਰ ਵੇਖ ਰਹੇ ਹਾਂ...</string>
+    <string name="connection_last">ਆਖਰੀ ਕਨੈਕਸ਼ਨ: </string>
+    <string name="connection_never">ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ ਹਾਲੇ ਕਨੈਕਸ਼ਨ ਨਹੀਂ ਹੋਇਆ।</string>
+    <string name="demo_warning_title">DEMO · ਚੇਤਾਵਨੀਆਂ</string>
+    <string name="demo_warning_body">ਇਸਦਾ ਮਤਲਬ ਚੇਤਾਵਨੀਆਂ ਨਹੀਂ ਹਨ ਐਸਾ ਨਹੀਂ। ਬਾਹਰ ਜਾਣ ਤੋਂ ਪਹਿਲਾਂ ਆਪਣੇ ਖੇਤਰ ਦੀਆਂ IMD ਚੇਤਾਵਨੀਆਂ ਵੇਖੋ। IMD.</string>
+    <string name="demo_warning_action">DEMO · ਭੇਜੋ</string>
 </resources>
 
 

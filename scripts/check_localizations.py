@@ -56,7 +56,7 @@ def main() -> int:
             if locale in FULL_LOCALES
             and values[key] == master[key]
             and master[key].strip()
-            and master[key] not in {"WeatherGPT", "UV", "Wi-Fi", "IMD", "OK"}
+            and master[key] not in {"WeatherGPT", "UV", "Wi-Fi", "IMD", "OK", "DEMO"}
             and not master[key].startswith("http")
         )
         if identical:

@@ -40,12 +40,31 @@ do {
 } while ((Get-Date) -lt $deadline)
 if ($boot -ne '1') { throw 'Emulator did not finish booting in time.' }
 
+# Choose the backend address the app will use.
+#
+# 10.0.2.2 is the emulator's alias for the host, but reaching it means an inbound connection to
+# python.exe on the host, which Windows Firewall blocks by default. `adb reverse` tunnels the
+# device's own 127.0.0.1:8000 to the host over the adb channel instead, which needs no admin
+# rights and no firewall change. Probe the direct route first and fall back to the tunnel.
+& $adb reverse tcp:8000 tcp:8000 | Out-Null
+$probe = & $adb shell "echo -e 'GET /health HTTP/1.0\r\n\r' | timeout 5 nc 10.0.2.2 8000 2>/dev/null | head -1"
+if ("$probe" -match '200') {
+    $apiUrl = 'http://10.0.2.2:8000/'
+    Write-Host "Backend reachable directly at $apiUrl"
+} else {
+    $apiUrl = 'http://127.0.0.1:8000/'
+    Write-Host 'Direct 10.0.2.2:8000 is blocked (most likely Windows Firewall).'
+    Write-Host "Using the adb reverse tunnel instead: $apiUrl"
+    Write-Host 'To use 10.0.2.2 directly, run this once in an ADMIN PowerShell:'
+    Write-Host "  New-NetFirewallRule -DisplayName 'WeatherGPT dev backend' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8000 -Program '$root\backend\.venv\Scripts\python.exe' -Profile Private"
+}
+
 # Build + install
 $env:JAVA_HOME = $javaHome
 Push-Location (Join-Path $root 'android')
 try {
     Write-Host 'Building and installing debug APK...'
-    & .\gradlew.bat installDebug
+    & .\gradlew.bat installDebug "-Pweathergpt.apiUrl=$apiUrl"
     if ($LASTEXITCODE -ne 0) { throw 'Gradle installDebug failed' }
 } finally {
     Pop-Location
@@ -54,5 +73,5 @@ try {
 Write-Host 'Launching WeatherGPT...'
 & $adb shell am start -n in.weathergpt/.MainActivity | Out-Host
 Write-Host ''
-Write-Host 'Ready. Emulator uses http://10.0.2.2:8000/ for the local backend.'
+Write-Host "Ready. The app is built against $apiUrl"
 Write-Host 'Open Chat, choose a place (e.g. Delhi), ask: Will it rain tomorrow?'

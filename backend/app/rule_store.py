@@ -22,14 +22,16 @@ def _save(payload: dict) -> None:
     _STORE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def upsert_rule(*, channels: list[str], enabled: bool, location_name: str, latitude: float, longitude: float) -> dict:
+def upsert_rule(*, channels: list[str], enabled: bool, location_name: str, latitude: float, longitude: float, owner: str = 'local') -> dict:
     with _LOCK:
         payload = _load()
         rules = [rule for rule in payload.get("rules", []) if not (
-            abs(float(rule.get("latitude", 0)) - latitude) < 1e-6
+            rule.get("owner", "local") == owner
+            and abs(float(rule.get("latitude", 0)) - latitude) < 1e-6
             and abs(float(rule.get("longitude", 0)) - longitude) < 1e-6
         )]
         entry = {
+            "owner": owner,
             "location_name": location_name,
             "latitude": latitude,
             "longitude": longitude,

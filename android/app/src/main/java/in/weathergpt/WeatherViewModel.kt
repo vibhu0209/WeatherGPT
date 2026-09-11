@@ -26,6 +26,22 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
     val searchBusy=MutableStateFlow(false)
     val chatStatus=MutableStateFlow("")
     val backendOnline=MutableStateFlow<Boolean?>(null)
+    /** Why the last backend call failed, so the UI can show one accurate banner. */
+    val failure=MutableStateFlow(NetFailure.NONE)
+    private fun online()=hasNetwork(getApplication())
+    private fun record(operation:String,path:String,error:Throwable?) {
+        val kind=if(error==null) NetFailure.NONE else classifyFailure(error,online())
+        failure.value=kind
+        offline.value=kind!=NetFailure.NONE
+        // Anything other than a transport failure proves the backend answered us.
+        backendOnline.value=when(kind) {
+            NetFailure.NO_NETWORK,NetFailure.SERVER_UNREACHABLE,NetFailure.TIMEOUT->false
+            else->true
+        }
+        if(backendOnline.value==true) markConnected()
+        NetLog.call(operation,base(),path,(error as? BackendHttpException)?.code,kind,error)
+    }
+    private fun markConnected() { save("last_connected",System.currentTimeMillis().toString()) }
     var dayOffset:Int
         get()=value("day_offset","0").toIntOrNull()?:0
         set(day){save("day_offset",day.toString())}
@@ -35,6 +51,7 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
     fun value(key:String,default:String="")=preferences.value[stringPreferencesKey(key)]?:default
     fun save(key:String,value:String) { viewModelScope.launch {
         settings.edit{it[stringPreferencesKey(key)]=value}
+        if(key=="server") repo.workingBase=null
         if(key=="wifi" || key=="low_data") ForecastSync.schedule(getApplication(),if(key=="wifi") value=="true" else this@WeatherViewModel.value("wifi","true")=="true",if(key=="low_data") value=="true" else this@WeatherViewModel.value("low_data")=="true")
     } }
     val comparePlace=MutableStateFlow<Place?>(null)
@@ -47,6 +64,7 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             it[stringPreferencesKey("place")]=repo.gson.toJson(p)
             it[stringPreferencesKey("profile")]=profile
             it[stringPreferencesKey("place_purpose")]=purpose
+            it[stringPreferencesKey("onboarded")]="true"
         }
         dayOffset=0; results.value=emptyList(); comparePlace.value=null
         ForecastSync.schedule(getApplication(),value("wifi","true")=="true",value("low_data")=="true"); refresh(p)
@@ -67,41 +85,56 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
         searchJob?.cancel()
         searchJob=viewModelScope.launch {
             searchBusy.value=true; error.value=""; results.value=emptyList()
-            try { results.value=repo.api(base()).search(q.trim(),value("language","en")).locations; if(results.value.isEmpty()) error.value="no_places" }
+            try { results.value=repo.call(base()){it.search(q.trim(),value("language","en"))}.locations; if(results.value.isEmpty()) error.value="no_places" }
             catch(e:CancellationException) { throw e }
-            catch(e:Exception) { android.util.Log.w("WeatherGPT","place_search_failed type=${e.javaClass.simpleName}"); error.value="search_failed" }
+            catch(e:Exception) { NetLog.call("search",base(),"v1/locations/search",null,classifyFailure(e,online()),e); error.value="search_failed" }
             finally { searchBusy.value=false }
         }
     }
     fun resolveCurrentLocation(latitude:Double,longitude:Double,name:String,onResolved:(Place)->Unit,onFailed:(()->Unit)?=null) {
         viewModelScope.launch {
             searchBusy.value=true; error.value=""
-            try { onResolved(repo.api(base()).resolve(ResolveBody(latitude,longitude,name)).location) }
+            try { onResolved(repo.call(base()){it.resolve(ResolveBody(latitude,longitude,name))}.location) }
             catch(e:CancellationException) { throw e }
-            catch(e:Exception) { android.util.Log.w("WeatherGPT","location_resolve_failed type=${e.javaClass.simpleName}"); error.value="location_failed"; onFailed?.invoke() }
+            catch(e:Exception) { NetLog.call("resolve",base(),"v1/locations/resolve",null,classifyFailure(e,online()),e); error.value="location_failed"; onFailed?.invoke() }
             finally { searchBusy.value=false }
         }
     }
-    private fun base()=value("server",BuildConfig.API_URL)
+    /** The effective backend address: the Settings override if set, otherwise the build default. */
+    fun base()=repo.workingBase ?: normalizeBaseUrl(value("server"),BuildConfig.API_URL)
+    /** Real reachability probe: the same Retrofit client the rest of the app uses, against GET /health. */
     fun checkBackend() {
         viewModelScope.launch {
             try {
-                val status=repo.api(base()).health()["status"]?.toString()
-                backendOnline.value = status == "ok"
-                if(status == "ok") offline.value=false
-            } catch(_:Exception) {
-                backendOnline.value = false
+                val status=repo.call(base()){it.health()}["status"]?.toString()
+                if(status=="ok") { backendOnline.value=true; failure.value=NetFailure.NONE; offline.value=false; markConnected()
+                    NetLog.call("health",base(),"health",200,NetFailure.NONE) }
+                else {
+                    backendOnline.value=false
+                    failure.value=NetFailure.BAD_RESPONSE
+                    NetLog.call("health",base(),"health",200,NetFailure.BAD_RESPONSE)
+                }
+            } catch(e:CancellationException) { throw e }
+            catch(e:Exception) {
+                val kind=classifyFailure(e,online())
+                backendOnline.value=false
+                if(failure.value==NetFailure.NONE) failure.value=kind
+                val code=(e as? BackendHttpException)?.code ?: (e as? retrofit2.HttpException)?.code()
+                NetLog.call("health",base(),"health",code,kind,e)
             }
         }
     }
-    init { checkBackend() }
     fun refresh(p:Place?=place.value) {
         if(p==null || busy.value) return
         viewModelScope.launch {
             busy.value=true; error.value=""
-            try { repo.refresh(p,base(),value("low_data")=="true"); repo.dao.weatherOnce(repo.key(p))?.let { scheduleCachedAlerts(getApplication(),p,repo.gson.fromJson(it.json,BundleDto::class.java)) }; offline.value=false }
+            try {
+                repo.refresh(p,base(),value("low_data")=="true")
+                repo.dao.weatherOnce(repo.key(p))?.let { scheduleCachedAlerts(getApplication(),p,repo.gson.fromJson(it.json,BundleDto::class.java)) }
+                record("bundle","v1/weather/bundle",null)
+            }
             catch(e:CancellationException) { throw e }
-            catch(e:Exception) { offline.value=true; error.value="refresh_failed" }
+            catch(e:Exception) { record("bundle","v1/weather/bundle",e) }
             finally { busy.value=false }
         }
     }
@@ -117,26 +150,33 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             chatStatus.value="checking"
             try {
                 val secondary=comparePlace.value?.takeIf { repo.key(it)!=repo.key(p) }
-                val a=repo.api(base()).chat(ChatBody(text.trim(),p,lang,value("profile","general"),dayOffset,conversation,secondary))
-                if(a.sources.isEmpty() && repo.dao.weatherOnce(repo.key(p))!=null) throw java.io.IOException("Live sources unavailable")
+                val saved=savedPlaces.value.map { it.place() }
+                val a=repo.call(base()){it.chat(ChatBody(text.trim(),p,lang,value("profile","general"),dayOffset,conversation,secondary,saved))}
+                if(a.sources.isEmpty() && repo.dao.weatherOnce(repo.key(p))!=null) throw ProviderUnavailableException("Live sources unavailable")
                 dayOffset=a.day_offset
                 val downloaded=java.time.Instant.parse(a.retrieved_at).atZone(java.time.ZoneId.of(p.timezone)).format(java.time.format.DateTimeFormatter.ofPattern("d MMM, h:mm a",java.util.Locale.forLanguageTag(a.language)))
                 val sourceLabel=getApplication<Application>().createConfigurationContext(
                     Configuration(getApplication<Application>().resources.configuration).apply { setLocale(Locale.forLanguageTag(lang)) }
                 ).getString(R.string.downloaded_prefix)
                 repo.dao.message(Message(role="assistant",text=a.answer+"\n\n"+sourceLabel+downloaded+" · "+a.sources.joinToString(),language=a.language,conversationId=conversation,resolvedLocationId=repo.key(p),weatherContextTimestamp=a.retrieved_at))
-                offline.value=false
+                record("chat","v1/chat/message",null)
             } catch(e:CancellationException) { throw e }
             catch(e:Exception) {
-                offline.value=true
+                record("chat","v1/chat/message",e)
                 val cached=repo.dao.weatherOnce(repo.key(p))?.let{repo.gson.fromJson(it.json,BundleDto::class.java)}
                 val (message,day)=Offline.answer(text,cached,dayOffset,lang); dayOffset=day
                 repo.dao.message(Message(role="assistant",text=message,language=lang,conversationId=conversation,resolvedLocationId=repo.key(p),weatherContextTimestamp=cached?.retrieved_at))
             } finally { busy.value=false; chatStatus.value="" }
         }
     }
-    fun clearChat() { viewModelScope.launch{settings.edit{it.remove(stringPreferencesKey("conversation_id"));it[stringPreferencesKey("day_offset")]="0"}} }
-    fun startNewChat() { viewModelScope.launch { settings.edit { it.remove(stringPreferencesKey("conversation_id")); it[stringPreferencesKey("day_offset")]="0" } } }
+    fun startNewChat() {
+        viewModelScope.launch {
+            settings.edit {
+                it[stringPreferencesKey("conversation_id")]=java.util.UUID.randomUUID().toString()
+                it[stringPreferencesKey("day_offset")]="0"
+            }
+        }
+    }
     fun openConversation(conversationId:String) { save("conversation_id", conversationId) }
     fun deleteConversation(conversationId:String) {
         viewModelScope.launch {
@@ -144,14 +184,23 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             if(value("conversation_id")==conversationId) settings.edit { it.remove(stringPreferencesKey("conversation_id")); it[stringPreferencesKey("day_offset")]="0" }
         }
     }
-    fun deletePlace(place:SavedPlace) { viewModelScope.launch { repo.dao.deletePlace(place.key) } }
+    fun deletePlace(place:SavedPlace) { viewModelScope.launch {
+        repo.dao.deletePlace(place.key)
+        repo.dao.deleteAlertRulesForPlace(place.key)
+        val current=this@WeatherViewModel.place.value
+        if(current!=null && repo.key(current)==place.key) {
+            settings.edit { it.remove(stringPreferencesKey("place")) }
+        }
+        if(comparePlace.value!=null && repo.key(comparePlace.value!!)==place.key) comparePlace.value=null
+    } }
+    fun sendDemoWarning() { postDemoWarning(getApplication()) }
     fun ensureDeviceRegistration() {
         viewModelScope.launch { registerDeviceIfNeeded() }
     }
     private suspend fun registerDeviceIfNeeded(): Boolean {
         if(value("device_id").isNotBlank() && value("device_token").isNotBlank()) return true
         return try {
-            val registered=repo.api(base()).registerDevice(DeviceRegistrationBody())
+            val registered=repo.call(base()){it.registerDevice(DeviceRegistrationBody())}
             settings.edit {
                 it[stringPreferencesKey("device_id")]=registered.device_id
                 it[stringPreferencesKey("device_token")]=registered.device_token
@@ -162,23 +211,18 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             false
         }
     }
-    fun syncAlertSubscription(enabled:Boolean) {
+    fun syncAlertSubscription(enabled:Boolean,channel:String=ALERT_CHANNEL_OFFICIAL) {
         val p=place.value?:return
         viewModelScope.launch {
             val placeKey=repo.key(p)
-            val channels=buildList {
-                if(value("official_notifications")=="true") add("severe")
-                if(value("risk_notifications")=="true") add("rain")
-            }
-            channels.forEach { channel ->
-                repo.dao.saveAlertRule(AlertRule(id="$placeKey:$channel",placeKey=placeKey,channel=channel,enabled=enabled))
-            }
+            val id="$placeKey:$channel"
+            if(enabled) repo.dao.saveAlertRule(AlertRule(id=id,placeKey=placeKey,channel=channel,enabled=true))
+            else repo.dao.deleteAlertRule(id)
             if(!enabled || !registerDeviceIfNeeded()) return@launch
             val deviceId=value("device_id"); val token=value("device_token")
             if(deviceId.isBlank() || token.isBlank()) return@launch
-            val payloadChannels=channels.ifEmpty { listOf("severe") }
             try {
-                repo.api(base()).createSubscription(AlertSubscriptionBody(p.latitude,p.longitude,p.timezone,payloadChannels),deviceId,"Bearer $token")
+                repo.call(base()){it.createSubscription(AlertSubscriptionBody(p.latitude,p.longitude,p.timezone,listOf(channel)),deviceId,"Bearer $token")}
             } catch(_:Exception) { android.util.Log.w("WeatherGPT","subscription_sync_failed") }
         }
     }

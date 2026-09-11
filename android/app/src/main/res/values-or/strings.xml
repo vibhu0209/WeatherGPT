@@ -10,7 +10,6 @@
     <string name="alerts">ଚେତାବନୀ</string>
     <string name="settings">ସେଟିଂସ୍</string>
     <string name="choose_place">ଆପଣଙ୍କ ସ୍ଥାନ ବାଛନ୍ତୁ</string>
-    <string name="welcome_tag">ପ୍ରତିଦିନର ପାଣିପାଗ ସାଥୀ</string>
     <string name="welcome">ନମସ୍କାର! ମୁଁ କିପରି ସାହାଯ୍ୟ କରିବି?</string>
     <string name="intro">ପାଣିପାଗ ବିଷୟରେ ଆପଣଙ୍କ ଭାଷାରେ ପଚାରନ୍ତୁ। ଲେଖନ୍ତୁ କିମ୍ବା କୁହନ୍ତୁ। ଖାତା ଦରକାର ନାହିଁ।</string>
     <string name="rain_question">ଆଜି ବର୍ଷା ହେବ କି?</string>
@@ -29,14 +28,11 @@
     <string name="minutes_ago">ମିନିଟ୍ ପୂର୍ବେ</string>
     <string name="single_source">ଗୋଟିଏ ପାଣିପାଗ ଉତ୍ସ ଉପଲବ୍ଧ। ଏହା ପୂର୍ବାନୁମାନ, ଗ୍ୟାରେଣ୍ଟି ନୁହେଁ।</string>
     <string name="disagree">ପାଣିପାଗ ଉତ୍ସଗୁଡ଼ିକ ଭିନ୍ନ। ଯୋଜନା ବଦଳାଇବାକୁ ପଡ଼ିପାରେ।</string>
-    <string name="saved_weather">ଆପଣଙ୍କ ଡାଉନଲୋଡ୍ ପୂର୍ବାନୁମାନ</string>
     <string name="no_saved">ଏପର୍ଯ୍ୟନ୍ତ ପାଣିପାଗ ସଞ୍ଚିତ ନାହିଁ। ସ୍ଥାନ ବାଛି ପୂର୍ବାନୁମାନ ଡାଉନଲୋଡ୍ କରନ୍ତୁ।</string>
     <string name="download">ପାଣିପାଗ ଡାଉନଲୋଡ୍ / ରିଫ୍ରେସ୍</string>
     <string name="forecast_help">ଆଗାମୀ ତିନି ଦିନ, ଘଣ୍ଟା ଘଣ୍ଟାରେ। ବର୍ଷା ସମ୍ଭାବନା ସେହି ଘଣ୍ଟା ପାଇଁ।</string>
     <string name="no_places">ସ୍ଥାନ ମିଳିଲା ନାହିଁ। ପାଖର ସହର କିମ୍ବା ଅନ୍ୟ ବନାନ ଚେଷ୍ଟା କରନ୍ତୁ।</string>
     <string name="search_failed">ସ୍ଥାନ ଖୋଜି ପାରିଲୁ ନାହିଁ। ଇଣ୍ଟରନେଟ୍ ଦେଖି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।</string>
-    <string name="refresh_failed">ନୂଆ ପାଣିପାଗ ମିଳିଲା ନାହିଁ। ପୂର୍ବରୁ ଡାଉନଲୋଡ୍ କରିଥିବା ଉପଲବ୍ଧ ରହିବ।</string>
-    <string name="place_help">ଆପଣଙ୍କ ଗାଁ, ସହର କିମ୍ବା ନଗର ଖୋଜନ୍ତୁ। ଲୋକେସନ୍ ଅନୁମତି ଦରକାର ନାହିଁ।</string>
     <string name="city_village">ଗାଁ, ସହର କିମ୍ବା ନଗର</string>
     <string name="saved_places">ସଞ୍ଚିତ ସ୍ଥାନ</string>
     <string name="search">ସ୍ଥାନ ଖୋଜନ୍ତୁ</string>
@@ -68,7 +64,7 @@
     <string name="dark_theme">ଗାଢ଼</string>
     <string name="large_text">ବଡ଼ ଅକ୍ଷର</string>
     <string name="language">ଆପଣଙ୍କ ଭାଷା</string>
-    <string name="language_help">ମୁଖ୍ୟ ବଟନ୍ ଅନୁବାଦିତ। ବିସ୍ତୃତ ଉତ୍ତର ବର୍ତ୍ତମାନ ଓଡ଼ିଆ, ହିନ୍ଦୀ କିମ୍ବା ଇଂରାଜୀରେ। ସ୍ୱର ଫୋନ୍ ଉପରେ ନିର୍ଭର କରେ।</string>
+    <string name="language_help">ମୁଖ୍ୟ ବଟନ୍ ଓ ଚାଟ୍ ଉତ୍ତର ଆପଣଙ୍କ ବଛା ଭାଷାରେ। ପାଣିପାଗ ସଂଖ୍ୟା, ଏକକ, ସମୟ ଓ ସରକାରୀ ଚେତାବନୀର ଅର୍ଥ ବଦଳେ ନାହିଁ। ସ୍ୱର ଫୋନ୍ ଉପରେ ନିର୍ଭର କରେ। ଲାଇଭ୍ ଅନୁବାଦ କେବଳ କନଫିଗର ହେଲେ।</string>
     <string name="use_for">ଆପଣଙ୍କୁ ପାଣିପାଗ ସୂଚନା କାହିଁକି ଦରକାର?</string>
     <string name="general">ଦୈନନ୍ଦିନ ଜୀବନ / ବିଦ୍ୟାଳୟ</string>
     <string name="farming">କୃଷି</string>
@@ -113,7 +109,6 @@
     <string name="thunderstorm">ଘଡ଼ଘଡ଼ି ବର୍ଷା</string>
     <string name="use_current_location">ମୋ ବର୍ତ୍ତମାନ ସ୍ଥାନ ବ୍ୟବହାର କରନ୍ତୁ</string>
     <string name="current_location">ବର୍ତ୍ତମାନ ସ୍ଥାନ</string>
-    <string name="location_optional">ଆମେ ଫୋନ୍ ଅବସ୍ଥାନକୁ ପସନ୍ଦ କରୁ। GPS ନ ଥିଲେ ହିଁ ସର୍ଚ୍ଚ।</string>
     <string name="location_unavailable">ବର୍ତ୍ତମାନ ସ୍ଥାନ ଉପଲବ୍ଧ ନାହିଁ। ଆପଣଙ୍କ ଗାଁ କିମ୍ବା ସହର ଖୋଜନ୍ତୁ।</string>
     <string name="show_details">କାହିଁକି? ପାଣିପାଗ ବିବରଣୀ ଦେଖାନ୍ତୁ</string>
     <string name="hide_details">ପାଣିପାଗ ବିବରଣୀ ଲୁଚାନ୍ତୁ</string>
@@ -141,26 +136,11 @@
     <string name="action_hourly">ଘଣ୍ଟାଅନୁଯାୟୀ ପୂର୍ବାନୁମାନ ଦେଖାନ୍ତୁ</string>
     <string name="action_warnings">ସତର୍କତା ଯାଞ୍ଚ କରନ୍ତୁ</string>
     <string name="action_score">ମୋ ପାଇଁ ପାଣିପାଗ ସ୍କୋର</string>
-    <string name="no_active_official">ସଂଯୁକ୍ତ ଫିଡ୍ ଏଠାରେ ସକ୍ରିୟ ସରକାରୀ ସତର୍କତା ନାହିଁ ବୋଲି କହେ।</string>
     <string name="clearing_compare">ତୁଳନା ସ୍ଥାନ ହଟାନ୍ତୁ</string>
-    <string name="onboard_intro">WeatherGPT ଆପଣଙ୍କ ପାଣିପାଗ ବ୍ୟବହାର ସହିତ ମେଳ ଖାଇବା ପାଇଁ କିଛି ସରଳ ବିକଳ୍ପ।</string>
     <string name="onboard_next">ଆଗକୁ ବଢ଼ନ୍ତୁ</string>
     <string name="onboard_back">ପଛକୁ</string>
-    <string name="onboard_finish">WeatherGPT ଆରମ୍ଭ କରନ୍ତୁ</string>
-    <string name="occupation_help">ଏଥିରେ ଆପଣଙ୍କ ପାଣିପାଗ ସ୍କୋର, ପରାମର୍ଶ ଓ ଚାଟ୍ ପରାମର୍ଶ ବଦଳେ। ପରେ ସେଟିଂସ୍‌ରେ ବଦଳାଇ ପାରିବେ।</string>
-    <string name="theme_help">ହାଲୁକା, ଗାଢ଼ କିମ୍ବା ଫୋନ୍ ଅନୁସରଣ କରନ୍ତୁ। ବଡ଼ ଲେଖା ପଢ଼ିବାରେ ସାହାଯ୍ୟ କରେ।</string>
-    <string name="permissions_title">ଅବସ୍ଥାନ ଏବଂ ବିଜ୍ଞପ୍ତି</string>
-    <string name="permissions_help">ଆପଣଙ୍କ ପାଣିପାଗ ଆଣିବାକୁ ଆନୁମାନିକ ଅବସ୍ଥାନ ଦରକାର। ସତର୍କତା ଓ ସ୍ଥାନୀୟ ବିପଦ ପାଇଁ ବିଜ୍ଞପ୍ତି ବୈକଳ୍ପିକ।</string>
-    <string name="grant_location">ଅବସ୍ଥାନ ଅନୁମତି ଦିଅନ୍ତୁ</string>
-    <string name="grant_notifications">ବିଜ୍ଞପ୍ତି ଅନୁମତି ଦିଅନ୍ତୁ</string>
     <string name="locating">ଆପଣଙ୍କ ଅବସ୍ଥାନ ଖୋଜାଯାଉଛି…</string>
-    <string name="location_preferred">ଆମେ ପ୍ରଥମେ ଫୋନ୍ ଅବସ୍ଥାନ ବ୍ୟବହାର କରୁ। GPS ନ ମିଳିଲେ ହିଁ ସର୍ଚ୍ଚ ବ୍ୟାକଅପ୍।</string>
-    <string name="search_place_fallback">ବଦଳରେ ଗାଁ କିମ୍ବା ସହର ଖୋଜନ୍ତୁ</string>
-    <string name="skip_for_now">ବର୍ତ୍ତମାନ ଛାଡ଼ନ୍ତୁ</string>
-    <string name="personalization">WeatherGPT କୁ ଆପଣଙ୍କ ଅନୁଯାୟୀ ବନାନ୍ତୁ</string>
     <string name="step_of">ପଦକ୍ଷେପ %1$d / %2$d</string>
-    <string name="permissions_granted">ଅନୁମତି ମିଳିଛି</string>
-    <string name="permissions_needed">ଏପର୍ଯ୍ୟନ୍ତ ଅନୁମତି ନାହିଁ</string>
     <string name="messages_count">%1$d ସନ୍ଦେଶ</string>
     <string name="server_url_label">ସର୍ଭର URL</string>
     <string name="downloaded_prefix">ଡାଉନଲୋଡ୍: </string>
@@ -178,6 +158,17 @@
     <string name="or_pick_city">କିମ୍ବା ବଡ଼ ସହର ବାଛନ୍ତୁ</string>
     <string name="location_backup_help">ଫୋନ୍ ଅବସ୍ଥାନ ବୈକଳ୍ପିକ। ଅଟକିଗଲେ ଉପରେ ଖୋଜନ୍ତୁ।</string>
     <string name="tap_to_ask">ଗୋଟିଏ ପ୍ରଶ୍ନ ଦବାନ୍ତୁ</string>
+    <string name="notice_offline_cached">ଅଫଲାଇନ୍ — ପୂର୍ବରୁ ଡାଉନଲୋଡ୍ କରାଯାଇଥିବା ପାଣିପାଗ ଦେଖାଉଛୁ।</string>
+    <string name="notice_cant_connect">WeatherGPT ସହ ସଂଯୋଗ ହୋଇପାରୁନାହିଁ। ସଞ୍ଚିତ ପାଣିପାଗ ଦେଖାଉଛୁ।</string>
+    <string name="notice_provider_down">ପାଣିପାଗ ଉତ୍ସ ସାମୟିକ ଭାବେ ଉପଲବ୍ଧ ନାହିଁ। ଶେଷ ସଞ୍ଚିତ ପୂର୍ବାନୁମାନ ଦେଖାଉଛୁ।</string>
+    <string name="notice_no_data">ବର୍ତ୍ତମାନ ପାଣିପାଗ ସୂଚନା ଉପଲବ୍ଧ ନାହିଁ। ଆପଣଙ୍କ ସଂଯୋଗ ଯାଞ୍ଚ କରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।</string>
+    <string name="notice_check_settings">WeatherGPT ଏହି ଉପକରଣ ଯାଞ୍ଚ କରିପାରିଲା ନାହିଁ। ସଂଯୋଗ ସେଟିଂସ୍ ଦେଖନ୍ତୁ।</string>
+    <string name="connection_unknown">ସର୍ଭର ଯାଞ୍ଚ କରାଯାଉଛି...</string>
+    <string name="connection_last">ଶେଷ ସଂଯୋଗ: </string>
+    <string name="connection_never">ଏହି ଉପକରଣରେ ଏପର୍ଯ୍ୟନ୍ତ ସଂଯୋଗ ହୋଇନାହିଁ।</string>
+    <string name="demo_warning_title">DEMO · ଚେତାବନୀ</string>
+    <string name="demo_warning_body">ଏହାର ଅର୍ଥ ଚେତାବନୀ ନାହିଁ ବୋଲି ନୁହେଁ। ବାହାରକୁ ଯିବା ପୂର୍ବରୁ ଆପଣଙ୍କ ଅଞ୍ଚଳର IMD ଚେତାବନୀ ଦେଖନ୍ତୁ। IMD.</string>
+    <string name="demo_warning_action">DEMO · ପଠାନ୍ତୁ</string>
 </resources>
 
 

@@ -10,7 +10,6 @@
     <string name="alerts">எச்சரிக்கைகள்</string>
     <string name="settings">அமைப்புகள்</string>
     <string name="choose_place">உங்கள் இடத்தை தேர்வு செய்யுங்கள்</string>
-    <string name="welcome_tag">தினசரி வானிலை துணை</string>
     <string name="welcome">வணக்கம்! எப்படி உதவ முடியும்?</string>
     <string name="intro">வானிலையை உங்கள் சொற்களில் கேளுங்கள். எழுதலாம் அல்லது பேசலாம். கணக்கு தேவையில்லை.</string>
     <string name="rain_question">இன்று மழை பெய்யுமா?</string>
@@ -29,14 +28,11 @@
     <string name="minutes_ago">நிமிடங்களுக்கு முன்</string>
     <string name="single_source">ஒரு வானிலை மூலம் உள்ளது. இது முன்னறிவிப்பு, உத்தரவாதம் அல்ல.</string>
     <string name="disagree">வானிலை மூலங்கள் வேறுபடுகின்றன. திட்டம் மாறலாம்.</string>
-    <string name="saved_weather">உங்கள் பதிவிறக்க முன்னறிவிப்பு</string>
     <string name="no_saved">இன்னும் வானிலை சேமிக்கப்படவில்லை. இடத்தை தேர்ந்தெடுத்து முன்னறிவிப்பை பதிவிறக்கவும்.</string>
     <string name="download">வானிலை பதிவிறக்கம் / புதுப்பிப்பு</string>
     <string name="forecast_help">அடுத்த மூன்று நாட்கள், மணிக்கு மணி. மழை வாய்ப்பு அந்த மணிக்கு.</string>
     <string name="no_places">இடம் கிடைக்கவில்லை. அருகிலுள்ள ஊர் அல்லது வேறு எழுத்துமுறை முயற்சிக்கவும்.</string>
     <string name="search_failed">இடம் தேட முடியவில்லை. இணையத்தை பார்த்து மீண்டும் முயற்சிக்கவும்.</string>
-    <string name="refresh_failed">புதிய வானிலை கிடைக்கவில்லை. முன்பு பதிவிறக்கியது இருந்தால் கிடைக்கும்.</string>
-    <string name="place_help">உங்கள் கிராமம், ஊர் அல்லது நகரம் தேடுங்கள். இட அனுமதி தேவையில்லை.</string>
     <string name="city_village">கிராமம், ஊர் அல்லது நகரம்</string>
     <string name="saved_places">சேமித்த இடங்கள்</string>
     <string name="search">இடம் தேடு</string>
@@ -68,7 +64,7 @@
     <string name="dark_theme">இருள்</string>
     <string name="large_text">பெரிய எழுத்து</string>
     <string name="language">உங்கள் மொழி</string>
-    <string name="language_help">முக்கிய பொத்தான்கள் மொழிபெயர்க்கப்பட்டுள்ளன. விரிவான பதில்கள் தற்போது தமிழ், இந்தி அல்லது ஆங்கிலத்தில். குரல் தொலைபேசியை பொறுத்தது.</string>
+    <string name="language_help">முக்கிய பொத்தான்களும் அரட்டை பதில்களும் நீங்கள் தேர்ந்தெடுத்த மொழியில். வானிலை எண்கள், அலகுகள், நேரம் மற்றும் அதிகாரப்பூர்வ எச்சரிக்கை பொருள் மாறாது. குரல் தொலைபேசியை பொறுத்தது. நேரடி மொழிபெயர்ப்பு அமைக்கப்பட்டால் மட்டும்.</string>
     <string name="use_for">வானிலை தகவல் எதற்கு வேண்டும்?</string>
     <string name="general">தினசரி வாழ்க்கை / பள்ளி</string>
     <string name="farming">விவசாயம்</string>
@@ -113,7 +109,6 @@
     <string name="thunderstorm">இடி மின்னல் மழை</string>
     <string name="use_current_location">என் தற்போதைய இடத்தை பயன்படுத்து</string>
     <string name="current_location">தற்போதைய இடம்</string>
-    <string name="location_optional">தொலைபேசி இடத்தையே விரும்புகிறோம். GPS இல்லையென்றால் மட்டுமே தேடல்.</string>
     <string name="location_unavailable">தற்போதைய இடம் கிடைக்கவில்லை. உங்கள் கிராமம் அல்லது நகரம் தேடுங்கள்.</string>
     <string name="show_details">ஏன்? வானிலை விவரங்கள் காட்டு</string>
     <string name="hide_details">வானிலை விவரங்கள் மறை</string>
@@ -141,26 +136,11 @@
     <string name="action_hourly">மணிநேர முன்னறிவைக் காட்டு</string>
     <string name="action_warnings">எச்சரிக்கைகளைப் பாருங்கள்</string>
     <string name="action_score">எனக்கான வானிலை மதிப்பெண்</string>
-    <string name="no_active_official">இணைக்கப்பட்ட ஊட்டம் இங்கு செயலில் உள்ள அதிகாரப்பூர்வ எச்சரிக்கை இல்லை என்கிறது.</string>
     <string name="clearing_compare">ஒப்பீட்டு இடத்தை அகற்று</string>
-    <string name="onboard_intro">WeatherGPT உங்கள் வானிலை பயன்பாட்டிற்கு ஏற்ப இருக்க சில எளிய தேர்வுகள்.</string>
     <string name="onboard_next">தொடரவும்</string>
     <string name="onboard_back">பின்செல்</string>
-    <string name="onboard_finish">WeatherGPT தொடங்கவும்</string>
-    <string name="occupation_help">இதனால் உங்கள் வானிலை மதிப்பெண், ஆலோசனை மற்றும் அரட்டை பரிந்துரைகள் மாறும். பின்னர் அமைப்புகளில் மாற்றலாம்.</string>
-    <string name="theme_help">வெளிச்சம், இருள் அல்லது போனைப் பின்பற்றவும். பெரிய உரை வாசிப்பை எளிதாக்கும்.</string>
-    <string name="permissions_title">இடம் மற்றும் அறிவிப்புகள்</string>
-    <string name="permissions_help">உங்கள் வானிலையை ஏற்ற தோராயமான இடம் தேவை. எச்சரிக்கைகள் மற்றும் உள்ளூர் அபாயங்களுக்கு அறிவிப்புகள் விருப்பமானவை.</string>
-    <string name="grant_location">இட அனுமதி அளிக்கவும்</string>
-    <string name="grant_notifications">அறிவிப்பு அனுமதி அளிக்கவும்</string>
     <string name="locating">உங்கள் இடம் தேடப்படுகிறது…</string>
-    <string name="location_preferred">முதலில் தொலைபேசி இடத்தைப் பயன்படுத்துகிறோம். GPS இல்லையென்றால் மட்டுமே தேடல் காப்பு.</string>
-    <string name="search_place_fallback">அதற்குப் பதிலாக கிராமம் அல்லது நகரம் தேடுங்கள்</string>
-    <string name="skip_for_now">இப்போது தவிர்</string>
-    <string name="personalization">WeatherGPT ஐ உங்களுக்கு ஏற்ப அமைக்கவும்</string>
     <string name="step_of">படி %1$d / %2$d</string>
-    <string name="permissions_granted">அனுமதி அளிக்கப்பட்டது</string>
-    <string name="permissions_needed">இன்னும் அனுமதி இல்லை</string>
     <string name="messages_count">%1$d செய்திகள்</string>
     <string name="server_url_label">சேவையக URL</string>
     <string name="downloaded_prefix">பதிவிறக்கம்: </string>
@@ -178,6 +158,17 @@
     <string name="or_pick_city">அல்லது பெரிய நகரைத் தேர்ந்தெடுக்கவும்</string>
     <string name="location_backup_help">தொலைபேசி இடம் விருப்பமானது. சிக்கினால் மேலே தேடுங்கள்.</string>
     <string name="tap_to_ask">ஒரு கேள்வியைத் தட்டவும்</string>
+    <string name="notice_offline_cached">ஆஃப்லைன் — முன்பு பதிவிறக்கிய வானிலை காட்டப்படுகிறது.</string>
+    <string name="notice_cant_connect">WeatherGPT உடன் இணைக்க முடியவில்லை. சேமித்த வானிலை காட்டப்படுகிறது.</string>
+    <string name="notice_provider_down">வானிலை மூலம் தற்காலிகமாக கிடைக்கவில்லை. கடைசியாக சேமித்த முன்னறிவிப்பு காட்டப்படுகிறது.</string>
+    <string name="notice_no_data">இப்போது வானிலைத் தகவல் கிடைக்கவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="notice_check_settings">WeatherGPT இந்தச் சாதனத்தை உறுதிப்படுத்த முடியவில்லை. இணைப்பு அமைப்புகளைப் பாருங்கள்.</string>
+    <string name="connection_unknown">சேவையகம் சரிபார்க்கப்படுகிறது...</string>
+    <string name="connection_last">கடைசி இணைப்பு: </string>
+    <string name="connection_never">இந்தச் சாதனத்தில் இன்னும் இணைக்கப்படவில்லை.</string>
+    <string name="demo_warning_title">DEMO · எச்சரிக்கைகள்</string>
+    <string name="demo_warning_body">எச்சரிக்கைகள் இல்லை என்று அர்த்தம் அல்ல. வெளியே செல்லும் முன் உங்கள் பகுதி IMD எச்சரிக்கைகளை பாருங்கள். IMD.</string>
+    <string name="demo_warning_action">DEMO · அனுப்பு</string>
 </resources>
 
 
