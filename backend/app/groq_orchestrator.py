@@ -29,6 +29,9 @@ _MAX_TOOL_ROUNDS = 4
 _MAX_ANSWER_CHARS = 4000
 # Keep prompts tight — avoid burning tokens on unused tool schemas.
 _MAX_TOOL_RESULT_CHARS = 1800
+_ACTIVE_ALERT_MARKER = '[ACTIVE_OFFICIAL_WARNING]'
+_ALERT_STATUS_MARKER = '[OFFICIAL_WARNING_STATUS]'
+_ACTION_SUPPORT_TOOLS = frozenset({'get_current_weather', 'get_hourly_forecast', 'get_daily_forecast'})
 
 _TOOL_DESCRIPTIONS = {
     'get_current_weather': 'Verified current conditions and near-term forecast for the active place.',
@@ -252,8 +255,15 @@ def _message_from_choice(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 async def _execute_tool(name: str, request: ChatRequest) -> tuple[dict[str, Any], dict | None, str]:
     """Returns (serialized_for_llm, last_payload_or_none, verified_draft)."""
+    tool_request = request
+    if (
+        name == 'get_weather_score'
+        and request.profile == 'general'
+        and any(word in request.text.lower() for word in ('sow', 'seed', 'irrigat', 'spray'))
+    ):
+        tool_request = request.model_copy(update={'profile': 'farming'})
     if name == 'get_current_weather':
-        draft = await _forecast_answer(request, name)
+        draft = await _forecast_answer(tool_request, name)
         serialized = {
             'tool': name,
             'status': 'available',
@@ -263,13 +273,13 @@ async def _execute_tool(name: str, request: ChatRequest) -> tuple[dict[str, Any]
         return serialized, draft, draft['answer']
 
     try:
-        result = await invoke_registered_tool(name, request)
+        result = await invoke_registered_tool(name, tool_request)
     except Exception as error:
         serialized = {'tool': name, 'status': 'unavailable', 'error': type(error).__name__}
         return serialized, None, ''
 
     if name == 'get_marine_forecast' and result.status == 'unavailable':
-        draft = await _forecast_answer(request, name)
+        draft = await _forecast_answer(tool_request, name)
         serialized = {
             'tool': name,
             'status': 'fallback_forecast',
@@ -277,9 +287,13 @@ async def _execute_tool(name: str, request: ChatRequest) -> tuple[dict[str, Any]
         }
         return serialized, draft, draft['answer']
 
-    serialized = _serialize_tool_result(name, result, request)
-    payload = render_tool_result(name, result, request)
-    return serialized, payload, serialized['verified_draft']
+    serialized = _serialize_tool_result(name, result, tool_request)
+    payload = render_tool_result(name, result, tool_request)
+    draft = serialized['verified_draft']
+    if name == 'get_active_alerts':
+        marker = _ACTIVE_ALERT_MARKER if isinstance(result.data, list) and bool(result.data) else _ALERT_STATUS_MARKER
+        draft = f'{marker}\n{draft}'
+    return serialized, payload, draft
 
 
 def _prefer_action_draft(fact_chunks: list[str]) -> str:
@@ -287,12 +301,18 @@ def _prefer_action_draft(fact_chunks: list[str]) -> str:
     chunks = [c.strip() for c in fact_chunks if c and c.strip()]
     if not chunks:
         return ''
-    if len(chunks) == 1:
-        return chunks[0]
+    def _is_active_alert(text: str) -> bool:
+        return text.startswith(_ACTIVE_ALERT_MARKER)
 
-    def _is_alert(text: str) -> bool:
-        low = text.lower()
-        return 'official' in low and ('warning' in low or 'no active' in low or 'not connected' in low)
+    def _clean_marker(text: str) -> str:
+        if text.startswith(_ACTIVE_ALERT_MARKER):
+            return text.removeprefix(_ACTIVE_ALERT_MARKER).lstrip()
+        if text.startswith(_ALERT_STATUS_MARKER):
+            return text.removeprefix(_ALERT_STATUS_MARKER).lstrip()
+        return text
+
+    if len(chunks) == 1:
+        return _clean_marker(chunks[0])
 
     def _is_score(text: str) -> bool:
         return 'weather score' in text.lower() or 'score for' in text.lower()
@@ -313,9 +333,10 @@ def _prefer_action_draft(fact_chunks: list[str]) -> str:
             return '\n\n'.join(lines[1:]) or text
         return text
 
-    alerts = [c for c in chunks if _is_alert(c)]
+    alerts = [c for c in chunks if _is_active_alert(c)]
+    alert_status = [c for c in chunks if c.startswith(_ALERT_STATUS_MARKER)]
     scores = [c for c in chunks if _is_score(c)]
-    others = [c for c in chunks if c not in alerts and c not in scores]
+    others = [c for c in chunks if c not in alerts and c not in alert_status and c not in scores]
     caution = next(
         (
             c for c in chunks
@@ -325,7 +346,7 @@ def _prefer_action_draft(fact_chunks: list[str]) -> str:
     )
     parts: list[str] = []
     if alerts:
-        parts.append(alerts[0])
+        parts.append(_clean_marker(alerts[0]))
     if caution and caution not in alerts:
         # Prefer cautionary weather-window guidance over an optimistic score lead.
         parts.append(caution if not _is_score(caution) else caution)
@@ -342,7 +363,13 @@ def _prefer_action_draft(fact_chunks: list[str]) -> str:
         if body and body not in parts:
             parts.append(body)
             break
-    return '\n\n'.join(parts) if parts else '\n\n'.join(chunks)
+    # A no-warning/unknown-status result is supporting context. It must not push the
+    # user's decision below a status sentence. Include it only after the decision.
+    if alert_status and parts:
+        status = _clean_marker(alert_status[0])
+        if status and status not in parts:
+            parts.append(status)
+    return '\n\n'.join(parts) if parts else '\n\n'.join(_clean_marker(c) for c in chunks)
 
 
 async def _build_response(
@@ -389,7 +416,7 @@ async def _build_response(
         },
     }, primary)
     _log.info(
-        'GROQ_CALL_SUCCESS MODE=orchestrator MODEL_NAME=%s latency_ms=%s tools=%s validator=%s response_origin=groq_tool_orchestrated FALLBACK_USED=%s',
+        'GROQ_SUCCESS MODE=orchestrator MODEL_NAME=%s latency_ms=%s tools=%s validator=%s response_origin=groq_tool_orchestrated FALLBACK_USED=%s',
         groq_client.model,
         duration_ms,
         ','.join(unique_tools) or 'none',
@@ -404,13 +431,13 @@ async def orchestrate_chat(request: ChatRequest) -> dict | None:
     client = groq_client
     if not client.available():
         _log.info(
-            'GROQ_CALL_FAILED reason=orchestrator_unavailable MODEL_NAME=%s FALLBACK_USED=True',
+            'GROQ_FAILED reason=orchestrator_unavailable MODEL_NAME=%s FALLBACK_USED=True',
             client.model or 'none',
         )
         return None
 
     started = time.monotonic()
-    _log.info('GROQ_CALL_STARTED MODE=orchestrator MODEL_NAME=%s', client.model)
+    _log.info('GROQ_STARTED MODE=orchestrator MODEL_NAME=%s', client.model)
     messages: list[dict[str, Any]] = [
         {'role': 'system', 'content': _ORCHESTRATOR_PROMPT},
         {'role': 'user', 'content': _compact_context(request)},
@@ -425,9 +452,14 @@ async def orchestrate_chat(request: ChatRequest) -> dict | None:
             # After enough tools (or on the last round), ask for a final natural answer.
             tool_choice: str | dict[str, Any] = 'auto'
             use_tools = tools
+            action_ready = (
+                'get_weather_score' in used_tools
+                and bool(_ACTION_SUPPORT_TOOLS.intersection(used_tools))
+                and 'get_active_alerts' in used_tools
+            )
             force_final = bool(used_tools) and (
                 round_index == _MAX_TOOL_ROUNDS - 1
-                or (is_action_question(request.text) and len(used_tools) >= 2 and round_index >= 1)
+                or (is_action_question(request.text) and action_ready)
             )
             if force_final:
                 tool_choice = 'none'
@@ -450,8 +482,25 @@ async def orchestrate_chat(request: ChatRequest) -> dict | None:
                         ),
                     })
             elif used_tools and messages and messages[-1].get('role') == 'tool':
+                required_name: str | None = None
+                if is_action_question(request.text):
+                    missing = [
+                        name for name in ('get_weather_score', 'get_hourly_forecast', 'get_active_alerts')
+                        if name not in used_tools and not (name == 'get_hourly_forecast' and _ACTION_SUPPORT_TOOLS.intersection(used_tools))
+                    ]
+                    if missing:
+                        required_name = missing[0]
+                        tool_choice = 'required'
                 # Soft nudge after tool results; model may call another tool or answer.
-                if not any(
+                if required_name:
+                    messages.append({
+                        'role': 'user',
+                        'content': (
+                            f'NEXT: Call {required_name} now so the action answer has verified decision, '
+                            'supporting forecast, and official-warning context. Do not answer yet.'
+                        ),
+                    })
+                elif not any(
                     m.get('role') == 'user' and isinstance(m.get('content'), str) and str(m['content']).startswith('NEXT:')
                     for m in messages
                 ):

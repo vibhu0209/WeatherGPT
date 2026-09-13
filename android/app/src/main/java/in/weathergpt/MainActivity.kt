@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -186,7 +188,14 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
         topBar={
             Surface(color=MaterialTheme.colorScheme.surface,shadowElevation=0.dp) {
                 Column(Modifier.statusBarsPadding().padding(horizontal=Space.screen,vertical=Space.md),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-                    Text("WeatherGPT",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
+                        Image(
+                            painter=painterResource(R.drawable.weather_gpt_logo),
+                            contentDescription=null,
+                            modifier=Modifier.size(36.dp),
+                        )
+                        Text("WeatherGPT",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.primary)
+                    }
                     Surface(
                         onClick={showPlace=true},
                         color=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.55f),
@@ -208,15 +217,17 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
             // One banner from weatherFailure + current Room weather only.
             // Chat offline bubbles must not sticky-drive this notice.
             val notice=noticeFor(failure,b!=null,b?.is_stale==true)
+            val cacheAge=b?.let { "${s(R.string.updated)} ${ageMinutes(it.retrieved_at)} ${s(R.string.minutes_ago)}" }
+            fun cachedNotice(message:String)=listOfNotNull(message,cacheAge).joinToString(" ")
             androidx.compose.runtime.LaunchedEffect(notice,failure,b!=null,b?.is_stale==true,busy) {
                 logNoticeState(notice,failure,b!=null,b?.is_stale==true,offline=vm.offline.value,backendOnline=vm.backendOnline.value,refreshing=busy)
             }
             when(notice) {
                 WeatherNotice.NONE->{}
-                WeatherNotice.STALE->StatusBanner(s(R.string.saved_notice), BannerTone.QUIET)
-                WeatherNotice.OFFLINE_CACHED->StatusBanner(s(R.string.notice_offline_cached), BannerTone.QUIET)
-                WeatherNotice.CANT_CONNECT->StatusBanner(s(R.string.notice_cant_connect), BannerTone.WARN)
-                WeatherNotice.PROVIDER_DOWN->StatusBanner(s(R.string.notice_provider_down), BannerTone.ERROR)
+                WeatherNotice.STALE->StatusBanner(cachedNotice(s(R.string.saved_notice)), BannerTone.QUIET)
+                WeatherNotice.OFFLINE_CACHED->StatusBanner(cachedNotice(s(R.string.notice_offline_cached)), BannerTone.QUIET)
+                WeatherNotice.CANT_CONNECT->StatusBanner(cachedNotice(s(R.string.notice_cant_connect)), BannerTone.WARN)
+                WeatherNotice.PROVIDER_DOWN->StatusBanner(cachedNotice(s(R.string.notice_provider_down)), BannerTone.ERROR)
                 WeatherNotice.NO_DATA->StatusBanner(s(R.string.notice_no_data), BannerTone.WARN)
                 WeatherNotice.NO_SAVED->StatusBanner(s(R.string.notice_no_saved), BannerTone.INFO)
                 WeatherNotice.PROVIDERS_UNAVAILABLE->StatusBanner(s(R.string.notice_providers_unavailable), BannerTone.ERROR)
@@ -438,6 +449,10 @@ fun compactFollowUpLabel(raw:String):String {
         )
     }
     val dynamicFollowUps by vm.followUps.collectAsState()
+    val messageListState=rememberLazyListState()
+    LaunchedEffect(messages.lastOrNull()?.id) {
+        if(messages.isNotEmpty()) messageListState.animateScrollToItem(0)
+    }
     val typeQuestion=s(R.string.type_question)
     val speakLabel=s(R.string.speak)
     val sendLabel=s(R.string.send)
@@ -484,7 +499,7 @@ fun compactFollowUpLabel(raw:String):String {
                 BannerTone.QUIET,
             )
         }
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(Space.screen),verticalArrangement=Arrangement.spacedBy(Space.md),reverseLayout=true) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(),state=messageListState,contentPadding=PaddingValues(Space.screen),verticalArrangement=Arrangement.spacedBy(Space.md),reverseLayout=true) {
             items(messages.reversed(),key={it.id}) { m ->
                 val user=m.role=="user"
                 val split=if(!user) m.text.split("\n\n$downloaded") else listOf(m.text)
@@ -1020,9 +1035,6 @@ fun compactFollowUpLabel(raw:String):String {
         RadioButton(selected=selected,onClick=null);Spacer(Modifier.width(Space.md));Text(label,style=MaterialTheme.typography.bodyLarge,modifier=Modifier.weight(1f))
     }
 }
-
-
-
 
 
 

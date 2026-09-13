@@ -175,7 +175,7 @@ def capabilities():
         or settings.google_translate_api_key
     )
     return {
-        'forecast': True, 'chat': 'deterministic', 'official_alerts': bool(settings.cap_alert_url), 'marine': True,
+        'forecast': True, 'chat': 'groq_tool_orchestrated' if groq_client.enabled else 'deterministic_fallback', 'official_alerts': bool(settings.cap_alert_url), 'marine': True,
         'climate': True, 'cloud_voice': False, 'groq': groq_client.enabled, 'gemini': False, 'demo_mode': False,
         'answer_languages': ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or'],
         'live_translation': live_translation,

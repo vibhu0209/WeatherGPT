@@ -361,6 +361,33 @@ def _score_label(language: str, label: str) -> str:
     return phrase(language, key) if key else label
 
 
+def _action_lead_and_tip(text: str, score: int | None) -> tuple[str, str]:
+    """Turn an existing score decision into plain task-specific advice; add no thresholds."""
+    lowered = text.lower()
+    if any(word in lowered for word in ('sow', 'sowing', 'seed')):
+        activity = 'sowing today'
+        tip = 'Tell me the crop and soil condition for more specific advice.'
+    elif 'irrigat' in lowered:
+        activity = 'irrigating today'
+        tip = 'Check the soil moisture and the crop’s needs before choosing how much to irrigate.'
+    elif any(word in lowered for word in ('drive', 'driving')):
+        activity = 'driving'
+        tip = 'Allow extra time and check road conditions and official warnings before leaving.'
+    elif any(word in lowered for word in ('go outside', 'go out', 'outdoors', 'outdoor')):
+        activity = 'going outside'
+        tip = 'Choose the better weather window shown below and check official warnings before leaving.'
+    else:
+        activity = 'this plan'
+        tip = 'Use the supporting weather below to choose the best time.'
+    if score is None:
+        return f'Weather-wise, I cannot give a clear go-ahead for {activity} from the score alone.', tip
+    if score >= 70:
+        return f'Weather-wise, yes — conditions look reasonably suitable for {activity}.', tip
+    if score >= 45:
+        return f'Weather-wise, {activity} is probably okay, but there is some risk.', tip
+    return f'I would wait or shorten {activity} — conditions look less favourable right now.', tip
+
+
 def _render_score(result: ToolResult, request: ChatRequest) -> str:
     from .chat import is_action_question
 
@@ -376,15 +403,8 @@ def _render_score(result: ToolResult, request: ChatRequest) -> str:
         body = phrase(language, 'score', profile=profile, score=score, label=label, disclaimer=disclaimer)
     if not is_action_question(request.text):
         return body
-    if score is None:
-        lead = 'Weather-wise I cannot give a clear go-ahead from the score alone — check the supporting forecast and official warnings.'
-    elif score >= 70:
-        lead = 'Yes — weather-wise, conditions look suitable for this kind of outdoor plan.'
-    elif score >= 45:
-        lead = 'It is probably okay, but there is some risk — keep the plan flexible.'
-    else:
-        lead = 'I would wait or shorten the activity — conditions look less favourable right now.'
-    return f'{lead}\n\n{body}'
+    lead, tip = _action_lead_and_tip(request.text, score)
+    return f'{lead}\n\n{tip}\n\n{body}'
 
 
 def render_tool_result(name: str, result: ToolResult, request: ChatRequest) -> dict:

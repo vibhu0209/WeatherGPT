@@ -53,7 +53,7 @@
     <string name="voice_unavailable">Voice is unavailable on this phone or in this language. You can still type your question.</string>
     <string name="saved_notice">Saved weather — conditions may have changed. Connect to refresh.</string>
     <string name="loading">Getting your weather</string>
-    <string name="updated">Downloaded</string>
+    <string name="updated">Last updated</string>
     <string name="minutes_ago">minutes ago</string>
     <string name="single_source">Using one weather source for this place.</string>
     <string name="disagree">Models differ a little on timing — the plan above still stands.</string>
@@ -190,7 +190,6 @@
     <string name="demo_warning_body">This is a DEMO notification so you can practise the warning screen. It is not an IMD warning.</string>
     <string name="demo_warning_action">Send DEMO warning</string>
 </resources>
-
 
 
 

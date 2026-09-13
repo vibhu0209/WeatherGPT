@@ -175,13 +175,19 @@ async def set_alert_rule(request: AlertRuleInput) -> ToolResult:
     now = datetime.now(timezone.utc).isoformat()
     channels = list(dict.fromkeys(request.channels))
     location = request.location
-    saved = upsert_rule(
-        channels=channels,
-        enabled=request.enabled,
-        location_name=display_place_name(location.name) if location else 'selected place',
-        latitude=(location.latitude if location else 0.0),
-        longitude=(location.longitude if location else 0.0),
-    )
+    try:
+        saved = upsert_rule(
+            channels=channels,
+            enabled=request.enabled,
+            location_name=display_place_name(location.name) if location else 'selected place',
+            latitude=(location.latitude if location else 0.0),
+            longitude=(location.longitude if location else 0.0),
+        )
+    except OSError:
+        return ToolResult(
+            data=None, retrieved_at=now, is_stale=False, sources=['weathergpt-rules'],
+            status='unavailable', error='The alert rule could not be saved. Please try again.',
+        )
     return ToolResult(
         data={
             'channels': saved['channels'],

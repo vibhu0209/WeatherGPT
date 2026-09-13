@@ -110,6 +110,78 @@ async def test_orchestrator_tool_call_then_grounded_answer(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_sowing_answer_keeps_human_decision_before_no_warning_status(monkeypatch):
+    """A successful Groq action answer must not degrade into a stats/status dump."""
+    from app import groq_orchestrator as mod
+    from app.groq_client import GroqClient
+
+    client = GroqClient(Settings(groq_api_key='test-key', groq_model='openai/gpt-oss-120b'))
+    monkeypatch.setattr(mod, 'groq_client', client)
+
+    async def fake_execute(name, request):
+        if name == 'get_weather_score':
+            draft = (
+                'Yes — weather-wise, conditions look suitable for this kind of outdoor plan.\n\n'
+                'Weather score for farming: 92/100 (Good conditions).'
+            )
+            return ({'tool': name, 'status': 'available', 'verified_draft': draft}, {
+                'answer': draft, 'language': 'en', 'day_offset': 0,
+                'retrieved_at': '2026-09-13T12:00:00+00:00', 'is_stale': False,
+                'sources': ['open-meteo'], 'agreement': 'multi_source_consensus',
+            }, draft)
+        if name == 'get_hourly_forecast':
+            draft = 'Rain chance reaches 20%. Wind stays below 12 km/h.'
+            return ({'tool': name, 'status': 'available', 'verified_draft': draft}, {
+                'answer': draft, 'language': 'en', 'day_offset': 0,
+                'retrieved_at': '2026-09-13T12:00:00+00:00', 'is_stale': False,
+                'sources': ['open-meteo'], 'agreement': 'hourly_forecast',
+            }, draft)
+        draft = 'The connected official service reports no active warning at this time.'
+        marked = f'{mod._ALERT_STATUS_MARKER}\n{draft}'
+        return ({'tool': name, 'status': 'available', 'verified_draft': draft}, {
+            'answer': draft, 'language': 'en', 'day_offset': 0,
+            'retrieved_at': '2026-09-13T12:00:00+00:00', 'is_stale': False,
+            'sources': ['configured CAP authority'], 'agreement': 'official_alerts',
+        }, marked)
+
+    monkeypatch.setattr(mod, '_execute_tool', fake_execute)
+    sequence = ['get_weather_score', 'get_hourly_forecast', 'get_active_alerts', None]
+    calls = {'n': 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        item = sequence[calls['n']]
+        calls['n'] += 1
+        if item:
+            return httpx.Response(200, json={'choices': [{'message': {
+                'role': 'assistant', 'content': None, 'tool_calls': [{
+                    'id': f"call_{calls['n']}", 'type': 'function',
+                    'function': {'name': item, 'arguments': '{}'},
+                }],
+            }}]})
+        return httpx.Response(200, json={'choices': [{'message': {
+            'role': 'assistant',
+            'content': (
+                'Weather-wise, yes — conditions look reasonably suitable for sowing today. '
+                'Tell me the crop for more specific advice.'
+            ),
+        }}]})
+
+    original = httpx.AsyncClient
+    monkeypatch.setattr(httpx, 'AsyncClient', lambda **kwargs: original(
+        **{**kwargs, 'transport': httpx.MockTransport(handler)}
+    ))
+
+    result = await orchestrate_chat(ChatRequest(
+        text='Should I sow seeds today?', location=LOC, profile='farming',
+    ))
+    assert result is not None
+    assert calls['n'] == 4
+    assert result['response_origin'] == 'groq_tool_orchestrated'
+    assert result['answer'].startswith('Weather-wise, yes')
+    assert 'Temperature:' not in result['answer']
+
+
+@pytest.mark.asyncio
 async def test_orchestrator_multi_tool_sequential(monkeypatch):
     from app import groq_orchestrator as mod
     from app.groq_client import GroqClient

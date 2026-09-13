@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi.testclient import TestClient
 
-from app.chat_tools import select_tool
+from app.chat_tools import _action_lead_and_tip, select_tool
 from app.main import app
 from app.models import ChatRequest, Location
 from app.tools import TOOL_REGISTRY
@@ -14,6 +14,19 @@ MUMBAI = Location(name='Mumbai', latitude=19.07, longitude=72.87)
 
 DELHI = Location(name='Delhi', latitude=28.6, longitude=77.2)
 CHANDIGARH = Location(name='Chandigarh', latitude=30.73, longitude=76.78)
+
+
+def test_action_copy_names_the_plan_and_gives_a_practical_next_step():
+    sow_lead, sow_tip = _action_lead_and_tip('Should I sow seeds today?', 80)
+    assert sow_lead.startswith('Weather-wise, yes')
+    assert 'sowing today' in sow_lead
+    assert 'crop' in sow_tip
+    irrigate_lead, irrigate_tip = _action_lead_and_tip('Should I irrigate?', 55)
+    assert 'irrigating today' in irrigate_lead
+    assert 'soil moisture' in irrigate_tip
+    drive_lead, drive_tip = _action_lead_and_tip('Will it be safe to drive?', 30)
+    assert 'driving' in drive_lead
+    assert 'road conditions' in drive_tip
 
 
 def _bundle():

@@ -75,7 +75,7 @@ class GroqClient:
             elif self.enabled:
                 reason = 'budget'
             _log_groq(
-                'GROQ_CALL_FAILED',
+                'GROQ_FAILED',
                 MODEL_NAME=self.model or 'none',
                 reason=reason,
                 FALLBACK_USED=True,
@@ -100,7 +100,7 @@ class GroqClient:
             body['response_format'] = response_format
 
         started = time.monotonic()
-        _log_groq('GROQ_CALL_STARTED', MODEL_NAME=self.model, reason_for_call='chat_orchestration')
+        _log_groq('GROQ_STARTED', MODEL_NAME=self.model, reason_for_call='chat_orchestration')
         try:
             async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
                 response = await client.post(
@@ -115,7 +115,7 @@ class GroqClient:
             if response.status_code == 429:
                 self.trip(45, quota=True)
                 _log_groq(
-                    'GROQ_CALL_FAILED',
+                    'GROQ_FAILED',
                     MODEL_NAME=self.model,
                     http_status=429,
                     latency_ms=latency_ms,
@@ -126,7 +126,7 @@ class GroqClient:
             if response.status_code in {401, 403}:
                 self.trip(120, quota=True)
                 _log_groq(
-                    'GROQ_CALL_FAILED',
+                    'GROQ_FAILED',
                     MODEL_NAME=self.model,
                     http_status=response.status_code,
                     latency_ms=latency_ms,
@@ -137,7 +137,7 @@ class GroqClient:
             if response.status_code in {500, 502, 503, 504}:
                 self.trip(60)
                 _log_groq(
-                    'GROQ_CALL_FAILED',
+                    'GROQ_FAILED',
                     MODEL_NAME=self.model,
                     http_status=response.status_code,
                     latency_ms=latency_ms,
@@ -147,7 +147,7 @@ class GroqClient:
                 return None
             response.raise_for_status()
             _log_groq(
-                'GROQ_CALL_SUCCESS',
+                'GROQ_SUCCESS',
                 MODEL_NAME=self.model,
                 http_status=response.status_code,
                 latency_ms=latency_ms,
@@ -156,7 +156,7 @@ class GroqClient:
         except httpx.TimeoutException:
             self.trip(60)
             _log_groq(
-                'GROQ_CALL_FAILED',
+                'GROQ_FAILED',
                 MODEL_NAME=self.model,
                 reason='timeout',
                 latency_ms=int((time.monotonic() - started) * 1000),
@@ -166,7 +166,7 @@ class GroqClient:
             return None
         except Exception as error:
             _log_groq(
-                'GROQ_CALL_FAILED',
+                'GROQ_FAILED',
                 MODEL_NAME=self.model,
                 exception=type(error).__name__,
                 latency_ms=int((time.monotonic() - started) * 1000),
