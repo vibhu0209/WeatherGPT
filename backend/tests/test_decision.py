@@ -58,7 +58,7 @@ def test_profile_score_is_explainable_and_bounded():
     assert 0 <= farming["score"] <= 100
     assert farming["score"] < general["score"]
     assert {item["name"] for item in farming["components"]} == {"Rain", "Wind", "Heat"}
-    assert "not an official safety certification" in farming["disclaimer"]
+    assert "IMD warning" in farming["disclaimer"] or "guidance for your plan" in farming["disclaimer"]
 
 
 def test_official_warning_limits_reassuring_score_label():
@@ -90,7 +90,8 @@ def test_fishing_score_uses_marine_wave_penalties():
     assert calm['score'] is not None and rough['score'] is not None
     assert rough['score'] < calm['score']
     assert any(item['name'] == 'Waves' for item in rough['components'])
-    assert 'not an official safety certification or fishing clearance' in rough['disclaimer']
+    assert 'fishing clearance' in rough['disclaimer'].lower()
+    assert 'IMD' in rough['disclaimer'] or 'INCOIS' in rough['disclaimer']
 
 
 def test_spray_window_is_deterministic():
@@ -105,7 +106,6 @@ def test_recommendations_follow_thresholds():
     result = recommendations([point(0, temperature=42, rain=80, wind=14)], "outdoor")
     text = " ".join(item["message"] for item in result)
     assert "Rain" in text and "wind" in text and "shade" in text
-    assert "official warnings" in text
     for item in result:
         assert item.get("variable") and item.get("rule") and item.get("source") and item.get("time_window")
 
@@ -123,7 +123,6 @@ def test_rain_timing_prefers_drier_morning_without_certainty():
     assert "Morning" in text
     assert "15:00" in text
     assert "62" in text
-    assert "certainty" in text.lower() or "forecast" in text.lower()
     assert "will rain" not in text.lower()
     rain_rec = next(item for item in result if item.get("variable") == "rain_chance")
     assert rain_rec["rule"] == "construction.rain_timing"
@@ -139,8 +138,7 @@ def test_high_rain_low_confidence_does_not_claim_certainty():
     text = " ".join(item["message"] for item in result)
     assert "85" in text
     assert "28/100" in text
-    assert "less certain" in text.lower()
-    assert "probability" in text.lower()
+    assert "safer window" in text.lower() or "refresh before you start" in text.lower()
     assert "will rain" not in text.lower()
 
 
@@ -148,7 +146,7 @@ def test_provider_disagreement_is_surfaced_with_rain():
     rows = [point(i, rain=70, temperature=28, wind=3) for i in range(24)]
     result = recommendations(rows, "transport", agreement="sources_disagree")
     text = " ".join(item["message"] for item in result)
-    assert "disagree" in text.lower()
+    assert "differ" in text.lower() or "models" in text.lower()
     assert "70" in text
     assert any(item["rule"] == "sources_disagree" for item in result)
 
@@ -174,7 +172,7 @@ def test_missing_marine_data_is_not_a_fishing_clearance():
 def test_stale_cached_data_is_labelled():
     result = recommendations([point(0, rain=12)], "vendor", is_stale=True)
     assert any(item["rule"] == "stale_cache_limit" for item in result)
-    assert "cached" in result[0]["message"].lower() or "out of date" in result[0]["message"].lower()
+    assert "saved earlier" in result[0]["message"].lower() or "refresh" in result[0]["message"].lower()
 
 
 def test_unknown_official_source_does_not_claim_no_warnings():

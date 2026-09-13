@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="chat">জিজ্ঞাসা</string>
     <string name="forecast">আবহাওয়া</string>
     <string name="home">হোম</string>
@@ -12,9 +12,9 @@
     <string name="choose_place">আপনার স্থান বাছুন</string>
     <string name="welcome">নমস্কার! কীভাবে সাহায্য করব?</string>
     <string name="intro">আবহাওয়া সম্পর্কে নিজের ভাষায় জিজ্ঞাসা করুন। লিখতে বা বলতে পারেন। অ্যাকাউন্ট লাগবে না।</string>
-    <string name="rain_question">আজ কি বৃষ্টি হবে?</string>
-    <string name="tomorrow_question">আগামীকাল আবহাওয়া কেমন?</string>
-    <string name="warning_question">আবহাওয়ার সতর্কতা আছে কি?</string>
+    <string name="rain_question">বৃষ্টি হবে?</string>
+    <string name="tomorrow_question">আগামীকাল</string>
+    <string name="warning_question">সতর্কতা</string>
     <string name="climate_question">গত ১০ বছরে এই জায়গা কি গরম হয়েছে?</string>
     <string name="you">আপনি</string>
     <string name="listen">শুনুন</string>
@@ -26,8 +26,8 @@
     <string name="loading">আবহাওয়ার তথ্য আসছে</string>
     <string name="updated">ডাউনলোড হয়েছে</string>
     <string name="minutes_ago">মিনিট আগে</string>
-    <string name="single_source">একটি আবহাওয়া উৎস আছে। এটি পূর্বাভাস, গ্যারান্টি নয়।</string>
-    <string name="disagree">আবহাওয়া উৎসগুলো মিলছে না। পরিকল্পনা বদলাতে হতে পারে।</string>
+    <string name="single_source">এই জায়গায় একটি আবহাওয়া উৎস ব্যবহার হচ্ছে।</string>
+    <string name="disagree">মডেল সময় নিয়ে একটু আলাদা — উপরের পরিকল্পনা এখনও ঠিক।</string>
     <string name="no_saved">এখনও আবহাওয়া সংরক্ষিত নেই। স্থান বেছে পূর্বাভাস ডাউনলোড করুন।</string>
     <string name="download">আবহাওয়া ডাউনলোড / নবায়ন</string>
     <string name="forecast_help">আগামী তিন দিন, ঘণ্টা অনুযায়ী। বৃষ্টির সম্ভাবনা সেই ঘণ্টার জন্য।</string>
@@ -56,7 +56,11 @@
     <string name="visibility">দৃশ্যমানতা</string>
     <string name="uv">ইউভি সূচক</string>
     <string name="forecast_confidence">পূর্বাভাসে বিশ্বাস</string>
-    <string name="confidence_help">উৎসের উপলব্ধতা ও মিল বোঝায়। পূর্বাভাস সঠিক হওয়ার সম্ভাবনা নয়।</string>
+    <string name="confidence_help">উৎসগুলো কতটা একমত তা দেখায়। পরিকল্পনা বাদ দেওয়ার কারণ নয়।</string>
+    <string name="confidence_info_cd">এই আস্থা কেন</string>
+    <string name="confidence_compact_low">কম আস্থা</string>
+    <string name="confidence_compact_medium">মাঝারি আস্থা</string>
+    <string name="confidence_compact_high">উচ্চ আস্থা</string>
     <string name="settings_intro">WeatherGPT আপনার সুবিধামতো সাজান। পছন্দ এই ফোনে সংরক্ষিত হয়।</string>
     <string name="theme">চেহারা</string>
     <string name="system_theme">ফোন অনুযায়ী</string>
@@ -117,9 +121,9 @@
     <string name="checking_sources">যাচাইকৃত আবহাওয়া উৎস দেখছি</string>
     <string name="farm_work_question">আগামীকাল সকালে খামারের কাজের জন্য ভালো?</string>
     <string name="spray_question">আগামীকাল বৃষ্টি বা বাতাস ফসল স্প্রে-এ প্রভাব ফেলবে?</string>
-    <string name="marine_question">মাছ ধরার জন্য সমুদ্রের অবস্থা কেমন?</string>
-    <string name="wave_question">মাছ ধরার জন্য সমুদ্রের ঢেউ কত উঁচু?</string>
-    <string name="next_hours_question">আগামী তিন ঘণ্টায় আবহাওয়া কেমন?</string>
+    <string name="marine_question">সমুদ্রের অবস্থা</string>
+    <string name="wave_question">বাতাস ও ঢেউ</string>
+    <string name="next_hours_question">ঘণ্টায় ঘণ্টায়</string>
     <string name="backend_online">WeatherGPT সার্ভার সংযুক্ত</string>
     <string name="backend_offline">WeatherGPT সার্ভার পাওয়া যাচ্ছে না। ব্যাকএন্ড চালু করুন বা সেটিংস দেখুন।</string>
     <string name="ask_weathergpt">WeatherGPT-কে জিজ্ঞাসা করুন</string>
@@ -135,7 +139,7 @@
     <string name="purpose_work">কর্মস্থল</string>
     <string name="action_hourly">ঘণ্টাওয়ারি পূর্বাভাস দেখান</string>
     <string name="action_warnings">সতর্কতা পরীক্ষা করুন</string>
-    <string name="action_score">আমার জন্য আবহাওয়া স্কোর</string>
+    <string name="action_score">স্কোর</string>
     <string name="clearing_compare">তুলনার স্থান সরান</string>
     <string name="onboard_next">এগিয়ে যান</string>
     <string name="onboard_back">পেছনে</string>
@@ -162,6 +166,8 @@
     <string name="notice_cant_connect">WeatherGPT-এর সঙ্গে সংযোগ করা যাচ্ছে না। সংরক্ষিত আবহাওয়া দেখানো হচ্ছে।</string>
     <string name="notice_provider_down">আবহাওয়ার উৎস সাময়িকভাবে অনুপলব্ধ। সর্বশেষ সংরক্ষিত পূর্বাভাস দেখানো হচ্ছে।</string>
     <string name="notice_no_data">এখন আবহাওয়ার তথ্য পাওয়া যাচ্ছে না। সংযোগ দেখে আবার চেষ্টা করুন।</string>
+    <string name="notice_no_saved">এখনও কোনো সংরক্ষিত আবহাওয়া নেই।</string>
+    <string name="notice_providers_unavailable">আবহাওয়ার উৎস সাময়িকভাবে অনুপলব্ধ।</string>
     <string name="notice_check_settings">WeatherGPT এই ডিভাইস যাচাই করতে পারেনি। সংযোগ সেটিংস দেখুন।</string>
     <string name="connection_unknown">সার্ভার পরীক্ষা করা হচ্ছে...</string>
     <string name="connection_last">সর্বশেষ সংযোগ: </string>
@@ -169,6 +175,27 @@
     <string name="demo_warning_title">DEMO · সতর্কতা</string>
     <string name="demo_warning_body">এর মানে সতর্কতা নেই তা নয়। বাইরে যাওয়ার আগে আপনার এলাকার IMD সতর্কতা দেখুন। IMD.</string>
     <string name="demo_warning_action">DEMO · পাঠান</string>
+    <string name="chat_planning_prompt">আপনি কী পরিকল্পনা করছেন?</string>
+    <string name="chat_context_score">স্কোর %1$d</string>
+    <string name="chat_offline_hint">আপনি অফলাইন। সংরক্ষিত পূর্বাভাস দিয়েও উত্তর দিতে পারি।</string>
+    <string name="chat_no_weather_hint">জায়গা বেছে আবহাওয়া ডাউনলোড করুন যাতে উত্তর নির্ভরযোগ্য থাকে।</string>
+    <string name="good_morning">শুভ সকাল</string>
+    <string name="good_afternoon">শুভ বিকেল</string>
+    <string name="good_evening">শুভ সন্ধ্যা</string>
+    <string name="place_now_temp">%1$s — %2$d°</string>
+    <string name="place_saved_offline">%1$s-এর সংরক্ষিত আবহাওয়া আছে।</string>
+    <string name="chip_best_work">কাজের ভালো সময়</string>
+    <string name="chip_rain_later">পরে বৃষ্টি?</string>
+    <string name="chip_warnings">সতর্কতা</string>
+    <string name="chip_sea">সমুদ্রের অবস্থা</string>
+    <string name="chip_wind_waves">বাতাস ও ঢেউ</string>
+    <string name="chip_best_outdoor">বাইরের ভালো সময়</string>
+    <string name="chip_will_rain">বৃষ্টি হবে?</string>
+    <string name="chip_tomorrow">আগামীকাল</string>
+    <string name="chip_hourly">ঘণ্টায় ঘণ্টায়</string>
+    <string name="chip_why_time">এই সময় কেন?</string>
+    <string name="chip_score">স্কোর</string>
+    <string name="refresh_weather">আবহাওয়া রিফ্রেশ</string>
 </resources>
 
 

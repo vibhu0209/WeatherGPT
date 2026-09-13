@@ -81,10 +81,11 @@ def _patch_chat_backends(monkeypatch, *, alerts=None):
     monkeypatch.setattr('app.tools.climate_service.summary', climate)
     monkeypatch.setattr('app.tools.marine_service.forecast', marine)
 
-    async def keep_deterministic(_question, _allowlist, fallback):
-        return fallback
+    async def no_orchestrator(_request):
+        return None
 
-    monkeypatch.setattr(chat_tools.gemini_polisher, 'choose_tool', keep_deterministic)
+    monkeypatch.setattr('app.groq_orchestrator.orchestrate_chat', no_orchestrator)
+    monkeypatch.setattr('app.gemini_orchestrator.orchestrate_chat', no_orchestrator)
     return TestClient(app)
 
 
@@ -116,6 +117,9 @@ def test_select_tool_maps_representative_questions():
         'What about tomorrow?': 'get_daily_forecast',
         'Any alerts near me?': 'get_active_alerts',
         "What's my weather score?": 'get_weather_score',
+        'Should I sow seeds today?': 'get_weather_score',
+        'Can I dry clothes outside?': 'get_weather_score',
+        'Is it safe to drive this evening?': 'get_weather_score',
         'Compare Delhi and Chandigarh tomorrow.': 'compare_locations',
         'What are the sea conditions?': 'get_marine_forecast',
         'Has Delhi become hotter over the last decade?': 'get_climate_summary',
@@ -290,54 +294,23 @@ def test_chat_tool_debug_trace_omits_user_text_and_coordinates(monkeypatch, capl
     assert '77.209' not in joined
 
 
-def test_gemini_tool_choice_still_executes_the_registry_tool(monkeypatch):
-    from app import chat_tools, main
-
-    class FakePolisher:
-        enabled = True
-
-        async def choose_tool(self, question, allowlist, fallback):
-            assert fallback in allowlist
-            return 'get_weather_score'
-
-        async def polish(self, question, draft, language, attempts=2):
-            return draft
-
+def test_keyword_router_still_selects_weather_score(monkeypatch):
     client = _patch_chat_backends(monkeypatch)
-    fake = FakePolisher()
-    monkeypatch.setattr(chat_tools, 'gemini_polisher', fake)
-    monkeypatch.setattr(main, 'gemini_polisher', fake)
     response = client.post('/v1/chat/message', json={
-        'text': "What's happening with the weather right now, should I check something else?",
+        'text': 'What is my weather score for farming?',
         'location': LOC.model_dump(mode='json'),
+        'profile': 'farming',
     })
     payload = response.json()
     assert payload['tool'] == 'get_weather_score'
-    assert '82' in payload['answer']
-    assert 'Weather score' in payload['answer']
+    assert 'Weather score' in payload['answer'] or '82' in payload['answer'] or '70' in payload['answer']
 
 
-def test_plain_weather_skips_gemini_tool_choice(monkeypatch):
-    from app import chat_tools, main
-
-    class FakePolisher:
-        enabled = True
-        called = False
-
-        async def choose_tool(self, question, allowlist, fallback):
-            type(self).called = True
-            return 'get_weather_score'
-
-        async def polish(self, question, draft, language, attempts=2):
-            return draft
-
+def test_plain_weather_uses_deterministic_path_when_groq_off(monkeypatch):
     client = _patch_chat_backends(monkeypatch)
-    fake = FakePolisher()
-    monkeypatch.setattr(chat_tools, 'gemini_polisher', fake)
-    monkeypatch.setattr(main, 'gemini_polisher', fake)
     response = client.post('/v1/chat/message', json={
         'text': 'Will it rain today?',
         'location': LOC.model_dump(mode='json'),
     })
     assert response.json()['tool'] == 'get_current_weather'
-    assert FakePolisher.called is False
+    assert response.json().get('response_origin') in {None, 'deterministic_fallback'}

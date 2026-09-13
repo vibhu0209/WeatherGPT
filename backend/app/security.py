@@ -88,8 +88,13 @@ def public_location(location) -> dict:
     }
 
 
-def sanitize_gemini_question(question: str) -> str:
+def sanitize_llm_question(question: str) -> str:
+    """Redact coordinates before any LLM provider sees the user text."""
     return redact_coordinates(question)[:1000]
+
+
+# Historical alias — prefer sanitize_llm_question.
+sanitize_gemini_question = sanitize_llm_question
 
 
 def redact_secrets(text: str) -> str:

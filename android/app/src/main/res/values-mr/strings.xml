@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="chat">विचारा</string>
     <string name="forecast">हवामान</string>
     <string name="home">होम</string>
@@ -12,9 +12,9 @@
     <string name="choose_place">तुमचे ठिकाण निवडा</string>
     <string name="welcome">नमस्कार! मी कशी मदत करू?</string>
     <string name="intro">हवामानाबद्दल तुमच्या शब्दांत विचारा. लिहा किंवा बोला. खाते लागत नाही.</string>
-    <string name="rain_question">आज पाऊस पडेल का?</string>
-    <string name="tomorrow_question">उद्या हवामान कसे असेल?</string>
-    <string name="warning_question">हवामानाचे इशारे आहेत का?</string>
+    <string name="rain_question">पाऊस पडेल का?</string>
+    <string name="tomorrow_question">उद्या</string>
+    <string name="warning_question">इशारे</string>
     <string name="climate_question">गेल्या 10 वर्षांत हे ठिकाण अधिक उबदार झाले का?</string>
     <string name="you">तुम्ही</string>
     <string name="listen">ऐका</string>
@@ -26,8 +26,8 @@
     <string name="loading">हवामान माहिती येत आहे</string>
     <string name="updated">डाउनलोड केले</string>
     <string name="minutes_ago">मिनिटांपूर्वी</string>
-    <string name="single_source">एक हवामान स्रोत उपलब्ध. हा अंदाज आहे, हमी नाही.</string>
-    <string name="disagree">हवामान स्रोत वेगळे आहेत. योजना बदलावी लागू शकते.</string>
+    <string name="single_source">या ठिकाणी एक हवामान स्रोत वापरला जात आहे.</string>
+    <string name="disagree">मॉडेल वेळेबाबत थोडे वेगळे आहेत — वरील योजना तशीच आहे.</string>
     <string name="no_saved">अजून हवामान जतन नाही. ठिकाण निवडून अंदाज डाउनलोड करा.</string>
     <string name="download">हवामान डाउनलोड / ताजे करा</string>
     <string name="forecast_help">पुढील तीन दिवस, तास तासाने. पावसाची शक्यता त्या तासासाठी.</string>
@@ -56,7 +56,11 @@
     <string name="visibility">दृश्यता</string>
     <string name="uv">UV निर्देशांक</string>
     <string name="forecast_confidence">अंदाज विश्वास</string>
-    <string name="confidence_help">स्रोत उपलब्धता आणि सहमती दाखवते. अंदाज बरोबर असण्याची शक्यता नाही.</string>
+    <string name="confidence_help">स्रोत किती सहमत आहेत ते दाखवते. योजना सोडण्याचे कारण नाही.</string>
+    <string name="confidence_info_cd">हा विश्वास का</string>
+    <string name="confidence_compact_low">कमी विश्वास</string>
+    <string name="confidence_compact_medium">मध्यम विश्वास</string>
+    <string name="confidence_compact_high">उच्च विश्वास</string>
     <string name="settings_intro">WeatherGPT तुमच्या सोयीनुसार बदला. तुमची निवड या फोनवर जतन होते.</string>
     <string name="theme">स्वरूप</string>
     <string name="system_theme">फोनप्रमाणे</string>
@@ -117,9 +121,9 @@
     <string name="checking_sources">खात्री केलेले हवामान स्रोत तपासत आहे</string>
     <string name="farm_work_question">उद्या सकाळी शेताच्या कामासाठी चांगले?</string>
     <string name="spray_question">उद्या पाऊस किंवा वारा पिक फवारणीवर परिणाम करेल का?</string>
-    <string name="marine_question">मासेमारीसाठी समुद्राची स्थिती कशी?</string>
-    <string name="wave_question">मासेमारीसाठी समुद्राच्या लाटांची उंची किती?</string>
-    <string name="next_hours_question">पुढील तीन तास हवामान कसे?</string>
+    <string name="marine_question">समुद्री स्थिती</string>
+    <string name="wave_question">वारा आणि लाटा</string>
+    <string name="next_hours_question">तासानुसार</string>
     <string name="backend_online">WeatherGPT सर्व्हर जोडले</string>
     <string name="backend_offline">WeatherGPT सर्व्हर उपलब्ध नाही. बॅकएंड सुरू करा किंवा सेटिंग्ज तपासा.</string>
     <string name="ask_weathergpt">WeatherGPT ला विचारा</string>
@@ -135,7 +139,7 @@
     <string name="purpose_work">कामाचे ठिकाण</string>
     <string name="action_hourly">तासन् तास अंदाज दाखवा</string>
     <string name="action_warnings">इशारे तपासा</string>
-    <string name="action_score">माझ्यासाठी हवामान गुण</string>
+    <string name="action_score">स्कोअर</string>
     <string name="clearing_compare">तुलना ठिकाण काढा</string>
     <string name="onboard_next">पुढे जा</string>
     <string name="onboard_back">मागे</string>
@@ -162,6 +166,8 @@
     <string name="notice_cant_connect">WeatherGPT शी संपर्क होत नाही. जतन केलेले हवामान दाखवत आहोत.</string>
     <string name="notice_provider_down">हवामान स्रोत तात्पुरता उपलब्ध नाही. शेवटचा जतन केलेला अंदाज दाखवत आहोत.</string>
     <string name="notice_no_data">सध्या हवामान माहिती उपलब्ध नाही. तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</string>
+    <string name="notice_no_saved">अजून जतन केलेले हवामान उपलब्ध नाही.</string>
+    <string name="notice_providers_unavailable">हवामान स्रोत तात्पुरते उपलब्ध नाहीत.</string>
     <string name="notice_check_settings">WeatherGPT या उपकरणाची पडताळणी करू शकले नाही. कनेक्शन सेटिंग्ज पहा.</string>
     <string name="connection_unknown">सर्व्हर तपासत आहोत...</string>
     <string name="connection_last">शेवटचा संपर्क: </string>
@@ -169,6 +175,27 @@
     <string name="demo_warning_title">DEMO · इशारे</string>
     <string name="demo_warning_body">याचा अर्थ इशारे नाहीत असा नाही. बाहेर जाण्यापूर्वी तुमच्या भागाचे IMD इशारे पहा. IMD.</string>
     <string name="demo_warning_action">DEMO · पाठवा</string>
+    <string name="chat_planning_prompt">तुम्ही काय योजना करत आहात?</string>
+    <string name="chat_context_score">स्कोअर %1$d</string>
+    <string name="chat_offline_hint">तुम्ही ऑफलाइन आहात. जतन अंदाजावरूनही उत्तर देऊ शकतो.</string>
+    <string name="chat_no_weather_hint">ठिकाण निवडा आणि हवामान डाउनलोड करा जेणेकरून उत्तरे विश्वसनीय राहतील.</string>
+    <string name="good_morning">शुभ प्रभात</string>
+    <string name="good_afternoon">शुभ दुपार</string>
+    <string name="good_evening">शुभ संध्या</string>
+    <string name="place_now_temp">%1$s — %2$d°</string>
+    <string name="place_saved_offline">%1$s साठी जतन हवामान आहे.</string>
+    <string name="chip_best_work">कामासाठी चांगला वेळ</string>
+    <string name="chip_rain_later">नंतर पाऊस?</string>
+    <string name="chip_warnings">इशारे</string>
+    <string name="chip_sea">समुद्री स्थिती</string>
+    <string name="chip_wind_waves">वारा आणि लाटा</string>
+    <string name="chip_best_outdoor">बाहेरचा चांगला वेळ</string>
+    <string name="chip_will_rain">पाऊस पडेल का?</string>
+    <string name="chip_tomorrow">उद्या</string>
+    <string name="chip_hourly">तासानुसार</string>
+    <string name="chip_why_time">हा वेळ का?</string>
+    <string name="chip_score">स्कोअर</string>
+    <string name="refresh_weather">हवामान रिफ्रेश</string>
 </resources>
 
 

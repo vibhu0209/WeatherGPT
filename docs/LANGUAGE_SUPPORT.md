@@ -9,7 +9,7 @@ Selected language is stored in DataStore, applied to the UI locale, and sent as 
 1. Intent is resolved from the user text (including native-script rain/today/tomorrow chips).
 2. Typed weather tools execute against canonical provider data.
 3. A deterministic template in the selected language wraps verified numbers, units, timestamps, source names and official-alert fields.
-4. Gemini may reword unprotected prose only. It cannot change numbers, units, severity tokens or source names.
+4. When online and configured, Groq may orchestrate WeatherGPT tools and explain verified results. It cannot invent numbers, units, severity tokens or source names; failed validation falls back to the deterministic draft.
 5. BHASHINI / Google Translate run only when credentials exist **and** the draft language still differs from the request. Failure keeps the deterministic draft.
 
 Official CAP headline, instruction and severity stay verbatim (usually English from the feed). Wrappers are localized; the meaning is not rewritten.

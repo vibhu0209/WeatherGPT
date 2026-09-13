@@ -126,22 +126,69 @@ fun classifyFailure(error: Throwable, online: Boolean): NetFailure = when (error
 }
 
 /** The single banner the UI shows, so one root cause never produces three stacked warnings. */
-enum class WeatherNotice { NONE, STALE, OFFLINE_CACHED, CANT_CONNECT, PROVIDER_DOWN, NO_DATA, CHECK_SETTINGS }
+enum class WeatherNotice {
+    NONE,
+    STALE,
+    OFFLINE_CACHED,
+    CANT_CONNECT,
+    PROVIDER_DOWN,
+    /** Backend unreachable/timeout and nothing saved locally. */
+    NO_DATA,
+    /** Device is offline and nothing saved locally. */
+    NO_SAVED,
+    /** Backend answered but no usable provider weather, and nothing saved locally. */
+    PROVIDERS_UNAVAILABLE,
+    CHECK_SETTINGS,
+}
 
 /**
  * Collapse the failure and what Room actually holds into one message.
  *
- * Without a cached bundle there is nothing reassuring to say, so every hard failure becomes
- * [WeatherNotice.NO_DATA] rather than a promise of "saved weather" the user does not have.
+ * Hard failures stay distinct. Usable Room weather must never produce NO_DATA /
+ * NO_SAVED / PROVIDERS_UNAVAILABLE — those banners claim there is nothing to show.
  */
-fun noticeFor(failure: NetFailure, hasCache: Boolean, isStale: Boolean): WeatherNotice = when (failure) {
-    NetFailure.NONE -> if (isStale) WeatherNotice.STALE else WeatherNotice.NONE
-    NetFailure.AUTH_CONFIGURATION_ERROR -> WeatherNotice.CHECK_SETTINGS
-    NetFailure.NO_NETWORK -> if (hasCache) WeatherNotice.OFFLINE_CACHED else WeatherNotice.NO_DATA
-    NetFailure.SERVER_UNREACHABLE, NetFailure.TIMEOUT ->
-        if (hasCache) WeatherNotice.CANT_CONNECT else WeatherNotice.NO_DATA
-    NetFailure.PROVIDER_UNAVAILABLE, NetFailure.SERVER_ERROR, NetFailure.BAD_RESPONSE ->
-        if (hasCache) WeatherNotice.PROVIDER_DOWN else WeatherNotice.NO_DATA
+fun noticeFor(failure: NetFailure, hasCache: Boolean, isStale: Boolean): WeatherNotice {
+    val notice = when (failure) {
+        NetFailure.NONE -> if (isStale) WeatherNotice.STALE else WeatherNotice.NONE
+        NetFailure.AUTH_CONFIGURATION_ERROR -> WeatherNotice.CHECK_SETTINGS
+        NetFailure.NO_NETWORK -> if (hasCache) WeatherNotice.OFFLINE_CACHED else WeatherNotice.NO_SAVED
+        NetFailure.SERVER_UNREACHABLE, NetFailure.TIMEOUT ->
+            if (hasCache) WeatherNotice.CANT_CONNECT else WeatherNotice.NO_DATA
+        NetFailure.PROVIDER_UNAVAILABLE ->
+            if (hasCache) WeatherNotice.PROVIDER_DOWN else WeatherNotice.PROVIDERS_UNAVAILABLE
+        NetFailure.SERVER_ERROR, NetFailure.BAD_RESPONSE ->
+            if (hasCache) WeatherNotice.PROVIDER_DOWN else WeatherNotice.NO_DATA
+    }
+    if (!hasCache) return notice
+    // Invariant: weather is on screen — never claim "no data".
+    return when (notice) {
+        WeatherNotice.NO_DATA, WeatherNotice.NO_SAVED, WeatherNotice.PROVIDERS_UNAVAILABLE -> when (failure) {
+            NetFailure.NO_NETWORK -> WeatherNotice.OFFLINE_CACHED
+            NetFailure.SERVER_UNREACHABLE, NetFailure.TIMEOUT -> WeatherNotice.CANT_CONNECT
+            NetFailure.PROVIDER_UNAVAILABLE, NetFailure.SERVER_ERROR, NetFailure.BAD_RESPONSE -> WeatherNotice.PROVIDER_DOWN
+            NetFailure.AUTH_CONFIGURATION_ERROR -> WeatherNotice.CHECK_SETTINGS
+            NetFailure.NONE -> if (isStale) WeatherNotice.STALE else WeatherNotice.NONE
+        }
+        else -> notice
+    }
+}
+
+/** Debug-only: why the single status banner is (or is not) showing. */
+fun logNoticeState(
+    notice: WeatherNotice,
+    failure: NetFailure,
+    hasWeather: Boolean,
+    isStale: Boolean,
+    offline: Boolean,
+    backendOnline: Boolean?,
+    refreshing: Boolean,
+) {
+    if (!BuildConfig.DEBUG) return
+    android.util.Log.d(
+        "WeatherGPTNotice",
+        "notice=$notice failure=$failure hasWeather=$hasWeather isStale=$isStale " +
+            "offline=$offline backendOnline=$backendOnline refreshing=$refreshing",
+    )
 }
 
 /**
@@ -160,6 +207,25 @@ object NetLog {
         val detail = error?.let { " exception=${it.javaClass.simpleName} detail=${redact(it.message)}" }.orEmpty()
         Log.d(TAG, "$operation scheme=${uri?.scheme} host=${uri?.host} port=$port path=$path " +
             "status=${status ?: "-"} failure=$failure$detail")
+    }
+
+    fun bundle(
+        base: String,
+        status: Int?,
+        sourceCount: Int?,
+        cacheHit: Boolean,
+        roomPresent: Boolean,
+        etagPresent: Boolean,
+    ) {
+        if (!BuildConfig.DEBUG) return
+        val uri = runCatching { java.net.URI(base) }.getOrNull()
+        val port = uri?.port?.takeIf { it > 0 } ?: if (uri?.scheme == "https") 443 else 80
+        Log.d(
+            TAG,
+            "bundle_diag scheme=${uri?.scheme} host=${uri?.host} port=$port path=v1/weather/bundle " +
+                "status=${status ?: "-"} source_count=${sourceCount ?: "-"} cache_hit=$cacheHit " +
+                "room_bundle=$roomPresent etag=$etagPresent",
+        )
     }
 
     /** Drop query strings and anything that looks like a coordinate pair. */

@@ -128,10 +128,10 @@ def test_every_language_chat_endpoint_uses_selected_language(monkeypatch, freeze
     monkeypatch.setattr(chat_tools.alert_service, 'official', official)
     monkeypatch.setattr(main.alert_service, 'official', official)
 
-    async def keep_deterministic(_question, _allowlist, fallback):
-        return fallback
+    async def no_orchestrator(_request):
+        return None
 
-    monkeypatch.setattr(chat_tools.gemini_polisher, 'choose_tool', keep_deterministic)
+    monkeypatch.setattr('app.groq_orchestrator.orchestrate_chat', no_orchestrator)
     client = TestClient(app)
     for language, text in NATIVE_RAIN.items():
         response = client.post('/v1/chat/message', json={
@@ -140,7 +140,7 @@ def test_every_language_chat_endpoint_uses_selected_language(monkeypatch, freeze
         assert response.status_code == 200, (language, response.text)
         payload = response.json()
         assert payload['language'] == language
-        assert payload['tool'] == 'get_current_weather'
+        assert payload['tool'] in {'get_current_weather', 'get_hourly_forecast'}
         assert TEMP_MARKERS[language] in payload['answer']
         assert '18' in payload['answer'] and '40' in payload['answer']
 

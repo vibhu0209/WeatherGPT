@@ -10,6 +10,8 @@ People need trustworthy local weather guidance in their language — especially 
 
 WeatherGPT fuses validated multi-provider forecasts on a FastAPI backend, answers in plain language through chat, keeps Room as the Android source of truth offline, and always separates **official warnings** from WeatherGPT risk estimates. Missing official data is reported as unavailable — never as “no warnings.”
 
+**Authority path:** multi-model fusion is practical guidance for the SIH demo. The stack is built so **official IMD** (forecasts + warnings) becomes the primary authority layer once access is provisioned after selection — not endless “uncertain” hedging.
+
 ## Why chatbot-first
 
 Chat is the default screen: suggested questions, typing, or Speak → confirm transcript → send. Answers lead with a plain summary; an expandable evidence control shows sources, confidence reasons and update time. Forecast, alerts, home score and settings remain available, but conversation is the front door.
@@ -23,7 +25,7 @@ FastAPI backend (validation, fusion, alerts, chat, translate)
         │
 Open-Meteo (+ IFS) · OpenWeather* · WeatherAPI* · IMD probe*
         · CAP feed* · Open-Meteo Marine · ERA5 climate
-        · Gemini* · BHASHINI* · Google Translate* · FCM*/SMS*
+        · Groq* · BHASHINI* · Google Translate* · FCM*/SMS*
 ```
 
 \* Requires credentials; disabled or probe-only without them. No weather API keys in the APK.
@@ -47,7 +49,7 @@ Open-Meteo (+ IFS) · OpenWeather* · WeatherAPI* · IMD probe*
 | Android | Kotlin, Jetpack Compose, Room, DataStore, WorkManager |
 | Backend | Python FastAPI, httpx, Pydantic settings |
 | Data | Open-Meteo (forecast, geocoding, marine, ERA5); optional OpenWeather, WeatherAPI, IMD, CAP |
-| Optional AI / language | Gemini (wording only), BHASHINI, Google Cloud Translation |
+| Optional AI / language | Groq (conversational tool orchestration; facts from WeatherGPT tools only), BHASHINI, Google Cloud Translation |
 | Optional delivery | FCM, SMS (stubs until credentials) |
 
 ## Setup
@@ -87,9 +89,11 @@ Copy `.env.example` to `.env` at the repo root. Empty values disable optional in
 | `OPENWEATHER_API_KEY` / `WEATHERAPI_KEY` | Extra forecast providers |
 | `IMD_ENABLED` | IMD access probe (default false; not a completed live fourth provider) |
 | `CAP_ALERT_URL` / `CAP_ALERT_ALLOWED_HOSTS` | Trusted official CAP feed |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | Optional backend-only wording |
+| `GROQ_API_KEY` / `GROQ_MODEL` | Backend-only conversational orchestration (OpenAI-compatible tool calling). Facts remain tool-grounded. Deterministic chat is the fallback when Groq is unavailable. |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | Legacy / unused by active runtime (kept for older env files). |
 | `BHASHINI_*` / `GOOGLE_TRANSLATE_API_KEY` | Optional translation |
-| `GOOGLE_PLACES_API_KEY` | Optional place search (Places Autocomplete); falls back to Open-Meteo + city list |
+| `GOOGLE_PLACES_ENABLED` | Default `false` (zero-cost). Set `true` only if you intentionally use paid Google Places/Geocoding. |
+| `GOOGLE_PLACES_API_KEY` | Optional; used only when `GOOGLE_PLACES_ENABLED=true`. Alias: `GOOGLE_MAPS_API_KEY`. Without Google, Open-Meteo + popular cities (and optional Mappls) still work. |
 | `MAPPLS_ACCESS_TOKEN` | Optional MapmyIndia / Mappls search |
 | `FIREBASE_*` | Optional FCM push (placeholders; empty = disabled) |
 | `SMS_*` | Optional SMS delivery (placeholders; empty = disabled) |
@@ -97,16 +101,26 @@ Copy `.env.example` to `.env` at the repo root. Empty values disable optional in
 
 Do not commit `.env`. Do not put secrets in Android.
 
-### Google Places API key (low / no cost for light use)
+### Google Places API key (optional / paid — off by default)
 
-Place search works without Google (Open-Meteo geocoding + popular cities). For better village/locality matches, add a Places key on the **backend only**:
+Place search works with **₹0 Maps spend** via Open-Meteo geocoding + popular cities (and optional Mappls if you have a free/usable token). Google Places remains in the codebase but is **disabled** unless you set:
+
+```
+GOOGLE_PLACES_ENABLED=true
+GOOGLE_PLACES_API_KEY=...
+```
+
+If Google returns `REQUEST_DENIED` (for example billing disabled), WeatherGPT falls back immediately, applies a long cooldown, and does not retry Google on every keystroke. Users still see location results from free providers.
+
+Capabilities expose only `google_places_configured` and `google_places_enabled` — never the key.
+
+To enable Google later (billing required by Google Cloud):
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (or pick an existing one).
-2. Link a **billing account**. Google still requires billing even when you stay in the free monthly usage pool. New Cloud accounts often get a **$300 trial credit**; Maps/Places also has a **free monthly call allowance per SKU** (resets each month). Set a budget alert so you are not surprised if usage grows.
-3. Enable **Places API** (and/or **Places API (New)** if you prefer the new stack — WeatherGPT currently calls the classic Autocomplete endpoint).
-4. Go to **APIs & Services → Credentials → Create credentials → API key**.
-5. Restrict the key: API restriction to Places only; optionally IP restrict to your backend host.
-6. Put the key in repo-root `.env` as `GOOGLE_PLACES_API_KEY=...` and restart the backend.
+2. Link a **billing account**.
+3. Enable **Places API** (classic Autocomplete + Place Details) and **Geocoding API**.
+4. Create an API key; restrict it to Places + Geocoding; optionally IP-restrict to your backend.
+5. Set `GOOGLE_PLACES_ENABLED=true` and `GOOGLE_PLACES_API_KEY=...` in repo-root `.env`, then restart the backend.
 
 Docs: [Get a Places API key](https://developers.google.com/maps/documentation/places/web-service/get-api-key) · [Maps pricing / free usage](https://developers.google.com/maps/billing-and-pricing/overview)
 
@@ -119,7 +133,7 @@ Saved forecasts and messages live in Room; preferences in DataStore. Offline ans
 - **No Demo Mode** (user override of master spec §§68–69). Real providers or clear unavailability only. Settings can post a labelled **DEMO warning** notification; that is not demo weather.
 - **Adapters vs live providers:** Open-Meteo, OpenWeather, WeatherAPI and ECMWF IFS were live-fused here. IMD **forecasts** are a probe only — not a completed fourth live agency provider. IMD **CAP warnings** work when `CAP_ALERT_URL` is configured.
 - INCOIS official marine feed is not live; Open-Meteo Marine is model sea state only.
-- BHASHINI, Google Translation, FCM and SMS are not live without credentials. Gemini wording is optional and never weather ground truth.
+- BHASHINI, Google Translation, FCM and SMS are not live without credentials. Groq powers online conversational reasoning and tool orchestration; meteorological facts stay grounded in deterministic WeatherGPT tools. When Groq is unavailable or the device is offline, WeatherGPT falls back to deterministic grounded responses.
 - Provider consensus confidence is uncalibrated, not a safety score.
 - Spoken voice turn, TalkBack reading order, notification-shade tap and WorkManager fire remain UNVERIFIED or PARTIAL — see `docs/EVALUATION.md`.
 - Gradle wrapper may use a machine-local zip when the official distribution URL is unreachable.

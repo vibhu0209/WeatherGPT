@@ -22,6 +22,15 @@ import java.security.MessageDigest
 
 val Context.settings by preferencesDataStore(name="preferences")
 data class Place(val name:String, val latitude:Double, val longitude:Double, val timezone:String="Asia/Kolkata")
+/** Live place search needs connectivity and at least two characters. */
+fun shouldRunPlaceSearch(query:String, online:Boolean)=online && query.trim().length>=2
+/** Offline place picker still offers saved/recent places; live search is unavailable. */
+fun placeSearchUnavailableOffline(online:Boolean)=!online
+fun placeSearchShowsEmpty(results:List<Place>, error:String)=results.isEmpty() && error=="no_places"
+fun placeSearchShowsFailure(error:String)=error=="search_failed" || error=="location_failed"
+fun savedPlacesRemainUsable(saved:List<SavedPlace>)=saved.isNotEmpty()
+const val PLACE_SEARCH_DEBOUNCE_MS=400L
+const val PLACE_SEARCH_MIN_CHARS=2
 data class Hour(val time:String, val temperature:Double?, val rain_chance:Double?, val rain_mm:Double?, val wind_ms:Double?, val humidity:Double?, val source_count:Int=1, val apparent_temperature:Double?=null, val wind_direction:Double?=null, val wind_gust_ms:Double?=null, val visibility_m:Double?=null, val pressure_hpa:Double?=null, val cloud_cover:Double?=null, val uv_index:Double?=null, val weather_code:Double?=null)
 data class Day(val date:String, val temperature_min:Double?, val temperature_max:Double?, val rain_chance_max:Double?, val rain_total_mm:Double?, val wind_max_ms:Double?, val humidity_average:Double?, val source_count:Int=0)
 data class ScoreComponent(val name:String, val penalty:Int, val reason:String)
@@ -34,7 +43,7 @@ data class BundleDto(val location:Place, val hourly:List<Hour>, val retrieved_at
 data class SearchDto(val locations:List<Place>)
 data class ResolvedPlace(val location:Place)
 data class ChatBody(val text:String, val location:Place, val language:String, val profile:String, val day_offset:Int, val conversation_id:String, val secondary_location:Place?=null, val saved_locations:List<Place> = emptyList())
-data class AnswerDto(val answer:String, val language:String, val day_offset:Int, val retrieved_at:String, val is_stale:Boolean, val sources:List<String>, val agreement:String)
+data class AnswerDto(val answer:String, val language:String, val day_offset:Int, val retrieved_at:String, val is_stale:Boolean, val sources:List<String>, val agreement:String, val follow_up_suggestions:List<String>?=null, val response_origin:String?=null, val used_tools:List<String>?=null)
 data class ResolveBody(val latitude:Double, val longitude:Double, val name:String)
 data class BundleBody(val latitude:Double, val longitude:Double, val name:String, val timezone:String, val hours:Int)
 data class DeviceRegistrationBody(val device_id:String?=null)
@@ -53,6 +62,9 @@ interface Api {
 @Entity(tableName="sync_metadata") data class SyncMetadata(@PrimaryKey val key:String, val etag:String?, val lastCheckedAt:Long, val lastChangedAt:Long)
 @Entity(tableName="notification_receipts") data class NotificationReceipt(@PrimaryKey val id:String, val contentSignature:String, val notifiedAt:Long)
 fun canReuseNotModified(responseCode:Int,metadata:SyncMetadata?,weather:SavedWeather?)=responseCode==304 && metadata?.etag!=null && weather!=null
+/** True when the server says "unchanged" but this phone has no Room body to reuse. */
+fun shouldRetryUncachedNotModified(responseCode:Int,metadata:SyncMetadata?,weather:SavedWeather?)=
+    responseCode==304 && weather==null
 fun bundleHorizonHours(lowData:Boolean)=if(lowData)72 else 168
 fun notificationContentSignature(vararg values:String?)=MessageDigest.getInstance("SHA-256").digest(values.joinToString("\u001f"){it.orEmpty()}.toByteArray()).joinToString(""){"%02x".format(it.toInt() and 0xff)}
 fun shouldDeliverNotification(previous:NotificationReceipt?,signature:String)=previous?.contentSignature!=signature
@@ -194,17 +206,30 @@ class Repository(context:Context) {
     fun key(p:Place)="${p.latitude},${p.longitude},${p.timezone}"
     suspend fun refresh(p:Place, base:String, lowData:Boolean=false) {
         val key=key(p)
+        val hours=bundleHorizonHours(lowData)
         val existing=dao.syncOnce(key)
-        val response=call(base){ it.bundle(BundleBody(p.latitude,p.longitude,p.name,p.timezone,bundleHorizonHours(lowData)),existing?.etag) }
-        val checkedAt=System.currentTimeMillis()
+        var response=call(base){ it.bundle(BundleBody(p.latitude,p.longitude,p.name,p.timezone,hours),existing?.etag) }
+        var checkedAt=System.currentTimeMillis()
         if(response.code()==304) {
             val localWeather=dao.weatherOnce(key)
-            if(!canReuseNotModified(response.code(),existing,localWeather)) throw MalformedWeatherException("Server returned unchanged weather without a local copy")
-            dao.saveSync(checkNotNull(existing).copy(lastCheckedAt=checkedAt))
-            return
+            if(canReuseNotModified(response.code(),existing,localWeather)) {
+                NetLog.bundle(base,304,null,cacheHit=true,roomPresent=true,etagPresent=true)
+                dao.saveSync(checkNotNull(existing).copy(lastCheckedAt=checkedAt))
+                return
+            }
+            // Stale ETag without a Room body must not become a permanent NO_DATA state.
+            NetLog.bundle(base,304,null,cacheHit=false,roomPresent=localWeather!=null,etagPresent=existing?.etag!=null)
+            if(existing!=null) dao.saveSync(existing.copy(etag=null,lastCheckedAt=checkedAt))
+            response=call(base){ it.bundle(BundleBody(p.latitude,p.longitude,p.name,p.timezone,hours),null) }
+            checkedAt=System.currentTimeMillis()
+            if(response.code()==304) throw MalformedWeatherException("Server returned unchanged weather without a local copy")
         }
-        if(!response.isSuccessful) throw BackendHttpException(response.code(),"Weather request failed")
+        if(!response.isSuccessful) {
+            NetLog.bundle(base,response.code(),null,cacheHit=false,roomPresent=dao.weatherOnce(key)!=null,etagPresent=existing?.etag!=null)
+            throw BackendHttpException(response.code(),"Weather request failed")
+        }
         val data=validateBundle(response.body(),p)
+        NetLog.bundle(base,response.code(),data.source_count,cacheHit=false,roomPresent=true,etagPresent=response.headers()["etag"]!=null)
         dao.saveBundle(SavedWeather(key,gson.toJson(data)),SyncMetadata(key,response.headers()["etag"],checkedAt,checkedAt))
     }
 }

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="chat">கேளுங்கள்</string>
     <string name="forecast">வானிலை</string>
     <string name="home">முகப்பு</string>
@@ -12,9 +12,9 @@
     <string name="choose_place">உங்கள் இடத்தை தேர்வு செய்யுங்கள்</string>
     <string name="welcome">வணக்கம்! எப்படி உதவ முடியும்?</string>
     <string name="intro">வானிலையை உங்கள் சொற்களில் கேளுங்கள். எழுதலாம் அல்லது பேசலாம். கணக்கு தேவையில்லை.</string>
-    <string name="rain_question">இன்று மழை பெய்யுமா?</string>
-    <string name="tomorrow_question">நாளை வானிலை எப்படி இருக்கும்?</string>
-    <string name="warning_question">வானிலை எச்சரிக்கைகள் உள்ளனவா?</string>
+    <string name="rain_question">மழை பெய்யுமா?</string>
+    <string name="tomorrow_question">நாளை</string>
+    <string name="warning_question">எச்சரிக்கைகள்</string>
     <string name="climate_question">கடந்த 10 ஆண்டுகளில் இந்த இடம் அதிக சூடாகிவிட்டதா?</string>
     <string name="you">நீங்கள்</string>
     <string name="listen">கேளுங்கள்</string>
@@ -26,8 +26,8 @@
     <string name="loading">வானிலை தகவல் வருகிறது</string>
     <string name="updated">பதிவிறக்கப்பட்டது</string>
     <string name="minutes_ago">நிமிடங்களுக்கு முன்</string>
-    <string name="single_source">ஒரு வானிலை மூலம் உள்ளது. இது முன்னறிவிப்பு, உத்தரவாதம் அல்ல.</string>
-    <string name="disagree">வானிலை மூலங்கள் வேறுபடுகின்றன. திட்டம் மாறலாம்.</string>
+    <string name="single_source">இந்த இடத்திற்கு ஒரு வானிலை மூலம் பயன்படுத்தப்படுகிறது.</string>
+    <string name="disagree">மாதிரிகள் நேரத்தில் சிறிது வேறுபடுகின்றன — மேலே உள்ள திட்டம் இன்னும் பொருந்தும்.</string>
     <string name="no_saved">இன்னும் வானிலை சேமிக்கப்படவில்லை. இடத்தை தேர்ந்தெடுத்து முன்னறிவிப்பை பதிவிறக்கவும்.</string>
     <string name="download">வானிலை பதிவிறக்கம் / புதுப்பிப்பு</string>
     <string name="forecast_help">அடுத்த மூன்று நாட்கள், மணிக்கு மணி. மழை வாய்ப்பு அந்த மணிக்கு.</string>
@@ -56,7 +56,11 @@
     <string name="visibility">காணும் தூரம்</string>
     <string name="uv">UV குறியீடு</string>
     <string name="forecast_confidence">முன்னறிவிப்பு நம்பிக்கை</string>
-    <string name="confidence_help">மூல கிடைப்பும் ஒற்றுமையும் காட்டுகிறது. முன்னறிவிப்பு சரியாக இருக்கும் வாய்ப்பு அல்ல.</string>
+    <string name="confidence_help">மூலங்கள் எவ்வளவு ஒற்றுமையாக உள்ளன என்பதைக் காட்டுகிறது. திட்டத்தைத் தவிர்க்க காரணமல்ல.</string>
+    <string name="confidence_info_cd">இந்த நம்பிக்கை ஏன்</string>
+    <string name="confidence_compact_low">குறைந்த நம்பிக்கை</string>
+    <string name="confidence_compact_medium">நடுத்தர நம்பிக்கை</string>
+    <string name="confidence_compact_high">அதிக நம்பிக்கை</string>
     <string name="settings_intro">WeatherGPTஐ உங்களுக்கு வசதியாக அமைக்கவும். உங்கள் தேர்வுகள் இந்த தொலைபேசியில் சேமிக்கப்படும்.</string>
     <string name="theme">தோற்றம்</string>
     <string name="system_theme">தொலைபேசி போல்</string>
@@ -117,9 +121,9 @@
     <string name="checking_sources">சரிபார்க்கப்பட்ட வானிலை மூலங்களை பார்க்கிறோம்</string>
     <string name="farm_work_question">நாளை காலை விவசாய வேலைக்கு நல்லதா?</string>
     <string name="spray_question">நாளை மழை அல்லது காற்று பயிர் தெளிப்பை பாதிக்குமா?</string>
-    <string name="marine_question">மீன்பிடிக்கு கடல் நிலை எப்படி?</string>
-    <string name="wave_question">மீன்பிடிக்கு கடல் அலை உயரம் என்ன?</string>
-    <string name="next_hours_question">அடுத்த மூன்று மணி நேர வானிலை எப்படி?</string>
+    <string name="marine_question">கடல் நிலை</string>
+    <string name="wave_question">காற்றும் அலைகளும்</string>
+    <string name="next_hours_question">மணிநேரம்</string>
     <string name="backend_online">WeatherGPT சேவையகம் இணைக்கப்பட்டது</string>
     <string name="backend_offline">WeatherGPT சேவையகம் கிடைக்கவில்லை. பின்தளத்தை தொடங்கவும் அல்லது அமைப்புகளைப் பாருங்கள்.</string>
     <string name="ask_weathergpt">WeatherGPT இடம் கேளுங்கள்</string>
@@ -135,7 +139,7 @@
     <string name="purpose_work">பணியிடம்</string>
     <string name="action_hourly">மணிநேர முன்னறிவைக் காட்டு</string>
     <string name="action_warnings">எச்சரிக்கைகளைப் பாருங்கள்</string>
-    <string name="action_score">எனக்கான வானிலை மதிப்பெண்</string>
+    <string name="action_score">மதிப்பெண்</string>
     <string name="clearing_compare">ஒப்பீட்டு இடத்தை அகற்று</string>
     <string name="onboard_next">தொடரவும்</string>
     <string name="onboard_back">பின்செல்</string>
@@ -162,6 +166,8 @@
     <string name="notice_cant_connect">WeatherGPT உடன் இணைக்க முடியவில்லை. சேமித்த வானிலை காட்டப்படுகிறது.</string>
     <string name="notice_provider_down">வானிலை மூலம் தற்காலிகமாக கிடைக்கவில்லை. கடைசியாக சேமித்த முன்னறிவிப்பு காட்டப்படுகிறது.</string>
     <string name="notice_no_data">இப்போது வானிலைத் தகவல் கிடைக்கவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="notice_no_saved">சேமித்த வானிலை இன்னும் கிடைக்கவில்லை.</string>
+    <string name="notice_providers_unavailable">வானிலை மூலங்கள் தற்காலிகமாக கிடைக்கவில்லை.</string>
     <string name="notice_check_settings">WeatherGPT இந்தச் சாதனத்தை உறுதிப்படுத்த முடியவில்லை. இணைப்பு அமைப்புகளைப் பாருங்கள்.</string>
     <string name="connection_unknown">சேவையகம் சரிபார்க்கப்படுகிறது...</string>
     <string name="connection_last">கடைசி இணைப்பு: </string>
@@ -169,6 +175,27 @@
     <string name="demo_warning_title">DEMO · எச்சரிக்கைகள்</string>
     <string name="demo_warning_body">எச்சரிக்கைகள் இல்லை என்று அர்த்தம் அல்ல. வெளியே செல்லும் முன் உங்கள் பகுதி IMD எச்சரிக்கைகளை பாருங்கள். IMD.</string>
     <string name="demo_warning_action">DEMO · அனுப்பு</string>
+    <string name="chat_planning_prompt">நீங்கள் என்ன திட்டமிடுகிறீர்கள்?</string>
+    <string name="chat_context_score">மதிப்பெண் %1$d</string>
+    <string name="chat_offline_hint">நீங்கள் ஆஃப்லைன். சேமித்த முன்னறிவிலிருந்தும் பதிலளிக்கலாம்.</string>
+    <string name="chat_no_weather_hint">இடத்தைத் தேர்ந்தெடுத்து வானிலையைப் பதிவிறக்கவும்.</string>
+    <string name="good_morning">காலை வணக்கம்</string>
+    <string name="good_afternoon">மதிய வணக்கம்</string>
+    <string name="good_evening">மாலை வணக்கம்</string>
+    <string name="place_now_temp">%1$s — %2$d°</string>
+    <string name="place_saved_offline">%1$s-க்கு சேமித்த வானிலை உள்ளது.</string>
+    <string name="chip_best_work">வேலைக்கு நல்ல நேரம்</string>
+    <string name="chip_rain_later">பிறகு மழை?</string>
+    <string name="chip_warnings">எச்சரிக்கைகள்</string>
+    <string name="chip_sea">கடல் நிலை</string>
+    <string name="chip_wind_waves">காற்றும் அலைகளும்</string>
+    <string name="chip_best_outdoor">வெளியே நல்ல நேரம்</string>
+    <string name="chip_will_rain">மழை பெய்யுமா?</string>
+    <string name="chip_tomorrow">நாளை</string>
+    <string name="chip_hourly">மணிநேரம்</string>
+    <string name="chip_why_time">இந்த நேரம் ஏன்?</string>
+    <string name="chip_score">மதிப்பெண்</string>
+    <string name="refresh_weather">வானிலை புதுப்பி</string>
 </resources>
 
 

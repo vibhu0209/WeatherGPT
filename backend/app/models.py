@@ -20,8 +20,11 @@ class Settings(BaseSettings):
     imd_enabled: bool = False
     cap_alert_url: str = ''
     cap_alert_allowed_hosts: str = ''
+    # Legacy Gemini fields kept for env compatibility; not used by active chat runtime.
     gemini_api_key: str = ''
     gemini_model: str = ''
+    groq_api_key: str = ''
+    groq_model: str = 'openai/gpt-oss-120b'
     bhashini_compute_url: str = ''
     bhashini_allowed_hosts: str = ''
     bhashini_api_key: str = ''
@@ -30,6 +33,8 @@ class Settings(BaseSettings):
     google_translate_api_key: str = ''
     google_places_api_key: str = ''
     google_maps_api_key: str = ''
+    # Default false for local / SIH zero-cost use. Google is never called unless true + key present.
+    google_places_enabled: bool = False
     mappls_access_token: str = ''
     cors_origins: str = ''
     redis_url: str = ''
@@ -41,6 +46,9 @@ class Location(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     timezone: str = 'Asia/Kolkata'
+    # Optional provenance for place search / reverse geocode. Android ignores unknown fields.
+    provider: str = ''
+    provider_place_id: str = ''
     @field_validator('latitude')
     @classmethod
     def finite_lat(cls, value):

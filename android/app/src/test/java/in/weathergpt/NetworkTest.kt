@@ -164,12 +164,26 @@ class NetworkTest {
         assertThrows(MalformedWeatherException::class.java) { validateBundle(body, delhi) }
     }
 
-    @Test fun aGoodResponseIsAccepted() = runTest {
-        server.enqueue(MockResponse().setBody(bundleJson()).setHeader("etag", "\"abc\""))
-        val response = api().bundle(BundleBody(28.6, 77.2, "Delhi", "Asia/Kolkata", 72), null)
-        val data = validateBundle(response.body(), delhi)
-        assertEquals(1, data.hourly.size)
-        assertEquals("\"abc\"", response.headers()["etag"])
+    @Test fun emptyProviderBundleIsProviderUnavailableNotTransport() {
+        val empty = BundleDto(
+            location = delhi,
+            hourly = emptyList(),
+            retrieved_at = Instant.now().toString(),
+            is_stale = false,
+            sources = emptyList(),
+            source_count = 0,
+            agreement = "none",
+            alerts_status = "unavailable",
+        )
+        val error = assertThrows(ProviderUnavailableException::class.java) { validateBundle(empty, delhi) }
+        assertEquals(NetFailure.PROVIDER_UNAVAILABLE, classifyFailure(error, online = true))
+        assertEquals(WeatherNotice.PROVIDERS_UNAVAILABLE, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = false, isStale = false))
+    }
+
+    @Test fun singleSourceBundleIsAccepted() {
+        val body = """{"location":{"name":"Delhi","latitude":28.6,"longitude":77.2,"timezone":"Asia/Kolkata"},"hourly":[{"time":"${Instant.now()}","temperature":30.0,"rain_chance":10.0,"rain_mm":0.0,"wind_ms":2.0,"humidity":50.0}],"retrieved_at":"${Instant.now()}","is_stale":false,"sources":["open-meteo"],"source_count":1,"agreement":"single_source","alerts_status":"unavailable"}"""
+        val data = validateBundle(com.google.gson.Gson().fromJson(body, BundleDto::class.java), delhi)
+        assertEquals(1, data.source_count)
     }
 
     @Test fun notModifiedIsOnlyReusableWithALocalCopy() = runTest {
@@ -179,6 +193,16 @@ class NetworkTest {
         val metadata = SyncMetadata("k", "\"abc\"", 0, 0)
         assertTrue(canReuseNotModified(304, metadata, SavedWeather("k", "{}")))
         assertFalse(canReuseNotModified(304, metadata, null))
+        assertTrue(shouldRetryUncachedNotModified(304, metadata, null))
+        assertFalse(shouldRetryUncachedNotModified(304, metadata, SavedWeather("k", "{}")))
+    }
+
+    @Test fun uncachedNotModifiedMustRetryWithoutEtag() {
+        val metadata = SyncMetadata("28.6,77.2,Asia/Kolkata", "\"stale\"", 1, 1)
+        assertTrue(shouldRetryUncachedNotModified(304, metadata, null))
+        assertTrue(shouldRetryUncachedNotModified(304, null, null))
+        assertFalse(shouldRetryUncachedNotModified(200, metadata, null))
+        assertFalse(shouldRetryUncachedNotModified(304, metadata, SavedWeather("k", "{}")))
     }
 
     // --- one banner per root cause ---
@@ -188,17 +212,36 @@ class NetworkTest {
         assertEquals(WeatherNotice.CANT_CONNECT, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = true, isStale = true))
         // Case B: no internet, cache present.
         assertEquals(WeatherNotice.OFFLINE_CACHED, noticeFor(NetFailure.NO_NETWORK, hasCache = true, isStale = true))
-        // Case C: backend fine, provider failed.
+        // Case C: backend fine, provider failed, cache present.
         assertEquals(WeatherNotice.PROVIDER_DOWN, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = true, isStale = false))
-        // Case D: nothing cached and nothing reachable.
+        // Case D: nothing cached — keep failure classes distinct.
         assertEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = false, isStale = false))
-        assertEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.NO_NETWORK, hasCache = false, isStale = false))
-        assertEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = false, isStale = false))
+        assertEquals(WeatherNotice.NO_SAVED, noticeFor(NetFailure.NO_NETWORK, hasCache = false, isStale = false))
+        assertEquals(WeatherNotice.PROVIDERS_UNAVAILABLE, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = false, isStale = false))
+        assertNotEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.NO_NETWORK, hasCache = false, isStale = false))
+        assertNotEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = false, isStale = false))
     }
 
-    @Test fun ageAloneIsAStaleNoticeNotAnError() {
-        assertEquals(WeatherNotice.STALE, noticeFor(NetFailure.NONE, hasCache = true, isStale = true))
+    @Test fun usableWeatherNeverShowsNoDataBanners() {
+        // Sticky transport failures must degrade to "showing saved weather", not NO_DATA.
+        assertEquals(WeatherNotice.CANT_CONNECT, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = true, isStale = false))
+        assertEquals(WeatherNotice.OFFLINE_CACHED, noticeFor(NetFailure.NO_NETWORK, hasCache = true, isStale = false))
+        assertEquals(WeatherNotice.PROVIDER_DOWN, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = true, isStale = false))
+        assertEquals(WeatherNotice.PROVIDER_DOWN, noticeFor(NetFailure.BAD_RESPONSE, hasCache = true, isStale = false))
+        assertNotEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = true, isStale = false))
+        assertNotEquals(WeatherNotice.NO_SAVED, noticeFor(NetFailure.NO_NETWORK, hasCache = true, isStale = false))
+        assertNotEquals(WeatherNotice.PROVIDERS_UNAVAILABLE, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = true, isStale = false))
+        // After a successful refresh path, banner clears even if isStale is false.
         assertEquals(WeatherNotice.NONE, noticeFor(NetFailure.NONE, hasCache = true, isStale = false))
+        // Room later becoming valid flips empty-cache NO_DATA into CANT_CONNECT without restart semantics.
+        assertEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = false, isStale = false))
+        assertEquals(WeatherNotice.CANT_CONNECT, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = true, isStale = false))
+    }
+
+    @Test fun successfulRefreshClearsPriorNoDataSemantics() {
+        // Models: old failure + valid cache after 200/304 must not keep NO_DATA.
+        assertEquals(WeatherNotice.NONE, noticeFor(NetFailure.NONE, hasCache = true, isStale = false))
+        assertEquals(WeatherNotice.STALE, noticeFor(NetFailure.NONE, hasCache = true, isStale = true))
     }
 
     @Test fun everyFailureMapsToSomeNotice() {

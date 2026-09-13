@@ -23,7 +23,7 @@ from .risks import estimate_risks
 from .metrics import metrics
 from .alerts import alert_service
 from .marine import marine_service
-from .ai import gemini_polisher
+from .groq_client import groq_client
 from .delivery import delivery_chain
 from .language import language_service, BhashiniProvider, GoogleTranslationProvider
 from .subscriptions import (
@@ -151,11 +151,15 @@ def health():
 
 @app.get('/ready')
 def ready():
+    from .locations import google_places_configured, google_places_enabled
     return {
         'status': 'ready',
         'cache': type(service.cache).__name__.replace('CacheBackend', '').lower(),
         'store': __import__('os').getenv('WEATHERGPT_STORE') or service.settings.store_backend or 'memory',
-        'gemini': gemini_polisher.enabled,
+        'groq': groq_client.enabled,
+        'gemini': False,
+        'google_places_configured': google_places_configured(service.settings),
+        'google_places_enabled': google_places_enabled(service.settings),
         'cap_alerts': bool(service.settings.cap_alert_url),
         'performance': metrics.snapshot(),
         'time': datetime.now(timezone.utc).isoformat(),
@@ -165,15 +169,18 @@ def ready():
 @app.get('/v1/capabilities')
 def capabilities():
     settings = service.settings
+    from .locations import google_places_configured, google_places_enabled
     live_translation = bool(
         (settings.bhashini_compute_url and settings.bhashini_api_key and settings.bhashini_user_id and settings.bhashini_translation_service_id)
         or settings.google_translate_api_key
     )
     return {
         'forecast': True, 'chat': 'deterministic', 'official_alerts': bool(settings.cap_alert_url), 'marine': True,
-        'climate': True, 'cloud_voice': False, 'gemini': gemini_polisher.enabled, 'demo_mode': False,
+        'climate': True, 'cloud_voice': False, 'groq': groq_client.enabled, 'gemini': False, 'demo_mode': False,
         'answer_languages': ['en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or'],
         'live_translation': live_translation,
+        'google_places_configured': google_places_configured(settings),
+        'google_places_enabled': google_places_enabled(settings),
         'alert_delivery': [{'transport': provider.transport, 'status': 'disabled'} for provider in delivery_chain],
     }
 
@@ -199,7 +206,15 @@ def language_capabilities():
 
 
 async def finalize_chat(request: ChatRequest, result: dict):
-    result['answer'] = await gemini_polisher.polish(request.text, result['answer'], result['language'])
+    origin = result.get('response_origin') or ''
+    # Groq-orchestrated answers are already natural-language and validator-checked.
+    # Deterministic answers stay as drafted — no second LLM polish pass (saves tokens).
+    if origin != 'groq_tool_orchestrated':
+        result.setdefault('response_origin', 'deterministic_fallback')
+    if not result.get('follow_up_suggestions'):
+        from .groq_orchestrator import _follow_ups_for
+        tools = result.get('used_tools') or ([result['tool']] if result.get('tool') else [])
+        result['follow_up_suggestions'] = _follow_ups_for(request, [t for t in tools if t])
     target = request.language
     current = result.get('language', 'en')
     if target != current:
@@ -209,14 +224,13 @@ async def finalize_chat(request: ChatRequest, result: dict):
             result['language'] = target
             result['language_provider'] = translated['provider']
         else:
-            # Deterministic templates already cover all 11 UI languages when
-            # answer() ran in the requested language. Otherwise keep the
-            # verified draft and say which fallback was used.
             result['language_provider'] = 'deterministic' if current == target else 'original'
             if current != target and current in ('en', 'hi'):
                 result['language'] = current
     else:
-        result['language_provider'] = result.get('language_provider') or 'deterministic'
+        result['language_provider'] = result.get('language_provider') or (
+            'groq' if origin == 'groq_tool_orchestrated' else 'deterministic'
+        )
     if 'conversation_context' in result and 'resolved_location' in result['conversation_context']:
         result['conversation_context']['resolved_location'] = public_location(request.location)
     return result
@@ -229,10 +243,17 @@ def providers():
 
 @app.get('/v1/locations/search')
 async def search(request: Request, q: str = Query(min_length=2, max_length=100), language: str = Query(default='en', pattern='^(en|hi|bn|te|mr|ta|gu|kn|ml|pa|or)$')):
-    from .locations import search_places
+    from .locations import search_places_with_meta
     try:
-        places = await search_places(q, language, _settings)
-        return {'locations': [place.model_dump() for place in places]}
+        places, meta = await search_places_with_meta(q, language, _settings)
+        return {
+            'locations': [place.model_dump() for place in places],
+            'provider': meta.provider,
+            'fallback_used': meta.fallback_used,
+            'cached': meta.cached,
+            'result_count': meta.result_count,
+            'latency_ms': meta.latency_ms,
+        }
     except Exception:
         return error_response(request, 'unavailable', 'Place search is unavailable. Please try again.', True, 503)
 
@@ -270,7 +291,7 @@ class BundleBody(BaseModel):
 async def _resolve_location(request: Request, latitude: float, longitude: float, name: str):
     from .locations import resolve_timezone
     try:
-        location = await resolve_timezone(latitude, longitude, name)
+        location = await resolve_timezone(latitude, longitude, name, _settings)
         return {'location': location.model_dump()}
     except Exception:
         return error_response(request, 'location_unavailable', 'The location could not be checked. Please search for your village or city.', True, 503)

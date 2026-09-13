@@ -13,22 +13,22 @@ Weather providers
 
 Verified weather context
    ↓ redact precise GPS / secrets
-Gemini / language services
+Groq / language services
 ```
 
 ## Controls implemented
 
 | Area | Control |
 |---|---|
-| Secrets | Provider, Gemini, BHASHINI and Firebase credentials stay server-side only |
+| Secrets | Provider, Groq, BHASHINI and Firebase credentials stay server-side only |
 | API validation | Lat/lon bounds, chat length ≤1000, POST body ≤16 KiB, profile allowlist |
 | Rate limiting | Per-IP sliding window (90/min) with bounded memory; no full-map wipe |
 | Errors | Sanitized envelopes; no stack traces or coordinates in client errors |
 | Logging | Audit logs record method/path/status/duration only — not query strings or chat text |
 | Device isolation | Alert subscriptions require `X-Device-Id` + `Authorization: Bearer <device_token>` |
 | SSRF | CAP and BHASHINI URLs must be HTTPS and host-allowlisted; CAP redirects disabled |
-| Prompt injection | Deterministic draft + `validate_polish`; Gemini cannot invent numbers or warning severities |
-| Gemini privacy | Coordinates redacted from questions; place labels only in drafts; call budget per minute |
+| Prompt injection | Deterministic tools + LLM response validator; Groq cannot invent numbers or warning severities |
+| LLM privacy | Coordinates redacted from questions; place labels only; Groq call budget + 429 circuit breaker |
 | Headers | `nosniff`, `DENY` framing, `no-referrer`, restrictive Permissions-Policy |
 | CORS | Off by default; enable via `CORS_ORIGINS` |
 | Android | No weather API keys in APK; release cleartext disabled; backup disabled; coarse location only |

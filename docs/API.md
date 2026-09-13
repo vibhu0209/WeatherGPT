@@ -15,13 +15,14 @@ Prefer **POST** bodies for coordinates on shared or logged networks. GET query f
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/health` | Liveness: `{ status, time }`. |
-| GET | `/ready` | Readiness flags: `{ status: "ready", cache, gemini, cap_alerts, time }`. `gemini` is true only when key+model are configured; `cap_alerts` reflects whether `CAP_ALERT_URL` is set. Does not claim live IMD/FCM/SMS. |
+| GET | `/ready` | Readiness flags: `{ status: "ready", cache, groq, gemini:false, cap_alerts, time }`. `groq` is true when `GROQ_API_KEY` + `GROQ_MODEL` are configured. |
 
 ## Locations
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/v1/locations/search` | Open-Meteo geocoding; `q` min length 2. |
+| GET | `/v1/locations/search` | Provider-neutral place search (`q` min length 2). Order: Google Places (if configured) → Mappls (if configured) → Open-Meteo → popular cities. Response: `locations` plus optional `provider` / `fallback_used` / `cached` metadata. Never returns the API key. |
+| POST | `/v1/locations/resolve` | Timezone resolve; optional Google reverse geocode for generic GPS labels (`Current location`). GPS weather still works if reverse geocode fails. |
 | GET | `/v1/locations/resolve` | Query `latitude`, `longitude`, optional `name`. Resolves IANA timezone via Open-Meteo. |
 | POST | `/v1/locations/resolve` | JSON body: `{ latitude, longitude, name? }`. Same behaviour as GET; preferred for privacy. |
 
@@ -53,7 +54,8 @@ GET and POST `/v1/weather/bundle` return a private ETag and `Cache-Control: priv
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/v1/chat/message` | Deterministic verified weather answer; optional Gemini wording when configured. |
+| POST | `/v1/chat/message` | Groq tool-orchestrated answer when configured; otherwise deterministic verified weather answer. Always grounded in WeatherGPT tools. |
+| GET | `/v1/capabilities` | Feature flags (forecast, chat mode, official_alerts, marine, climate, cloud_voice, groq, gemini:false, demo_mode, live_translation, alert_delivery). |
 | POST | `/v1/translate` | Body `{ text, source?, target }`. Uses BHASHINI then Google Translation when configured; otherwise returns original text with `fallback: true`. Does not invent weather numbers. |
 | POST | `/v1/voice/transcribe` | **501** while cloud voice is disabled. Use on-device Android speech recognition. |
 | POST | `/v1/voice/synthesize` | **501** while cloud voice is disabled. Use on-device Android TTS. |
@@ -83,6 +85,6 @@ Missing or invalid auth returns **401**. Cross-device token use is rejected. Pus
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/v1/capabilities` | Feature flags (forecast, chat mode, official_alerts, marine, climate, cloud_voice, gemini, demo_mode, live_translation, alert_delivery). |
+| GET | `/v1/capabilities` | Feature flags (forecast, chat mode, official_alerts, marine, climate, cloud_voice, groq, gemini:false, demo_mode, live_translation, alert_delivery). |
 | GET | `/v1/languages/capabilities` | UI languages and language-provider health. |
 | GET | `/v1/providers/status` | Per-adapter health. |

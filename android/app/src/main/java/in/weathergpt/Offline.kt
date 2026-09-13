@@ -51,17 +51,17 @@ object Offline {
         val downloaded=Instant.parse(b.retrieved_at).atZone(ZoneId.of(b.location.timezone))
             .format(java.time.format.DateTimeFormatter.ofPattern("d MMM, h:mm a",java.util.Locale.forLanguageTag(speechLocaleTag(lang))))
         val intro=copy(lang,
-            en="Saved forecast from $downloaded. Conditions may have changed.\n\n",
-            hi="सहेजा मौसम: $downloaded। जानकारी बदल सकती है।\n\n",
-            bn="সংরক্ষিত পূর্বাভাস: $downloaded। অবস্থা বদলাতে পারে।\n\n",
-            te="సేవ్ చేసిన అంచనా: $downloaded. పరిస్థితులు మారవచ్చు.\n\n",
-            ta="சேமித்த முன்னறிவு: $downloaded. நிலை மாறக்கூடும்.\n\n",
-            mr="जतन अंदाज: $downloaded. परिस्थिती बदलू शकते.\n\n",
-            gu="સાચવેલી આગાહી: $downloaded. સ્થિતિ બદલાઈ શકે.\n\n",
-            kn="ಉಳಿಸಿದ ಮುನ್ಸೂಚನೆ: $downloaded. ಪರಿಸ್ಥಿತಿ ಬದಲಾಗಬಹುದು.\n\n",
-            ml="സേവ് ചെയ്ത പ്രവചനം: $downloaded. സ്ഥിതി മാറാം.\n\n",
-            pa="ਸੰਭਾਲਿਆ ਪੂਰਵ-ਅਨੁਮਾਨ: $downloaded. ਹਾਲਾਤ ਬਦਲ ਸਕਦੇ ਹਨ।\n\n",
-            or="ସଞ୍ଚିତ ପୂର୍ବାନୁମାନ: $downloaded. ଅବସ୍ଥା ବଦଳିପାରେ।\n\n",
+            en="You're offline. Using the forecast saved at $downloaded.\n\n",
+            hi="आप ऑफलाइन हैं। सहेजा मौसम: $downloaded।\n\n",
+            bn="আপনি অফলাইন। সংরক্ষিত পূর্বাভাস: $downloaded।\n\n",
+            te="మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. సేవ్ చేసిన అంచనా: $downloaded.\n\n",
+            ta="நீங்கள் ஆஃப்லைன். சேமித்த முன்னறிவு: $downloaded.\n\n",
+            mr="तुम्ही ऑफलाइन आहात. जतन अंदाज: $downloaded.\n\n",
+            gu="તમે ઑફલાઇન છો. સાચવેલી આગાહી: $downloaded.\n\n",
+            kn="ನೀವು ಆಫ್‌ಲೈನ್. ಉಳಿಸಿದ ಮುನ್ಸೂಚನೆ: $downloaded.\n\n",
+            ml="നിങ്ങൾ ഓഫ്‌ലൈനാണ്. സേവ് ചെയ്ത പ്രവചനം: $downloaded.\n\n",
+            pa="ਤੁਸੀਂ ਆਫਲਾਈਨ ਹੋ। ਸੰਭਾਲਿਆ ਪੂਰਵ-ਅਨੁਮਾਨ: $downloaded.\n\n",
+            or="ଆପଣ ଅଫଲାଇନ୍। ସଞ୍ଚିତ ପୂର୍ବାନୁମାନ: $downloaded.\n\n",
         )
         if(listOf("warning","alert","चेतावनी","সতর্ক","எச்சரிக்கை","హెచ్చరిక","ચેતવણી","ಎಚ್ಚರಿಕೆ","മുന്നറിയിപ്പ്","ਚੇਤਾਵਨੀ","ଚେତାବନୀ").any{q.contains(it)}) {
             val active=b.official_alerts.orEmpty().filter { alert->cachedAlertIsActive(alert) }

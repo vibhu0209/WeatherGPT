@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="chat">ಕೇಳಿ</string>
     <string name="forecast">ಹವಾಮಾನ</string>
     <string name="home">ಮುಖಪುಟ</string>
@@ -12,9 +12,9 @@
     <string name="choose_place">ನಿಮ್ಮ ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="welcome">ನಮಸ್ಕಾರ! ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?</string>
     <string name="intro">ಹವಾಮಾನದ ಬಗ್ಗೆ ನಿಮ್ಮ ಮಾತುಗಳಲ್ಲಿ ಕೇಳಿ. ಬರೆಯಿರಿ ಅಥವಾ ಮಾತನಾಡಿ. ಖಾತೆ ಬೇಕಿಲ್ಲ.</string>
-    <string name="rain_question">ಇಂದು ಮಳೆ ಬರುತ್ತದೆಯೇ?</string>
-    <string name="tomorrow_question">ನಾಳೆ ಹವಾಮಾನ ಹೇಗಿರುತ್ತದೆ?</string>
-    <string name="warning_question">ಹವಾಮಾನ ಎಚ್ಚರಿಕೆಗಳಿವೆಯೇ?</string>
+    <string name="rain_question">ಮಳೆ ಬರುತ್ತದೆಯೇ?</string>
+    <string name="tomorrow_question">ನಾಳೆ</string>
+    <string name="warning_question">ಎಚ್ಚರಿಕೆಗಳು</string>
     <string name="climate_question">ಕಳೆದ 10 ವರ್ಷಗಳಲ್ಲಿ ಈ ಸ್ಥಳ ಹೆಚ್ಚು ಬಿಸಿಯಾಗಿದೆಯೇ?</string>
     <string name="you">ನೀವು</string>
     <string name="listen">ಕೇಳಿ</string>
@@ -26,8 +26,8 @@
     <string name="loading">ಹವಾಮಾನ ಮಾಹಿತಿ ಬರುತ್ತಿದೆ</string>
     <string name="updated">ಡೌನ್‌ಲೋಡ್ ಆಯಿತು</string>
     <string name="minutes_ago">ನಿಮಿಷಗಳ ಹಿಂದೆ</string>
-    <string name="single_source">ಒಂದು ಹವಾಮಾನ ಮೂಲ ಲಭ್ಯ. ಇದು ಮುನ್ಸೂಚನೆ, ಖಾತರಿ ಅಲ್ಲ.</string>
-    <string name="disagree">ಹವಾಮಾನ ಮೂಲಗಳು ಭಿನ್ನವಾಗಿವೆ. ಯೋಜನೆ ಬದಲಾಗಬಹುದು.</string>
+    <string name="single_source">ಈ ಸ್ಥಳಕ್ಕೆ ಒಂದು ಹವಾಮಾನ ಮೂಲ ಬಳಸಲಾಗುತ್ತಿದೆ.</string>
+    <string name="disagree">ಮಾದರಿಗಳು ಸಮಯದಲ್ಲಿ ಸ್ವಲ್ಪ ಭಿನ್ನ — ಮೇಲಿನ ಯೋಜನೆ ಇನ್ನೂ ನಿಲ್ಲುತ್ತದೆ.</string>
     <string name="no_saved">ಇನ್ನೂ ಹವಾಮಾನ ಉಳಿಸಿಲ್ಲ. ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ ಮುನ್ಸೂಚನೆ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ.</string>
     <string name="download">ಹವಾಮಾನ ಡೌನ್‌ಲೋಡ್ / ರಿಫ್ರೆಶ್</string>
     <string name="forecast_help">ಮುಂದಿನ ಮೂರು ದಿನಗಳು, ಗಂಟೆಗೊಮ್ಮೆ. ಮಳೆಯ ಸಾಧ್ಯತೆ ಆ ಗಂಟೆಗೆ.</string>
@@ -56,7 +56,11 @@
     <string name="visibility">ಗೋಚರತೆ</string>
     <string name="uv">UV ಸೂಚ್ಯಂಕ</string>
     <string name="forecast_confidence">ಮುನ್ಸೂಚನೆ ನಂಬಿಕೆ</string>
-    <string name="confidence_help">ಮೂಲ ಲಭ್ಯತೆ ಮತ್ತು ಒಪ್ಪಂದ ತೋರಿಸುತ್ತದೆ. ಮುನ್ಸೂಚನೆ ಸರಿಯಾಗಿರುವ ಸಾಧ್ಯತೆಯಲ್ಲ.</string>
+    <string name="confidence_help">ಮೂಲಗಳು ಎಷ್ಟು ಒಪ್ಪುತ್ತವೆ ಎಂಬುದನ್ನು ತೋರಿಸುತ್ತದೆ. ಯೋಜನೆ ಬಿಡುವ ಕಾರಣವಲ್ಲ.</string>
+    <string name="confidence_info_cd">ಈ ವಿಶ್ವಾಸ ಏಕೆ</string>
+    <string name="confidence_compact_low">ಕಡಿಮೆ ವಿಶ್ವಾಸ</string>
+    <string name="confidence_compact_medium">ಮಧ್ಯಮ ವಿಶ್ವಾಸ</string>
+    <string name="confidence_compact_high">ಹೆಚ್ಚು ವಿಶ್ವಾಸ</string>
     <string name="settings_intro">WeatherGPT ಅನ್ನು ನಿಮಗೆ ಅನುಕೂಲವಾಗುವಂತೆ ಬದಲಾಯಿಸಿ. ನಿಮ್ಮ ಆಯ್ಕೆಗಳು ಈ ಫೋನ್‌ನಲ್ಲಿ ಉಳಿಯುತ್ತವೆ.</string>
     <string name="theme">ಗೋಚರತೆ</string>
     <string name="system_theme">ಫೋನ್ ಪ್ರಕಾರ</string>
@@ -117,9 +121,9 @@
     <string name="checking_sources">ಪರಿಶೀಲಿಸಿದ ಹವಾಮಾನ ಮೂಲಗಳನ್ನು ನೋಡುತ್ತಿದ್ದೇವೆ</string>
     <string name="farm_work_question">ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಕೃಷಿ ಕೆಲಸಕ್ಕೆ ಒಳ್ಳೆಯದೇ?</string>
     <string name="spray_question">ನಾಳೆ ಮಳೆ ಅಥವಾ ಗಾಳಿ ಬೆಳೆ ಸಿಂಪಡನೆಗೆ ಪರಿಣಾಮ ಬೀರುತ್ತದೆಯೇ?</string>
-    <string name="marine_question">ಮೀನುಗಾರಿಕೆಗೆ ಸಮುದ್ರ ಸ್ಥಿತಿ ಹೇಗಿದೆ?</string>
-    <string name="wave_question">ಮೀನುಗಾರಿಕೆಗೆ ಸಮುದ್ರ ಅಲೆಗಳ ಎತ್ತರ ಎಷ್ಟು?</string>
-    <string name="next_hours_question">ಮುಂದಿನ ಮೂರು ಗಂಟೆಗಳ ಹವಾಮಾನ ಹೇಗೆ?</string>
+    <string name="marine_question">ಸಮುದ್ರ ಪರಿಸ್ಥಿತಿ</string>
+    <string name="wave_question">ಗಾಳಿ ಮತ್ತು ಅಲೆಗಳು</string>
+    <string name="next_hours_question">ಗಂಟೆಯವರೆಗೆ</string>
     <string name="backend_online">WeatherGPT ಸರ್ವರ್ ಸಂಪರ್ಕಿತ</string>
     <string name="backend_offline">WeatherGPT ಸರ್ವರ್ ಲಭ್ಯವಿಲ್ಲ. ಬ್ಯಾಕೆಂಡ್ ಪ್ರಾರಂಭಿಸಿ ಅಥವಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ನೋಡಿ.</string>
     <string name="ask_weathergpt">WeatherGPT ಅನ್ನು ಕೇಳಿ</string>
@@ -135,7 +139,7 @@
     <string name="purpose_work">ಕೆಲಸದ ಸ್ಥಳ</string>
     <string name="action_hourly">ಗಂಟೆಯಂತೆ ಮುನ್ಸೂಚನೆ ತೋರಿಸಿ</string>
     <string name="action_warnings">ಎಚ್ಚರಿಕೆಗಳನ್ನು ನೋಡಿ</string>
-    <string name="action_score">ನನಗಾಗಿ ಹವಾಮಾನ ಅಂಕ</string>
+    <string name="action_score">ಸ್ಕೋರ್</string>
     <string name="clearing_compare">ಹೋಲಿಕೆ ಸ್ಥಳ ತೆಗೆದುಹಾಕಿ</string>
     <string name="onboard_next">ಮುಂದುವರಿಸಿ</string>
     <string name="onboard_back">ಹಿಂದೆ</string>
@@ -162,6 +166,8 @@
     <string name="notice_cant_connect">WeatherGPT ಗೆ ಸಂಪರ್ಕಿಸಲು ಆಗುತ್ತಿಲ್ಲ. ಉಳಿಸಿದ ಹವಾಮಾನ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
     <string name="notice_provider_down">ಹವಾಮಾನ ಮೂಲ ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಭ್ಯವಿಲ್ಲ. ಕೊನೆಯ ಉಳಿಸಿದ ಮುನ್ಸೂಚನೆ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
     <string name="notice_no_data">ಈಗ ಹವಾಮಾನ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="notice_no_saved">ಇನ್ನೂ ಉಳಿಸಿದ ಹವಾಮಾನ ಲಭ್ಯವಿಲ್ಲ.</string>
+    <string name="notice_providers_unavailable">ಹವಾಮಾನ ಮೂಲಗಳು ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಭ್ಯವಿಲ್ಲ.</string>
     <string name="notice_check_settings">WeatherGPT ಈ ಸಾಧನವನ್ನು ಪರಿಶೀಲಿಸಲು ಆಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ನೋಡಿ.</string>
     <string name="connection_unknown">ಸರ್ವರ್ ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇವೆ...</string>
     <string name="connection_last">ಕೊನೆಯ ಸಂಪರ್ಕ: </string>
@@ -169,6 +175,27 @@
     <string name="demo_warning_title">DEMO · ಎಚ್ಚರಿಕೆಗಳು</string>
     <string name="demo_warning_body">ಎಚ್ಚರಿಕೆಗಳಿಲ್ಲ ಎಂದರ್ಥವಲ್ಲ. ಹೊರಗೆ ಹೋಗುವ ಮೊದಲು ನಿಮ್ಮ ಪ್ರದೇಶದ IMD ಎಚ್ಚರಿಕೆಗಳನ್ನು ನೋಡಿ. IMD.</string>
     <string name="demo_warning_action">DEMO · ಕಳುಹಿಸಿ</string>
+    <string name="chat_planning_prompt">ನೀವು ಏನು ಯೋಜಿಸುತ್ತಿದ್ದೀರಿ?</string>
+    <string name="chat_context_score">ಸ್ಕೋರ್ %1$d</string>
+    <string name="chat_offline_hint">ನೀವು ಆಫ್‌ಲೈನ್. ಉಳಿಸಿದ ಮುನ್ಸೂಚನೆಯಿಂದಲೂ ಉತ್ತರಿಸಬಹುದು.</string>
+    <string name="chat_no_weather_hint">ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ ಹವಾಮಾನ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ ಉತ್ತರಗಳು ನಿಖರವಾಗಿರಲಿ.</string>
+    <string name="good_morning">ಶುಭೋದಯ</string>
+    <string name="good_afternoon">ಶುಭ ಮಧ್ಯಾಹ್ನ</string>
+    <string name="good_evening">ಶುಭ ಸಂಜೆ</string>
+    <string name="place_now_temp">%1$s — %2$d°</string>
+    <string name="place_saved_offline">%1$sಗೆ ಉಳಿಸಿದ ಹವಾಮಾನ ಇದೆ.</string>
+    <string name="chip_best_work">ಕೆಲಸಕ್ಕೆ ಒಳ್ಳೆಯ ಸಮಯ</string>
+    <string name="chip_rain_later">ನಂತರ ಮಳೆ?</string>
+    <string name="chip_warnings">ಎಚ್ಚರಿಕೆಗಳು</string>
+    <string name="chip_sea">ಸಮುದ್ರ ಪರಿಸ್ಥಿತಿ</string>
+    <string name="chip_wind_waves">ಗಾಳಿ ಮತ್ತು ಅಲೆಗಳು</string>
+    <string name="chip_best_outdoor">ಹೊರಗಿನ ಒಳ್ಳೆಯ ಸಮಯ</string>
+    <string name="chip_will_rain">ಮಳೆ ಬರುತ್ತದೆಯೇ?</string>
+    <string name="chip_tomorrow">ನಾಳೆ</string>
+    <string name="chip_hourly">ಗಂಟೆಯವರೆಗೆ</string>
+    <string name="chip_why_time">ಈ ಸಮಯ ಏಕೆ?</string>
+    <string name="chip_score">ಸ್ಕೋರ್</string>
+    <string name="refresh_weather">ಹವಾಮಾನ ರಿಫ್ರೆಶ್</string>
 </resources>
 
 

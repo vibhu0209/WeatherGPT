@@ -9,8 +9,10 @@
 | Prefer coarse location | Android requests `ACCESS_COARSE_LOCATION` only |
 | Local source of truth | Saved places and chat stay in Room/DataStore on device |
 | Android → backend only | Weather and AI calls go through WeatherGPT, never directly to provider APIs |
-| Minimal Gemini context | Precise lat/lon stripped from conversation context and redacted from questions |
-| No location in logs | Request audit logs omit query strings and coordinates |
+| Google Places key backend-only | Optional `GOOGLE_PLACES_API_KEY` lives in server `.env`; Android never receives it. Default `GOOGLE_PLACES_ENABLED=false` so local/SIH runs use free geocoders only. |
+| Place search minimization | Typed search and GPS reverse geocode call Google only when enabled, keyed, and not in billing cooldown; otherwise Open-Meteo / Nominatim / local nearest city. |
+| Minimal Groq / LLM context | Precise lat/lon stripped from conversation context and redacted from questions |
+| No location in logs | Request audit logs omit query strings and coordinates; place logs use query length / provider only |
 | No location in errors | Client errors are generic |
 | Short server retention | Weather cache is grid-keyed and TTL-bound; no permanent location history |
 | User deletion | Profile “Clear data” wipes Room, DataStore, WorkManager jobs and notifications |

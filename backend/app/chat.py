@@ -37,6 +37,19 @@ CLIMATE_WORDS = (
 )
 COMPARE_WORDS = ('compare', 'तुलना', ' vs ', 'versus')
 AGROMET_WORDS = ('agromet', 'advisory', 'कृषि सलाह', 'farming advisory')
+# Decision / suitability questions — answer what to do before dumping stats.
+ACTION_WORDS = (
+    'should i', 'should we', 'can i', 'can we', 'is it safe', 'safe to', 'good time',
+    'sow', 'sowing', 'seed', 'irrigat', 'spray', 'spraying', 'fish', 'fishing',
+    'drive', 'driving', 'walk', 'hiking', 'dry clothes', 'outdoors', 'outdoor',
+    'travel', 'travelling', 'traveling', 'work outside', 'field work', 'go out',
+    'kheti', 'खेती', 'छिड़काव', 'सिंचाई', 'बुआई', 'बीज',
+)
+
+
+def is_action_question(text: str) -> bool:
+    lowered = text.lower()
+    return any(word in lowered for word in ACTION_WORDS)
 
 
 def phrase(language: str, key: str, **kwargs) -> str:
@@ -204,22 +217,66 @@ def answer(request: ChatRequest, bundle: dict):
         message = phrase(language, 'climate_offline')
     elif not rows:
         message = phrase(language, 'unavailable')
-    elif not mentions(text, WEATHER_WORDS):
+    elif not mentions(text, WEATHER_WORDS) and not is_action_question(text):
         message = phrase(language, 'ask_weather')
     else:
         temps = [p['temperature'] for p in rows if p['temperature'] is not None]
         rain = [p['rain_chance'] for p in rows if p['rain_chance'] is not None]
         wind = [p['wind_ms'] for p in rows if p['wind_ms'] is not None]
-        parts = [f'{display_place_name(request.location.name)} · {date.isoformat()}']
-        if temps: parts.append(phrase(language, 'temperature', lo=min(temps), hi=max(temps)))
-        if rain: parts.append(phrase(language, 'rain', value=max(rain)))
-        if wind: parts.append(phrase(language, 'wind', value=max(wind)*MS_TO_KMH))
-        if request.profile=='farming' or 'spray' in text:
-            parts.append(phrase(language, 'spray'))
-        for rec in grounded_advice_lines(request, bundle, rows or bundle.get('hourly') or []):
-            if rec in parts:
-                continue
-            parts.append(rec)
+        advice = grounded_advice_lines(request, bundle, rows or bundle.get('hourly') or [])
+        # Filter repeated disagreement padding from the lead when answering actions.
+        lead_advice = [
+            line for line in advice
+            if 'models differ' not in line.lower() and 'sources disagree' not in line.lower()
+        ] or advice[:1]
+        supporting: list[str] = []
+        if temps:
+            supporting.append(phrase(language, 'temperature', lo=min(temps), hi=max(temps)))
+        if rain:
+            supporting.append(phrase(language, 'rain', value=max(rain)))
+        if wind:
+            supporting.append(phrase(language, 'wind', value=max(wind) * MS_TO_KMH))
+        if request.profile == 'farming' or 'spray' in text:
+            supporting.append(phrase(language, 'spray'))
+
+        parts: list[str] = []
+        # Official warnings always first when present.
+        official = bundle.get('official_alerts') or bundle.get('alerts') or []
+        active_official = [a for a in official if a]
+        if active_official and is_action_question(text):
+            parts.append(format_official_warning(language, active_official[0]))
+        if is_action_question(text):
+            if lead_advice:
+                parts.extend(lead_advice[:2])
+            else:
+                # Weather-wise decision frame without inventing crop thresholds.
+                rain_max = max(rain) if rain else None
+                if rain_max is not None and rain_max >= 60:
+                    parts.append(
+                        'Weather-wise, I would wait today — rain risk is high enough to disturb outdoor plans.'
+                    )
+                elif rain_max is not None and rain_max >= 35:
+                    parts.append(
+                        'It is probably okay with some risk — rain chances are moderate, so keep a flexible plan.'
+                    )
+                else:
+                    parts.append(
+                        'Weather-wise, conditions look reasonably suitable right now. '
+                        'If you share more detail about the task or crop, I can make the advice more specific.'
+                    )
+            parts.append(f'{display_place_name(request.location.name)} · {date.isoformat()}')
+            parts.extend(supporting)
+            for rec in advice:
+                if rec not in parts:
+                    parts.append(rec)
+                if len(parts) >= 8:
+                    break
+        else:
+            parts.append(f'{display_place_name(request.location.name)} · {date.isoformat()}')
+            parts.extend(supporting)
+            for rec in advice:
+                if rec not in parts:
+                    parts.append(rec)
         parts.append(phrase(language, 'official'))
         message = '\n\n'.join(parts)
     if bundle['is_stale']:

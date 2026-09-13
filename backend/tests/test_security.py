@@ -74,20 +74,16 @@ def test_gemini_budget_returns_draft_when_exhausted():
         return await polisher.polish('Q', 'Draft answer', 'en')
 
     assert asyncio.run(run()) == 'Draft answer'
+    assert polisher.enabled is False
 
 
-def test_gemini_failures_consume_budget_and_keep_draft(monkeypatch):
-    """A model outage must not allow unbounded retries, and never changes facts."""
-    import httpx
-
+def test_retired_gemini_never_calls_network(monkeypatch):
+    """Gemini polish is retired — must return draft without HTTP."""
     polisher = GeminiPolisher(max_calls_per_minute=3)
     polisher.settings.gemini_api_key = 'x'
     polisher.settings.gemini_model = 'models/test'
     calls = {'count': 0}
 
-    class Overloaded:
-        status_code = 503
-
     class FakeClient:
         async def __aenter__(self):
             return self
@@ -97,50 +93,26 @@ def test_gemini_failures_consume_budget_and_keep_draft(monkeypatch):
 
         async def post(self, url, headers=None, json=None):
             calls['count'] += 1
-            raise httpx.HTTPStatusError('overloaded', request=None, response=Overloaded())
+            raise AssertionError('Gemini must not be called')
 
-    monkeypatch.setattr('app.ai.httpx.AsyncClient', lambda **kwargs: FakeClient())
-    monkeypatch.setattr('app.ai.asyncio.sleep', _no_sleep)
+    monkeypatch.setattr('httpx.AsyncClient', lambda **kwargs: FakeClient())
 
     async def run():
         return await polisher.polish('Q', 'Temperature: 30°C.\nDraft answer', 'en')
 
     assert asyncio.run(run()) == 'Temperature: 30°C.\nDraft answer'
-    assert calls['count'] == 2, 'a transient 503 should be retried exactly once'
-    assert len(polisher._calls) == 2, 'failed calls must still count against the budget'
+    assert calls['count'] == 0
 
 
-def test_gemini_quota_error_is_not_retried(monkeypatch):
-    """429 means quota or rate limit; retrying it immediately only burns more quota."""
-    import httpx
-
+def test_retired_gemini_quota_path_is_noop(monkeypatch):
     polisher = GeminiPolisher(max_calls_per_minute=10)
     polisher.settings.gemini_api_key = 'x'
     polisher.settings.gemini_model = 'models/test'
-    calls = {'count': 0}
-
-    class Throttled:
-        status_code = 429
-
-    class FakeClient:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *args):
-            return False
-
-        async def post(self, url, headers=None, json=None):
-            calls['count'] += 1
-            raise httpx.HTTPStatusError('quota', request=None, response=Throttled())
-
-    monkeypatch.setattr('app.ai.httpx.AsyncClient', lambda **kwargs: FakeClient())
-    monkeypatch.setattr('app.ai.asyncio.sleep', _no_sleep)
 
     async def run():
         return await polisher.polish('Q', 'Temperature: 30°C.\nDraft answer', 'en')
 
     assert asyncio.run(run()) == 'Temperature: 30°C.\nDraft answer'
-    assert calls['count'] == 1
 
 
 async def _no_sleep(_seconds):

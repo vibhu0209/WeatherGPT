@@ -105,10 +105,11 @@ fun OnboardingScreen(vm: WeatherViewModel, onFinished: (Place?, String) -> Unit)
             verticalArrangement = Arrangement.spacedBy(Space.lg),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
+                Text("WeatherGPT", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 Text(s(R.string.simple_setup), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
                 Text(String.format(s(R.string.step_of), step + 1, 3), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 val stepLabel = String.format(s(R.string.step_of), step + 1, 3)
-                LinearProgressIndicator(progress = { (step + 1f) / 3f }, modifier = Modifier.fillMaxWidth().height(8.dp).semantics { contentDescription = stepLabel })
+                LinearProgressIndicator(progress = { (step + 1f) / 3f }, modifier = Modifier.fillMaxWidth().height(6.dp).semantics { contentDescription = stepLabel })
             }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Space.md)) {
                 when (step) {
@@ -154,6 +155,7 @@ fun OnboardingScreen(vm: WeatherViewModel, onFinished: (Place?, String) -> Unit)
                             textStyle = MaterialTheme.typography.titleMedium,
                             singleLine = true,
                         )
+                        LaunchedEffect(query) { vm.schedulePlaceSearch(query) }
                         BigButton(s(R.string.search), Icons.Default.Search, onClick = { vm.search(query) }, enabled = query.trim().length >= 2 && !searchBusy)
                         if (searchBusy || locating) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

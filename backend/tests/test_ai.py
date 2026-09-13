@@ -54,6 +54,31 @@ def test_forecast_facts_stay_immutable_while_prose_can_change():
     assert validate_polish(facts + '\n' + prose, facts + '\n' + rewritten)
 
 
+def test_occupation_advice_is_polishable_without_unlocking_numbers():
+    draft = (
+        'Delhi · 2026-09-12\n\n'
+        'Temperature: 27.4 to 32°C.\n\n'
+        'Highest hourly chance of rain: 26%.\n\n'
+        'Models differ a little on timing — the recommended window still stands.\n\n'
+        'For farming today, delay spray until rain chance falls.\n\n'
+        'Check official warnings before going out.'
+    )
+    facts, prose = split_immutable(draft)
+    assert '27.4' in facts and '26' in facts
+    assert 'Models differ a little' in prose
+    assert 'For farming today' in prose
+    assert should_polish(prose)
+    polished = (
+        'Delhi · 2026-09-12\n'
+        'Temperature: 27.4 to 32°C.\n'
+        'Highest hourly chance of rain: 26%.\n'
+        'Sources do not fully agree, so keep plans flexible.\n'
+        'Farmers should wait for a clearer spray window.\n'
+        'Check official warnings before going out.'
+    )
+    assert validate_polish('\n'.join(part for part in (facts, prose) if part), polished)
+
+
 def test_translation_keeps_numbers_without_english_severity_words():
     draft = 'Official warning: Cyclone. Severity: severe. Temperature: 30°C.'
     bengali = 'সরকারি সতর্কতা: Cyclone. Temperature: 30°C.'
@@ -63,63 +88,12 @@ def test_translation_keeps_numbers_without_english_severity_words():
 
 
 @pytest.mark.asyncio
-async def test_choose_tool_uses_allowlist_and_redacts_coordinates(monkeypatch):
-    import json
-
+async def test_retired_choose_tool_returns_fallback_without_network(monkeypatch):
     from app.ai import GeminiPolisher
     from app.models import Settings
 
     polisher = GeminiPolisher(Settings(gemini_api_key='test-key', gemini_model='gemini-test'))
-    posted = {}
-
-    class FakeResponse:
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return {'candidates': [{'content': {'parts': [{'text': json.dumps({'tool': 'get_marine_forecast'})}]}}]}
-
-    class FakeClient:
-        def __init__(self, *args, **kwargs):
-            posted['timeout'] = kwargs.get('timeout')
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *args):
-            return False
-
-        async def post(self, url, headers=None, json=None):
-            posted['text'] = json['contents'][0]['parts'][0]['text']
-            posted['enum'] = json['generationConfig']['responseSchema']['properties']['tool']['enum']
-            return FakeResponse()
-
-    monkeypatch.setattr('app.ai.httpx.AsyncClient', FakeClient)
-    chosen = await polisher.choose_tool(
-        '28.6139, 77.209 sea conditions',
-        ['get_current_weather', 'get_marine_forecast'],
-        'get_current_weather',
-    )
-    assert chosen == 'get_marine_forecast'
-    assert '28.6139' not in posted['text']
-    assert 'get_marine_forecast' in posted['enum']
-
-
-@pytest.mark.asyncio
-async def test_choose_tool_rejects_unknown_name(monkeypatch):
-    import json
-
-    from app.ai import GeminiPolisher
-    from app.models import Settings
-
-    polisher = GeminiPolisher(Settings(gemini_api_key='test-key', gemini_model='gemini-test'))
-
-    class FakeResponse:
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return {'candidates': [{'content': {'parts': [{'text': json.dumps({'tool': 'invent_weather'})}]}}]}
+    calls = {'n': 0}
 
     class FakeClient:
         def __init__(self, *args, **kwargs):
@@ -132,9 +106,25 @@ async def test_choose_tool_rejects_unknown_name(monkeypatch):
             return False
 
         async def post(self, url, headers=None, json=None):
-            return FakeResponse()
+            calls['n'] += 1
+            raise AssertionError('Gemini must not be called')
 
-    monkeypatch.setattr('app.ai.httpx.AsyncClient', FakeClient)
+    monkeypatch.setattr('httpx.AsyncClient', FakeClient)
+    chosen = await polisher.choose_tool(
+        '28.6139, 77.209 sea conditions',
+        ['get_current_weather', 'get_marine_forecast'],
+        'get_current_weather',
+    )
+    assert chosen == 'get_current_weather'
+    assert calls['n'] == 0
+
+
+@pytest.mark.asyncio
+async def test_retired_choose_tool_never_invents_name():
+    from app.ai import GeminiPolisher
+    from app.models import Settings
+
+    polisher = GeminiPolisher(Settings(gemini_api_key='test-key', gemini_model='gemini-test'))
     chosen = await polisher.choose_tool(
         'What is the weather now?',
         ['get_current_weather', 'get_hourly_forecast'],

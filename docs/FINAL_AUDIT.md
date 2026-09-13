@@ -1,9 +1,8 @@
 # WEATHERGPT COMPLETION SUMMARY
 
 Independent repository audit — SIH 2026 / PS 26068. Original audit **2026-09-11**.
-Remediation pass on the same day after `docs/FINAL_AUDIT.md` / `docs/REMAINING_WORK.md`.
-Statuses below are verified by code, tests, live backend calls, **and an emulator run**.
-Items that were not executed stay 🔵 UNVERIFIED.
+**2026-09-12 product refoundation:** Gemini retired from active runtime; Groq (`openai/gpt-oss-120b`) is the conversational orchestrator over `TOOL_REGISTRY`, with deterministic/offline fallback and provider-neutral LLM validation.
+Statuses below mix historical audit evidence with the Groq migration; treat GEMINI rows as historical unless marked retired.
 
 **Overall completion: 82 %**
 
@@ -24,7 +23,8 @@ Items that were not executed stay 🔵 UNVERIFIED.
 | MULTILINGUAL | 78 % | UI 11/11 × 170 strings; deterministic chat drafts in all 11; BHASHINI still uncredentialed |
 | VOICE | 70 % | Device STT activity launched (Bangla); spoken question not completed |
 | ALERTS | 86 % | DEMO notification posted; contentIntent present; shade tap not physically pressed |
-| GEMINI | 80 % | Facts/prose split; skip when no benefit; 429 circuit; validator unchanged |
+| GEMINI | retired | Historical polish/orchestrator path removed from active runtime; see Groq |
+| GROQ | active | Tool orchestration + grounded validator; 429 → deterministic fallback |
 | SECURITY | 90 % | Device-register 409 retested; APK secrets none; no coordinates in logs |
 | PRIVACY | 88 % | Per-place delete UI exists; coordinate log scan still clean |
 | SCALABILITY | 72 % | Working Redis/SQLite abstractions; local demo still in-memory by default |

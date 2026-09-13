@@ -25,20 +25,38 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
     val results=MutableStateFlow<List<Place>>(emptyList())
     val searchBusy=MutableStateFlow(false)
     val chatStatus=MutableStateFlow("")
+    val followUps=MutableStateFlow<List<String>>(emptyList())
     val backendOnline=MutableStateFlow<Boolean?>(null)
-    /** Why the last backend call failed, so the UI can show one accurate banner. */
+    /**
+     * Failure for the weather-bundle / health path only.
+     * Chat offline fallback must not sticky-overwrite this, or Home keeps a
+     * connection banner after Room already has a valid forecast.
+     */
     val failure=MutableStateFlow(NetFailure.NONE)
     private fun online()=hasNetwork(getApplication())
-    private fun record(operation:String,path:String,error:Throwable?) {
+    private fun recordWeather(operation:String,path:String,error:Throwable?) {
         val kind=if(error==null) NetFailure.NONE else classifyFailure(error,online())
         failure.value=kind
-        offline.value=kind!=NetFailure.NONE
-        // Anything other than a transport failure proves the backend answered us.
+        offline.value=kind==NetFailure.NO_NETWORK || kind==NetFailure.SERVER_UNREACHABLE || kind==NetFailure.TIMEOUT
         backendOnline.value=when(kind) {
+            NetFailure.NONE,NetFailure.PROVIDER_UNAVAILABLE,NetFailure.SERVER_ERROR,NetFailure.BAD_RESPONSE,NetFailure.AUTH_CONFIGURATION_ERROR->true
             NetFailure.NO_NETWORK,NetFailure.SERVER_UNREACHABLE,NetFailure.TIMEOUT->false
-            else->true
         }
         if(backendOnline.value==true) markConnected()
+        NetLog.call(operation,base(),path,(error as? BackendHttpException)?.code,kind,error)
+    }
+    private fun recordChat(operation:String,path:String,error:Throwable?) {
+        // Chat outcomes are logged but do not drive the weather status banner.
+        val kind=if(error==null) NetFailure.NONE else classifyFailure(error,online())
+        if(error==null) {
+            offline.value=false
+            backendOnline.value=true
+            markConnected()
+            // A live chat round-trip proves the backend is reachable; clear a sticky weather transport error.
+            if(failure.value==NetFailure.SERVER_UNREACHABLE || failure.value==NetFailure.TIMEOUT || failure.value==NetFailure.NO_NETWORK) {
+                failure.value=NetFailure.NONE
+            }
+        }
         NetLog.call(operation,base(),path,(error as? BackendHttpException)?.code,kind,error)
     }
     private fun markConnected() { save("last_connected",System.currentTimeMillis().toString()) }
@@ -80,12 +98,31 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
         }
     } }
     private var searchJob:Job?=null
-    fun search(q:String) {
-        if(q.trim().length<2) return
+    fun schedulePlaceSearch(q:String) {
+        search(q, debounceMs=PLACE_SEARCH_DEBOUNCE_MS)
+    }
+    fun search(q:String, debounceMs:Long=0L) {
+        val trimmed=q.trim()
+        if(trimmed.length<PLACE_SEARCH_MIN_CHARS) {
+            searchJob?.cancel()
+            results.value=emptyList()
+            if(error.value=="no_places" || error.value=="search_failed") error.value=""
+            return
+        }
+        if(placeSearchUnavailableOffline(online())) {
+            searchJob?.cancel()
+            results.value=emptyList()
+            error.value="search_failed"
+            searchBusy.value=false
+            return
+        }
         searchJob?.cancel()
         searchJob=viewModelScope.launch {
+            if(debounceMs>0) delay(debounceMs)
+            if(!isActive) return@launch
+            if(!shouldRunPlaceSearch(trimmed, online())) return@launch
             searchBusy.value=true; error.value=""; results.value=emptyList()
-            try { results.value=repo.call(base()){it.search(q.trim(),value("language","en"))}.locations; if(results.value.isEmpty()) error.value="no_places" }
+            try { results.value=repo.call(base()){it.search(trimmed,value("language","en"))}.locations; if(results.value.isEmpty()) error.value="no_places" }
             catch(e:CancellationException) { throw e }
             catch(e:Exception) { NetLog.call("search",base(),"v1/locations/search",null,classifyFailure(e,online()),e); error.value="search_failed" }
             finally { searchBusy.value=false }
@@ -131,10 +168,10 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             try {
                 repo.refresh(p,base(),value("low_data")=="true")
                 repo.dao.weatherOnce(repo.key(p))?.let { scheduleCachedAlerts(getApplication(),p,repo.gson.fromJson(it.json,BundleDto::class.java)) }
-                record("bundle","v1/weather/bundle",null)
+                recordWeather("bundle","v1/weather/bundle",null)
             }
             catch(e:CancellationException) { throw e }
-            catch(e:Exception) { record("bundle","v1/weather/bundle",e) }
+            catch(e:Exception) { recordWeather("bundle","v1/weather/bundle",e) }
             finally { busy.value=false }
         }
     }
@@ -154,16 +191,22 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
                 val a=repo.call(base()){it.chat(ChatBody(text.trim(),p,lang,value("profile","general"),dayOffset,conversation,secondary,saved))}
                 if(a.sources.isEmpty() && repo.dao.weatherOnce(repo.key(p))!=null) throw ProviderUnavailableException("Live sources unavailable")
                 dayOffset=a.day_offset
+                followUps.value=a.follow_up_suggestions?.filter { it.isNotBlank() }?.take(3) ?: emptyList()
                 val downloaded=java.time.Instant.parse(a.retrieved_at).atZone(java.time.ZoneId.of(p.timezone)).format(java.time.format.DateTimeFormatter.ofPattern("d MMM, h:mm a",java.util.Locale.forLanguageTag(a.language)))
                 val sourceLabel=getApplication<Application>().createConfigurationContext(
                     Configuration(getApplication<Application>().resources.configuration).apply { setLocale(Locale.forLanguageTag(lang)) }
                 ).getString(R.string.downloaded_prefix)
                 repo.dao.message(Message(role="assistant",text=a.answer+"\n\n"+sourceLabel+downloaded+" · "+a.sources.joinToString(),language=a.language,conversationId=conversation,resolvedLocationId=repo.key(p),weatherContextTimestamp=a.retrieved_at))
-                record("chat","v1/chat/message",null)
+                recordChat("chat","v1/chat/message",null)
             } catch(e:CancellationException) { throw e }
             catch(e:Exception) {
-                record("chat","v1/chat/message",e)
-                val cached=repo.dao.weatherOnce(repo.key(p))?.let{repo.gson.fromJson(it.json,BundleDto::class.java)}
+                recordChat("chat","v1/chat/message",e)
+                followUps.value=emptyList()
+                val cached=repo.dao.weatherOnce(repo.key(p))?.let { saved ->
+                    runCatching { repo.gson.fromJson(saved.json,BundleDto::class.java) }
+                        .onFailure { parse -> NetLog.call("cache_parse",base(),"room/weather",null,NetFailure.BAD_RESPONSE,parse) }
+                        .getOrNull()
+                }
                 val (message,day)=Offline.answer(text,cached,dayOffset,lang); dayOffset=day
                 repo.dao.message(Message(role="assistant",text=message,language=lang,conversationId=conversation,resolvedLocationId=repo.key(p),weatherContextTimestamp=cached?.retrieved_at))
             } finally { busy.value=false; chatStatus.value="" }

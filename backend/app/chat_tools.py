@@ -7,7 +7,6 @@ import time
 
 import httpx
 
-from .ai import gemini_polisher
 from .alerts import alert_service
 from .chat import (
     TOMORROW_WORDS, answer, chat_language, format_official_warning, format_recommendation,
@@ -21,7 +20,6 @@ from .tools import (
     ProviderStatusInput, SavedLocationsInput, ScoreInput, TOOL_REGISTRY, TimeRangeInput,
     ToolResult,
 )
-from .metrics import metrics
 from .weather import service
 
 USER_FACING_TOOLS = frozenset(TOOL_REGISTRY)
@@ -82,13 +80,20 @@ def select_tool(request: ChatRequest) -> str:
             'crop advice', 'कृषि परामर्श',
         )),
         ('get_weather_score', (
-            'score', 'should i work', 'work outside', 'occupation', 'for me',
+            'score', 'should i', 'should we', 'can i', 'can we', 'is it safe', 'safe to',
+            'good time', 'work outside', 'occupation', 'for me',
+            'sow', 'sowing', 'seed', 'irrigat', 'spray', 'spraying',
+            'drive', 'driving', 'walk', 'hiking', 'dry clothes', 'outdoors', 'outdoor',
+            'travel', 'travelling', 'traveling', 'field work', 'go out',
             'खेत के काम', 'বাইরে', 'పని', 'काम', 'வெளியே',
+            'kheti', 'खेती', 'best time', 'bahar kaam', 'बाहर काम',
+            'बुआई', 'बीज', 'सिंचाई', 'छिड़काव',
         )),
         ('get_provider_status', ('provider', 'source', 'confidence', 'which model', 'disagreement')),
         ('get_saved_locations', ('saved location', 'saved place', 'my places', 'my locations')),
         ('get_hourly_forecast', (
             'hourly', 'hour by hour', 'next three hours', 'next 3 hours', 'अगले तीन घंटे',
+            'shaam', 'subah', 'शाम', 'सुबह', 'evening', 'morning', 'baarish', 'बारिश',
         )),
         ('get_daily_forecast', (
             'daily', 'next days', 'this week', 'week ahead', *TOMORROW_WORDS,
@@ -232,29 +237,10 @@ def _trace(intent: str, tool: str, duration_ms: int, status: str) -> None:
         _LOG.debug('chat_tool intent=%s tool=%s duration_ms=%s status=%s', intent, tool, duration_ms, status)
 
 
-def _should_ask_gemini_tool(text: str, deterministic: str) -> bool:
-    """Spend a Gemini tool-choice call only when the keyword router stayed on the default."""
-    if deterministic != 'get_current_weather':
-        return False
-    lowered = text.lower()
-    return 'check something else' in lowered or 'which tool' in lowered
-
-
 async def resolve_tool(request: ChatRequest) -> tuple[str, str]:
+    """Deterministic keyword router. Groq orchestration happens in run_chat."""
     deterministic = select_tool(request)
-    intent = _intent_for(request, deterministic)
-    if (
-        deterministic != 'get_current_weather'
-        or not gemini_polisher.enabled
-        or not _should_ask_gemini_tool(request.text, deterministic)
-    ):
-        if deterministic == 'get_current_weather' and gemini_polisher.enabled:
-            metrics.inc('gemini_skipped')
-        return intent, deterministic
-    chosen = await gemini_polisher.choose_tool(request.text, tuple(TOOL_REGISTRY), deterministic)
-    if chosen in TOOL_REGISTRY:
-        return _intent_for(request, chosen), chosen
-    return intent, deterministic
+    return _intent_for(request, deterministic), deterministic
 
 
 async def _forecast_answer(request: ChatRequest, name: str) -> dict:
@@ -319,6 +305,8 @@ async def _marine_answer(request: ChatRequest, result: ToolResult) -> dict:
 
 
 def _render_hourly(result: ToolResult, request: ChatRequest) -> str:
+    from .chat import is_action_question
+
     rows = result.data if isinstance(result.data, list) else []
     language = chat_language(request.language)
     if not rows:
@@ -326,15 +314,24 @@ def _render_hourly(result: ToolResult, request: ChatRequest) -> str:
     temps = [row['temperature'] for row in rows if row.get('temperature') is not None]
     rain = [row['rain_chance'] for row in rows if row.get('rain_chance') is not None]
     wind = [row['wind_ms'] for row in rows if row.get('wind_ms') is not None]
-    parts = [f'{display_place_name(request.location.name)}']
+    supporting = [f'{display_place_name(request.location.name)}']
     if temps:
-        parts.append(phrase(language, 'temperature', lo=min(temps), hi=max(temps)))
+        supporting.append(phrase(language, 'temperature', lo=min(temps), hi=max(temps)))
     if rain:
-        parts.append(phrase(language, 'rain', value=max(rain)))
+        supporting.append(phrase(language, 'rain', value=max(rain)))
     if wind:
-        parts.append(phrase(language, 'wind', value=max(wind) * MS_TO_KMH))
-    parts.append(phrase(language, 'official'))
-    return '\n\n'.join(parts)
+        supporting.append(phrase(language, 'wind', value=max(wind) * MS_TO_KMH))
+    supporting.append(phrase(language, 'official'))
+    if not is_action_question(request.text):
+        return '\n\n'.join(supporting)
+    rain_max = max(rain) if rain else None
+    if rain_max is not None and rain_max >= 60:
+        lead = 'Weather-wise, I would wait — rain risk is high in this window.'
+    elif rain_max is not None and rain_max >= 35:
+        lead = 'It is probably okay with some risk — keep plans flexible around rain timing.'
+    else:
+        lead = 'Weather-wise, conditions look reasonably suitable in this window.'
+    return '\n\n'.join([lead, *supporting])
 
 
 def _render_daily(result: ToolResult, request: ChatRequest) -> str:
@@ -365,6 +362,8 @@ def _score_label(language: str, label: str) -> str:
 
 
 def _render_score(result: ToolResult, request: ChatRequest) -> str:
+    from .chat import is_action_question
+
     language = chat_language(request.language)
     data = result.data if isinstance(result.data, dict) else {}
     score = data.get('score')
@@ -372,8 +371,20 @@ def _render_score(result: ToolResult, request: ChatRequest) -> str:
     disclaimer = phrase(language, 'score_disclaimer')
     profile = data.get('profile') or request.profile
     if score is None:
-        return phrase(language, 'score_none', label=label, disclaimer=disclaimer)
-    return phrase(language, 'score', profile=profile, score=score, label=label, disclaimer=disclaimer)
+        body = phrase(language, 'score_none', label=label, disclaimer=disclaimer)
+    else:
+        body = phrase(language, 'score', profile=profile, score=score, label=label, disclaimer=disclaimer)
+    if not is_action_question(request.text):
+        return body
+    if score is None:
+        lead = 'Weather-wise I cannot give a clear go-ahead from the score alone — check the supporting forecast and official warnings.'
+    elif score >= 70:
+        lead = 'Yes — weather-wise, conditions look suitable for this kind of outdoor plan.'
+    elif score >= 45:
+        lead = 'It is probably okay, but there is some risk — keep the plan flexible.'
+    else:
+        lead = 'I would wait or shorten the activity — conditions look less favourable right now.'
+    return f'{lead}\n\n{body}'
 
 
 def render_tool_result(name: str, result: ToolResult, request: ChatRequest) -> dict:
@@ -463,29 +474,56 @@ def render_tool_result(name: str, result: ToolResult, request: ChatRequest) -> d
 
 async def run_chat(request: ChatRequest) -> dict:
     started = time.perf_counter()
+    # Prefer Groq tool orchestration when available; deterministic path is always the safety net.
+    try:
+        from .groq_orchestrator import orchestrate_chat
+        orchestrated = await orchestrate_chat(request)
+        if orchestrated is not None:
+            _trace(
+                orchestrated.get('tool') or 'orchestrated',
+                orchestrated.get('tool') or 'orchestrated',
+                int((time.perf_counter() - started) * 1000),
+                'available',
+            )
+            return orchestrated
+        _LOG.info('FALLBACK_USED reason=orchestrator_none path=deterministic')
+    except Exception as error:
+        _LOG.info('FALLBACK_USED reason=orchestrator_exception exception=%s', type(error).__name__)
+
     intent, name = await resolve_tool(request)
     status = 'error'
     try:
         if name == 'get_current_weather':
             payload = await _forecast_answer(request, name)
             status = 'available'
+            payload['response_origin'] = 'deterministic_fallback'
             return payload
         try:
             result = await invoke_registered_tool(name, request)
         except (httpx.HTTPError, ValueError, KeyError, TypeError):
             status = 'unavailable'
-            return await _forecast_answer(request, 'get_current_weather')
+            payload = await _forecast_answer(request, 'get_current_weather')
+            payload['response_origin'] = 'deterministic_fallback'
+            return payload
         status = result.status
         if name == 'get_marine_forecast':
             if result.status == 'unavailable':
-                return await _forecast_answer(request, name)
-            return await _marine_answer(request, result)
+                payload = await _forecast_answer(request, name)
+                payload['response_origin'] = 'deterministic_fallback'
+                return payload
+            payload = await _marine_answer(request, result)
+            payload['response_origin'] = 'deterministic_fallback'
+            return payload
         if name == 'get_climate_summary' and (
             result.status == 'unavailable' or not isinstance(result.data, dict) or 'trend_per_decade' not in (result.data or {})
         ):
-            return await _forecast_answer(request, name)
+            payload = await _forecast_answer(request, name)
+            payload['response_origin'] = 'deterministic_fallback'
+            return payload
         if name in {'get_hourly_forecast', 'get_daily_forecast', 'get_weather_score'} and result.status == 'unavailable':
-            return await _forecast_answer(request, name)
+            payload = await _forecast_answer(request, name)
+            payload['response_origin'] = 'deterministic_fallback'
+            return payload
         payload = render_tool_result(name, result, request)
         if name == 'get_weather_score' and result.status == 'available':
             data, official = await asyncio.gather(
@@ -502,6 +540,7 @@ async def run_chat(request: ChatRequest) -> dict:
             extra = grounded_advice_lines(request, data)
             if extra:
                 payload['answer'] = payload['answer'] + '\n\n' + '\n\n'.join(extra)
+        payload['response_origin'] = 'deterministic_fallback'
         return payload
     finally:
         _trace(intent, name, int((time.perf_counter() - started) * 1000), status)

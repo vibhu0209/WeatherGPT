@@ -20,7 +20,13 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -179,17 +185,18 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
         },
         topBar={
             Surface(color=MaterialTheme.colorScheme.surface,shadowElevation=0.dp) {
-                Column(Modifier.statusBarsPadding().padding(horizontal=Space.screen,vertical=Space.md),verticalArrangement=Arrangement.spacedBy(Space.xs)) {
-                    Text("WeatherGPT",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.statusBarsPadding().padding(horizontal=Space.screen,vertical=Space.md),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                    Text("WeatherGPT",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.primary)
                     Surface(
                         onClick={showPlace=true},
-                        color=MaterialTheme.colorScheme.surface,
+                        color=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.55f),
+                        shape=MaterialTheme.shapes.small,
                         modifier=Modifier.fillMaxWidth().heightIn(min=Space.touch).semantics { contentDescription=placeAnnouncement; role=Role.Button },
                     ) {
-                        Row(verticalAlignment=Alignment.CenterVertically) {
+                        Row(Modifier.padding(horizontal=Space.md),verticalAlignment=Alignment.CenterVertically) {
                             Icon(Icons.Default.LocationOn,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(22.dp))
                             Spacer(Modifier.width(Space.sm))
-                            Text(p?.name?:choosePlaceLabel,style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
+                            Text(p?.name?:choosePlaceLabel,style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
                             Icon(Icons.Default.ExpandMore,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -198,16 +205,22 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
         },
     ) { padding ->
         Column(Modifier.padding(padding).imePadding().fillMaxSize()) {
-            // One banner per root cause. Stacking "server unreachable", "saved weather" and
-            // "could not refresh" told the user three things about a single failure.
-            when(noticeFor(failure,b!=null,b?.is_stale==true)) {
+            // One banner from weatherFailure + current Room weather only.
+            // Chat offline bubbles must not sticky-drive this notice.
+            val notice=noticeFor(failure,b!=null,b?.is_stale==true)
+            androidx.compose.runtime.LaunchedEffect(notice,failure,b!=null,b?.is_stale==true,busy) {
+                logNoticeState(notice,failure,b!=null,b?.is_stale==true,offline=vm.offline.value,backendOnline=vm.backendOnline.value,refreshing=busy)
+            }
+            when(notice) {
                 WeatherNotice.NONE->{}
-                WeatherNotice.STALE->StatusBanner(s(R.string.saved_notice))
-                WeatherNotice.OFFLINE_CACHED->StatusBanner(s(R.string.notice_offline_cached))
-                WeatherNotice.CANT_CONNECT->StatusBanner(s(R.string.notice_cant_connect))
-                WeatherNotice.PROVIDER_DOWN->StatusBanner(s(R.string.notice_provider_down))
-                WeatherNotice.NO_DATA->StatusBanner(s(R.string.notice_no_data))
-                WeatherNotice.CHECK_SETTINGS->StatusBanner(s(R.string.notice_check_settings))
+                WeatherNotice.STALE->StatusBanner(s(R.string.saved_notice), BannerTone.QUIET)
+                WeatherNotice.OFFLINE_CACHED->StatusBanner(s(R.string.notice_offline_cached), BannerTone.QUIET)
+                WeatherNotice.CANT_CONNECT->StatusBanner(s(R.string.notice_cant_connect), BannerTone.WARN)
+                WeatherNotice.PROVIDER_DOWN->StatusBanner(s(R.string.notice_provider_down), BannerTone.ERROR)
+                WeatherNotice.NO_DATA->StatusBanner(s(R.string.notice_no_data), BannerTone.WARN)
+                WeatherNotice.NO_SAVED->StatusBanner(s(R.string.notice_no_saved), BannerTone.INFO)
+                WeatherNotice.PROVIDERS_UNAVAILABLE->StatusBanner(s(R.string.notice_providers_unavailable), BannerTone.ERROR)
+                WeatherNotice.CHECK_SETTINGS->StatusBanner(s(R.string.notice_check_settings), BannerTone.WARN)
             }
             if(error=="no_places"||error=="search_failed"||error=="location_failed")
                 StatusBanner(s(when(error){"no_places"->R.string.no_places;"search_failed"->R.string.search_failed;else->R.string.location_unavailable}))
@@ -226,70 +239,134 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
 @Composable fun HomeScreen(vm:WeatherViewModel,b:BundleDto?,busy:Boolean,refresh:()->Unit,choose:()->Unit,onAsk:()->Unit,onRetryConnection:()->Unit) {
     val profile=vm.value("profile","general")
     val score=b?.scores?.get(profile)
-    val advice=b?.recommendations?.get(profile).orEmpty()
+    val tip=primaryAdviceMessage(b?.recommendations?.get(profile))
     val failure by vm.failure.collectAsState()
     var alertOpen by rememberSaveable { mutableStateOf(false) }
     val locale=Locale.getDefault()
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(horizontal=Space.screen,vertical=Space.lg),verticalArrangement=Arrangement.spacedBy(Space.xl)) {
+    val refreshLabel=s(R.string.refresh_weather)
+    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(horizontal=Space.screen,vertical=Space.md),verticalArrangement=Arrangement.spacedBy(Space.md)) {
         if(b==null) {
             if(failure==NetFailure.NONE) item { Text(s(R.string.no_saved),style=MaterialTheme.typography.bodyLarge) }
             item { PrimaryWeatherButton(s(R.string.search),Icons.Default.Search,choose) }
             item { QuietButton(s(R.string.retry_connection),Icons.Default.Refresh,onRetryConnection) }
         } else {
-            val hour=nearestHour(b)
-            item {
-                val temp=hour?.temperature?.let { "${it}°C" }
-                val condition=conditionResource(hour?.weather_code?.toInt())?.let { s(it) }
-                val feels=hour?.apparent_temperature?.let { "${s(R.string.feels_like)} ${it}°C" }
-                Column(
-                    Modifier.semantics(mergeDescendants=true) { contentDescription=listOfNotNull(temp,condition,feels).joinToString(", ") },
-                    verticalArrangement=Arrangement.spacedBy(Space.sm),
-                ) {
-                    Text("${s(R.string.updated)} ${ageMinutes(b.retrieved_at)} ${s(R.string.minutes_ago)}",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    if(hour?.temperature!=null) Text("${hour.temperature}°C",style=MaterialTheme.typography.displayLarge)
-                    conditionResource(hour?.weather_code?.toInt())?.let{Text(s(it),style=MaterialTheme.typography.titleLarge)}
-                    if(hour?.apparent_temperature!=null) Text("${s(R.string.feels_like)} ${hour.apparent_temperature}°C",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item { Text(s(R.string.home_intro),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant) }
-            if(score!=null) item { WeatherScoreCard(score) }
-            item {
-                val stackMetrics=LocalDensity.current.fontScale>=1.5f
-                if(stackMetrics) {
-                    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(Space.md)) {
-                        WeatherMetric(s(R.string.rain),hour?.rain_chance?.let{"$it%"}?:s(R.string.unavailable),Modifier.fillMaxWidth())
-                        WeatherMetric(s(R.string.wind),formatWindKmh(hour?.wind_ms,locale)?.let{"$it ${s(R.string.unit_kmh)}"}?:s(R.string.unavailable),Modifier.fillMaxWidth())
-                        WeatherMetric(s(R.string.humidity),hour?.humidity?.let{"$it%"}?:s(R.string.unavailable),Modifier.fillMaxWidth())
-                    }
-                } else {
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(Space.md)) {
-                        WeatherMetric(s(R.string.rain),hour?.rain_chance?.let{"$it%"}?:s(R.string.unavailable),Modifier.weight(1f))
-                        WeatherMetric(s(R.string.wind),formatWindKmh(hour?.wind_ms,locale)?.let{"$it ${s(R.string.unit_kmh)}"}?:s(R.string.unavailable),Modifier.weight(1f))
-                        WeatherMetric(s(R.string.humidity),hour?.humidity?.let{"$it%"}?:s(R.string.unavailable),Modifier.weight(1f))
-                    }
-                }
-            }
-            if(advice.isNotEmpty()) item {
-                Column(verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-                    Text(s(R.string.your_advice),style=MaterialTheme.typography.titleMedium)
-                    advice.take(2).forEach { Text(it.message,style=MaterialTheme.typography.bodyLarge) }
-                }
-            }
             val activeOfficial=b.official_alerts.orEmpty().filter { cachedAlertIsActive(it) && Freshness.officialAlert(b.retrieved_at,it.expires)!=FreshnessState.STALE }
-            item {
+            if(activeOfficial.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                        Text(s(R.string.home_alerts),style=MaterialTheme.typography.titleMedium)
+                        AlertSummary(activeOfficial.first(),alertOpen,{alertOpen=!alertOpen})
+                    }
+                }
+            } else {
                 val status=(b.official_status?:b.alerts_status?:"").lowercase()
-                Column(verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-                    Text(s(R.string.home_alerts),style=MaterialTheme.typography.titleMedium)
-                    if(activeOfficial.isNotEmpty()) AlertSummary(activeOfficial.first(),alertOpen,{alertOpen=!alertOpen})
-                    else Text(s(if(status=="available") R.string.alerts_none_active else R.string.alert_unknown),style=MaterialTheme.typography.bodyLarge)
-                    b.risk_estimates.orEmpty().firstOrNull()?.let { risk ->
-                        Text(s(R.string.weather_risk),style=MaterialTheme.typography.labelLarge)
-                        Text(risk.message,style=MaterialTheme.typography.bodyLarge)
+                if(status!="available") {
+                    item {
+                        Text(s(R.string.alert_unknown),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
-            item { PrimaryWeatherButton(s(R.string.ask_weathergpt),Icons.Default.Mic,onAsk) }
-            item { QuietButton(s(R.string.download),Icons.Default.Refresh,refresh,!busy) }
+            item {
+                val hour=nearestHour(b)
+                val code=hour?.weather_code?.toInt()
+                val condition=conditionResource(code)?.let { s(it) }
+                val atmosphere=weatherAtmosphere(code)
+                val feelsLikeLabel=s(R.string.feels_like)
+                val upcoming=b.hourly.filter{Instant.parse(it.time)>Instant.now().minusSeconds(3600)}.take(12)
+                Surface(
+                    color=if(atmosphere.alpha>0f) atmosphere else MaterialTheme.colorScheme.surface,
+                    shape=MaterialTheme.shapes.large,
+                    modifier=Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        Modifier.padding(horizontal=Space.lg,vertical=Space.lg).semantics(mergeDescendants=true) {
+                            contentDescription=listOfNotNull(
+                                b.location.name,
+                                hour?.temperature?.let { "${it}°C" },
+                                condition,
+                                hour?.apparent_temperature?.let { "$feelsLikeLabel ${it}°C" },
+                            ).joinToString(", ")
+                        },
+                        verticalArrangement=Arrangement.spacedBy(Space.md),
+                    ) {
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
+                            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                                Text(b.location.name,style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${s(R.string.updated)} ${ageMinutes(b.retrieved_at)} ${s(R.string.minutes_ago)}",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if(busy) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp)
+                            else IconButton(
+                                onClick=refresh,
+                                modifier=Modifier.size(40.dp).semantics{contentDescription=refreshLabel},
+                            ) { Icon(Icons.Default.Refresh,null,modifier=Modifier.size(20.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(Space.lg)) {
+                            ConditionIcon(code, condition, size=56.dp)
+                            Column(verticalArrangement=Arrangement.spacedBy(Space.xs)) {
+                                if(hour?.temperature!=null) Text("${hour.temperature.toInt()}°",style=MaterialTheme.typography.displayLarge,fontWeight=FontWeight.Bold)
+                                condition?.let { Text(it,style=MaterialTheme.typography.titleLarge) }
+                                if(hour?.apparent_temperature!=null) Text("$feelsLikeLabel ${hour.apparent_temperature.toInt()}°",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        MetricRow(
+                            listOf(
+                                s(R.string.rain) to (hour?.rain_chance?.let{"${it.toInt()}%"}?:s(R.string.unavailable)),
+                                s(R.string.wind) to (formatWindKmh(hour?.wind_ms,locale)?.let{"$it ${s(R.string.unit_kmh)}"}?:s(R.string.unavailable)),
+                                s(R.string.humidity) to (hour?.humidity?.let{"${it.toInt()}%"}?:s(R.string.unavailable)),
+                            ),
+                            stack=LocalDensity.current.fontScale>=1.5f,
+                        )
+                        if(upcoming.isNotEmpty()) {
+                            val rainLabel=s(R.string.rain)
+                            val unavailable=s(R.string.unavailable)
+                            LazyRow(horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
+                                items(upcoming, key={it.time}) { h ->
+                                    val timeLabel=Instant.parse(h.time).atZone(ZoneId.of(b.location.timezone)).format(DateTimeFormatter.ofPattern("h a"))
+                                    val temp=h.temperature?.let{"${it.toInt()}°C"}?:unavailable
+                                    val rain=h.rain_chance?.let{"${it.toInt()}%"}?:"—"
+                                    val hCode=h.weather_code?.toInt()
+                                    Surface(
+                                        color=MaterialTheme.colorScheme.surface.copy(alpha=0.85f),
+                                        shape=MaterialTheme.shapes.small,
+                                        modifier=Modifier.width(68.dp).semantics(mergeDescendants=true) {
+                                            contentDescription=hourlyTalkBack(timeLabel,temp,rainLabel,rain)
+                                        },
+                                    ) {
+                                        Column(
+                                            Modifier.padding(vertical=Space.sm,horizontal=Space.xs),
+                                            horizontalAlignment=Alignment.CenterHorizontally,
+                                            verticalArrangement=Arrangement.spacedBy(Space.xs),
+                                        ) {
+                                            Text(timeLabel,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                            ConditionIcon(hCode, null, size=20.dp)
+                                            Text(h.temperature?.let{"${it.toInt()}°"}?:unavailable,style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold)
+                                            Text(h.rain_chance?.let{"${it.toInt()}%"}?:"—",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if(score!=null) WeatherScoreCard(score)
+                        ConfidenceNote(b, score)
+                        tip?.let { Text(it,style=MaterialTheme.typography.bodyLarge) }
+                    }
+                }
+            }
+            if(b.risk_estimates.orEmpty().isNotEmpty()) {
+                item {
+                    Column(verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                        b.risk_estimates.orEmpty().firstOrNull()?.let { risk ->
+                            Surface(color=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f),shape=MaterialTheme.shapes.small) {
+                                Column(Modifier.padding(Space.lg),verticalArrangement=Arrangement.spacedBy(Space.xs)) {
+                                    Text(s(R.string.weather_risk),style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(risk.message,style=MaterialTheme.typography.bodyLarge)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item { PrimaryWeatherButton(s(R.string.ask_weathergpt),Icons.Default.ChatBubbleOutline,onAsk) }
         }
     }
 }
@@ -298,19 +375,69 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
 }
 fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->R.string.cloudy;45,48->R.string.fog;51,53,55,56,57->R.string.drizzle;61,63,65,66,67->R.string.rainy;71,73,75,77->R.string.snow;80,81,82,85,86->R.string.showers;95,96,99->R.string.thunderstorm;else->null }
 
+/** Emphasize a recommended time window when the answer leads with one — visual only, no invented weather. */
+fun recommendationEmphasis(body:String):Pair<String,String>? {
+    val window=Regex("""(?i)(\d{1,2}\s*(?:[–\-]|to)\s*\d{1,2}\s*(?:AM|PM|a\.m\.|p\.m\.)?)""")
+    val paragraphs=body.trim().split(Regex("""\n\s*\n"""), limit=2)
+    val lead=paragraphs.firstOrNull()?.trim().orEmpty()
+    if(lead.isEmpty() || !window.containsMatchIn(lead)) return null
+    if(lead.length>160) return null
+    val rest=paragraphs.getOrNull(1)?.trim().orEmpty().ifEmpty {
+        body.removePrefix(lead).trimStart('\n',' ')
+    }
+    return lead to rest
+}
+
+@Composable
+fun compactFollowUpLabel(raw:String):String {
+    val lower=raw.lowercase()
+    return when {
+        "why" in lower && ("window" in lower || "time" in lower || "recommend" in lower) -> s(R.string.chip_why_time)
+        "hourly" in lower || "hour by" in lower || "next three" in lower -> s(R.string.chip_hourly)
+        "warning" in lower || "alert" in lower -> s(R.string.chip_warnings)
+        "rain" in lower -> s(R.string.chip_rain_later)
+        "tomorrow" in lower -> s(R.string.chip_tomorrow)
+        "score" in lower -> s(R.string.chip_score)
+        "wave" in lower || "swell" in lower || "wind" in lower -> s(R.string.chip_wind_waves)
+        "marine" in lower || "sea" in lower -> s(R.string.chip_sea)
+        "outdoor" in lower || "outside" in lower || "field" in lower || "work time" in lower || "spray" in lower -> s(R.string.chip_best_work)
+        raw.length <= 18 -> raw
+        else -> raw.take(16).trimEnd() + "…"
+    }
+}
+
 @Composable fun ChatScreen(vm:WeatherViewModel,p:Place?,b:BundleDto?,busy:Boolean,chatStatus:String,choose:()->Unit,speak:(String,String)->Unit) {
     val messages by vm.messages.collectAsState()
     val compare by vm.comparePlace.collectAsState()
     val saved by vm.savedPlaces.collectAsState()
+    val offline by vm.offline.collectAsState()
     var draft by rememberSaveable { mutableStateOf("") }
     val context=LocalContext.current
     val unavailable=s(R.string.voice_unavailable)
-    val suggestionIds=when(vm.value("profile","general")) {
-        "farming" -> listOf(R.string.rain_question,R.string.farm_work_question,R.string.spray_question,R.string.warning_question)
-        "fishing" -> listOf(R.string.marine_question,R.string.wave_question,R.string.warning_question)
-        "research" -> listOf(R.string.climate_question,R.string.tomorrow_question,R.string.warning_question)
-        else -> listOf(R.string.rain_question,R.string.next_hours_question,R.string.tomorrow_question,R.string.warning_question)
+    val profile=vm.value("profile","general")
+    val starters=when(profile) {
+        "farming" -> listOf(
+            R.string.chip_best_work to R.string.farm_work_question,
+            R.string.chip_rain_later to R.string.chip_rain_later,
+            R.string.chip_warnings to R.string.warning_question,
+        )
+        "fishing" -> listOf(
+            R.string.chip_sea to R.string.marine_question,
+            R.string.chip_wind_waves to R.string.wave_question,
+            R.string.chip_warnings to R.string.warning_question,
+        )
+        "tourism","outdoor" -> listOf(
+            R.string.chip_best_outdoor to R.string.chip_best_outdoor,
+            R.string.chip_rain_later to R.string.chip_rain_later,
+            R.string.chip_tomorrow to R.string.tomorrow_question,
+        )
+        else -> listOf(
+            R.string.chip_will_rain to R.string.rain_question,
+            R.string.chip_best_outdoor to R.string.chip_best_outdoor,
+            R.string.chip_tomorrow to R.string.tomorrow_question,
+        )
     }
+    val dynamicFollowUps by vm.followUps.collectAsState()
     val typeQuestion=s(R.string.type_question)
     val speakLabel=s(R.string.speak)
     val sendLabel=s(R.string.send)
@@ -327,28 +454,73 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         vm.send(withCompare)
     }
     val downloaded=s(R.string.downloaded_prefix)
+    val hour=b?.let { nearestHour(it) }
+    val code=hour?.weather_code?.toInt()
+    val condition=conditionResource(code)?.let { s(it) }
+    val score=b?.scores?.get(profile)?.score
+    val tip=primaryAdviceMessage(b?.recommendations?.get(profile))
+    val placeShort=p?.name?.substringBefore(",")?.trim().orEmpty()
+    val greeting=when(LocalTime.now().hour) {
+        in 5..11 -> s(R.string.good_morning)
+        in 12..16 -> s(R.string.good_afternoon)
+        else -> s(R.string.good_evening)
+    }
     Column(Modifier.fillMaxSize()) {
-        if(chatStatus.isNotEmpty()) StatusBanner(s(if(chatStatus=="sending") R.string.sending_question else R.string.checking_sources))
+        if(p!=null && b!=null) {
+            WeatherContextStrip(
+                placeName=p.name,
+                temperature=hour?.temperature,
+                weatherCode=code,
+                conditionLabel=condition,
+                score=score,
+                adviceLine=if(messages.isEmpty()) tip else null,
+                modifier=Modifier.padding(horizontal=Space.screen,vertical=Space.sm),
+            )
+            ConfidenceNote(b, b.scores?.get(profile), Modifier.padding(horizontal=Space.screen))
+        }
+        if(chatStatus.isNotEmpty()) {
+            StatusBanner(
+                s(if(chatStatus=="sending") R.string.sending_question else R.string.checking_sources),
+                BannerTone.QUIET,
+            )
+        }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(Space.screen),verticalArrangement=Arrangement.spacedBy(Space.md),reverseLayout=true) {
             items(messages.reversed(),key={it.id}) { m ->
                 val user=m.role=="user"
                 val split=if(!user) m.text.split("\n\n$downloaded") else listOf(m.text)
-                val body=split.first()
+                val rawBody=split.first()
+                val body=if(user) rawBody else stripUncertaintyBoilerplate(rawBody)
                 val meta=if(split.size>1) downloaded+split.drop(1).joinToString("\n\n$downloaded") else null
                 var open by rememberSaveable(m.id) { mutableStateOf(false) }
-                Row(Modifier.fillMaxWidth().wrapContentHeight(unbounded=true),horizontalArrangement=if(user) Arrangement.End else Arrangement.Start) {
-                    Surface(
-                        color=if(user) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
-                        shape=MaterialTheme.shapes.medium,
-                        tonalElevation=if(user) 0.dp else 1.dp,
-                        modifier=Modifier.fillMaxWidth(if(user) 0.86f else 0.94f),
-                    ) {
-                        Column(Modifier.padding(Space.lg),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-                            Column(Modifier.semantics(mergeDescendants=true){}) {
-                                Text(if(user) s(R.string.you) else "WeatherGPT",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(body,style=MaterialTheme.typography.bodyLarge)
+                Appear {
+                    Row(Modifier.fillMaxWidth().wrapContentHeight(unbounded=true),horizontalArrangement=if(user) Arrangement.End else Arrangement.Start) {
+                        if(user) {
+                            Surface(
+                                color=MaterialTheme.colorScheme.primaryContainer,
+                                contentColor=MaterialTheme.colorScheme.onPrimaryContainer,
+                                shape=MaterialTheme.shapes.medium,
+                                modifier=Modifier.widthIn(max=340.dp).fillMaxWidth(0.82f),
+                            ) {
+                                Text(body,Modifier.padding(horizontal=Space.lg,vertical=Space.md),style=MaterialTheme.typography.bodyLarge)
                             }
-                            if(!user) {
+                        } else {
+                            val emphasis=recommendationEmphasis(body)
+                            Column(Modifier.fillMaxWidth(0.96f),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                                Text("WeatherGPT",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
+                                if(emphasis!=null) {
+                                    Surface(
+                                        color=MaterialTheme.colorScheme.primaryContainer.copy(alpha=0.4f),
+                                        shape=MaterialTheme.shapes.medium,
+                                        modifier=Modifier.fillMaxWidth().animateContentSize(),
+                                    ) {
+                                        Text(emphasis.first,Modifier.padding(Space.lg),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)
+                                    }
+                                    if(emphasis.second.isNotBlank()) {
+                                        Text(emphasis.second.trim(),style=MaterialTheme.typography.bodyLarge)
+                                    }
+                                } else {
+                                    Text(body,style=MaterialTheme.typography.bodyLarge)
+                                }
                                 FlowRow(verticalArrangement=Arrangement.spacedBy(Space.xs),horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
                                     TextButton(onClick={speak(m.text,m.language)},modifier=Modifier.heightIn(min=Space.touch)) {
                                         Icon(Icons.AutoMirrored.Filled.VolumeUp,null,modifier=Modifier.size(20.dp));Spacer(Modifier.width(Space.sm));Text(s(R.string.listen))
@@ -357,26 +529,34 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
                                         Text(s(if(open) R.string.hide_details else R.string.show_details))
                                     }
                                 }
-                                if(open && meta!=null) Text(meta,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                if(open && meta!=null) {
+                                    Text(meta,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         }
                     }
                 }
             }
             if(messages.isEmpty()) item {
-                Column(verticalArrangement=Arrangement.spacedBy(Space.md)) {
-                    Text(s(R.string.welcome),style=MaterialTheme.typography.headlineSmall)
-                    Text(s(R.string.intro),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(s(R.string.tap_to_ask),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    if(p==null) PrimaryWeatherButton(s(R.string.search),Icons.Default.Search,choose)
-                    else FlowRow(horizontalArrangement=Arrangement.spacedBy(Space.sm),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-                        suggestionIds.forEach { id-> val prompt=s(id); SuggestionChip(prompt,!busy){sendChat(prompt)} }
+                Column(verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                    Text(greeting,style=MaterialTheme.typography.headlineSmall)
+                    when {
+                        offline && b!=null && placeShort.isNotEmpty() -> {
+                            Text(String.format(s(R.string.place_saved_offline), placeShort),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(s(R.string.chat_offline_hint),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        b==null -> Text(s(R.string.chat_no_weather_hint),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        hour?.temperature!=null && placeShort.isNotEmpty() -> {
+                            Text(String.format(s(R.string.place_now_temp), placeShort, hour.temperature.toInt()),style=MaterialTheme.typography.titleMedium)
+                        }
                     }
+                    Text(s(R.string.chat_planning_prompt),style=MaterialTheme.typography.titleMedium)
+                    if(p==null) PrimaryWeatherButton(s(R.string.search),Icons.Default.Search,choose)
                 }
             }
         }
         if(p!=null) Surface(color=MaterialTheme.colorScheme.surface,tonalElevation=1.dp) {
-            Column(Modifier.padding(horizontal=Space.screen,vertical=Space.md),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+            Column(Modifier.navigationBarsPadding().imePadding().padding(horizontal=Space.screen,vertical=Space.md),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
                 val others=saved.filter { it.latitude!=p.latitude || it.longitude!=p.longitude }
                 if(others.isNotEmpty()) {
                     Text(s(R.string.compare_place),style=MaterialTheme.typography.labelLarge)
@@ -392,18 +572,37 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
                         if(compare!=null) TextButton(onClick={vm.setComparePlace(null)},modifier=Modifier.heightIn(min=Space.touch)) { Text(s(R.string.clearing_compare)) }
                     }
                 }
-                if(messages.isNotEmpty() && LocalDensity.current.fontScale<1.5f) FlowRow(horizontalArrangement=Arrangement.spacedBy(Space.sm),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-                    listOf(
-                        R.string.action_hourly to R.string.next_hours_question,
-                        R.string.action_warnings to R.string.warning_question,
-                        R.string.action_score to R.string.weather_score,
-                    ).forEach { (label,prompt) ->
-                        val question=s(prompt)
-                        SuggestionChip(s(label),!busy){sendChat(question)}
+                if(messages.isEmpty() && LocalDensity.current.fontScale<1.5f) {
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(Space.sm),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                        starters.forEach { (labelId, promptId) ->
+                            val prompt=s(promptId)
+                            SuggestionChip(s(labelId),!busy){sendChat(prompt)}
+                        }
+                    }
+                } else if(messages.isNotEmpty() && LocalDensity.current.fontScale<1.5f) FlowRow(horizontalArrangement=Arrangement.spacedBy(Space.sm),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                    val followPrompts = if(dynamicFollowUps.isNotEmpty()) dynamicFollowUps else listOf(
+                        s(R.string.chip_why_time),
+                        s(R.string.chip_hourly),
+                        s(R.string.chip_warnings),
+                    )
+                    followPrompts.take(3).forEach { question ->
+                        SuggestionChip(compactFollowUpLabel(question),!busy){sendChat(question)}
                     }
                 }
                 Row(verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
-                    OutlinedTextField(value=draft,onValueChange={draft=it.take(1000)},placeholder={Text(typeQuestion)},modifier=Modifier.weight(1f).heightIn(min=Space.touch),textStyle=MaterialTheme.typography.bodyLarge,maxLines=3,shape=MaterialTheme.shapes.medium)
+                    OutlinedTextField(
+                        value=draft,
+                        onValueChange={draft=it.take(1000)},
+                        placeholder={Text(typeQuestion)},
+                        modifier=Modifier.weight(1f).heightIn(min=Space.touch),
+                        textStyle=MaterialTheme.typography.bodyLarge,
+                        maxLines=3,
+                        shape=MaterialTheme.shapes.medium,
+                        colors=OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor=MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor=MaterialTheme.colorScheme.outline.copy(alpha=0.4f),
+                        ),
+                    )
                     IconButton(onClick={
                         try { launcher.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -417,32 +616,58 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         }
     }
 }
-@Composable fun WeatherCard(b:BundleDto) {
+@Composable fun WeatherCard(b:BundleDto, busy:Boolean=false, onRefresh:(()->Unit)?=null) {
     var details by rememberSaveable(b.retrieved_at) { mutableStateOf(false) }
     val hour=nearestHour(b)
     val locale=Locale.getDefault()
-    Column(verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-        if(hour?.temperature!=null) Text("${hour.temperature}°C",style=MaterialTheme.typography.displayMedium)
-        conditionResource(hour?.weather_code?.toInt())?.let{Text(s(it),style=MaterialTheme.typography.titleMedium)}
-        Text("${s(R.string.updated)} ${ageMinutes(b.retrieved_at)} ${s(R.string.minutes_ago)}",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick={details=!details},modifier=Modifier.heightIn(min=Space.touch)) {
-            Text(s(if(details) R.string.hide_details else R.string.show_details))
-        }
-        if(details) {
-            if(hour?.temperature!=null) Text("${s(R.string.temperature)}: ${hour.temperature}°C",style=MaterialTheme.typography.bodyMedium)
-            if(hour?.rain_chance!=null) Text("${s(R.string.rain)}: ${hour.rain_chance}%",style=MaterialTheme.typography.bodyMedium)
-            if(hour?.wind_ms!=null) Text("${s(R.string.wind)}: ${formatWindKmh(hour.wind_ms,locale)} ${s(R.string.unit_kmh)}",style=MaterialTheme.typography.bodyMedium)
-            formatWindKmh(hour?.wind_gust_ms,locale)?.let { Text("${s(R.string.gusts)}: $it ${s(R.string.unit_kmh)}",style=MaterialTheme.typography.bodyMedium) }
-            if(hour?.humidity!=null) Text("${s(R.string.humidity)}: ${hour.humidity}%",style=MaterialTheme.typography.bodyMedium)
-            hour?.visibility_m?.let { Text("${s(R.string.visibility)}: ${String.format(locale,"%.1f",it/1000.0)} ${s(R.string.unit_km)}",style=MaterialTheme.typography.bodyMedium) }
-            hour?.uv_index?.let { Text("${s(R.string.uv)}: $it",style=MaterialTheme.typography.bodyMedium) }
-            Text("${s(R.string.sources)}: ${b.sources.joinToString()}",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            if(b.source_count==1) Text(s(R.string.single_source),style=MaterialTheme.typography.bodyMedium)
-            if(b.agreement=="sources_disagree") Text(s(R.string.disagree),style=MaterialTheme.typography.bodyMedium)
-            b.confidence?.let { confidence ->
-                Text("${s(R.string.forecast_confidence)}: ${confidence.score}/100 · ${confidence.label}",style=MaterialTheme.typography.bodyMedium)
-                confidence.reasons.forEach { Text("• $it",style=MaterialTheme.typography.bodyMedium) }
-                Text(s(R.string.confidence_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+    val code=hour?.weather_code?.toInt()
+    val condition=conditionResource(code)?.let { s(it) }
+    val atmosphere=weatherAtmosphere(code)
+    val refreshLabel=s(R.string.refresh_weather)
+    Surface(
+        color=if(atmosphere.alpha>0f) atmosphere else MaterialTheme.colorScheme.surface,
+        shape=MaterialTheme.shapes.large,
+        modifier=Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(Space.xl),verticalArrangement=Arrangement.spacedBy(Space.md)) {
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(Space.lg)) {
+                ConditionIcon(code, condition, size=48.dp)
+                Column(verticalArrangement=Arrangement.spacedBy(Space.xs),modifier=Modifier.weight(1f)) {
+                    if(hour?.temperature!=null) Text("${hour.temperature.toInt()}°",style=MaterialTheme.typography.displayMedium)
+                    condition?.let { Text(it,style=MaterialTheme.typography.titleMedium) }
+                }
+            }
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
+                Text(
+                    "${s(R.string.updated)} ${ageMinutes(b.retrieved_at)} ${s(R.string.minutes_ago)}",
+                    style=MaterialTheme.typography.labelLarge,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier=Modifier.weight(1f),
+                )
+                if(onRefresh!=null) {
+                    if(busy) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp)
+                    else IconButton(
+                        onClick=onRefresh,
+                        modifier=Modifier.size(40.dp).semantics{contentDescription=refreshLabel},
+                    ) { Icon(Icons.Default.Refresh,null,modifier=Modifier.size(20.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+            }
+            TextButton(onClick={details=!details},modifier=Modifier.heightIn(min=Space.touch)) {
+                Text(s(if(details) R.string.hide_details else R.string.show_details))
+            }
+            if(details) {
+                if(hour?.temperature!=null) Text("${s(R.string.temperature)}: ${hour.temperature}°C",style=MaterialTheme.typography.bodyMedium)
+                if(hour?.rain_chance!=null) Text("${s(R.string.rain)}: ${hour.rain_chance}%",style=MaterialTheme.typography.bodyMedium)
+                if(hour?.wind_ms!=null) Text("${s(R.string.wind)}: ${formatWindKmh(hour.wind_ms,locale)} ${s(R.string.unit_kmh)}",style=MaterialTheme.typography.bodyMedium)
+                formatWindKmh(hour?.wind_gust_ms,locale)?.let { Text("${s(R.string.gusts)}: $it ${s(R.string.unit_kmh)}",style=MaterialTheme.typography.bodyMedium) }
+                if(hour?.humidity!=null) Text("${s(R.string.humidity)}: ${hour.humidity}%",style=MaterialTheme.typography.bodyMedium)
+                hour?.visibility_m?.let { Text("${s(R.string.visibility)}: ${String.format(locale,"%.1f",it/1000.0)} ${s(R.string.unit_km)}",style=MaterialTheme.typography.bodyMedium) }
+                hour?.uv_index?.let { Text("${s(R.string.uv)}: $it",style=MaterialTheme.typography.bodyMedium) }
+                Text("${s(R.string.sources)}: ${b.sources.joinToString()}",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                if(b.source_count==1) Text(s(R.string.single_source),style=MaterialTheme.typography.bodyMedium)
+                b.confidence?.let { confidence ->
+                    Text("${s(R.string.forecast_confidence)}: ${confidence.score}/100 · ${confidence.label}",style=MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
@@ -457,25 +682,29 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
             item { PrimaryWeatherButton(s(R.string.choose_place),Icons.Default.LocationOn,choose) }
             item { QuietButton(s(R.string.download),Icons.Default.Download,refresh,!busy) }
         } else {
-            item { WeatherCard(b) }
-            item { QuietButton(s(R.string.download),Icons.Default.Download,refresh,!busy) }
+            item { WeatherCard(b, busy=busy, onRefresh=refresh) }
+            item { ConfidenceNote(b) }
             if(b.daily.orEmpty().isNotEmpty()) {
                 items(b.daily.orEmpty()) { day ->
                     val rainLabel=s(R.string.rain)
                     val unavailable=s(R.string.unavailable)
-                    val range="${day.temperature_min?.let{"$it°"}?:unavailable} / ${day.temperature_max?.let{"$it°"}?:unavailable}"
-                    val rain=day.rain_chance_max?.let{"$it%"}?:unavailable
-                    Column(
-                        Modifier.fillMaxWidth().padding(vertical=Space.sm).semantics(mergeDescendants=true) {
-                            contentDescription=dailyForecastTalkBack(day.date,range,rainLabel,rain)
+                    val dayLabel=runCatching {
+                        LocalDate.parse(day.date).format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
+                    }.getOrDefault(day.date)
+                    val range="${day.temperature_min?.let{"${it.toInt()}°"}?:unavailable} / ${day.temperature_max?.let{"${it.toInt()}°"}?:unavailable}"
+                    val rain=day.rain_chance_max?.let{"${it.toInt()}%"}?:unavailable
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical=Space.md).semantics(mergeDescendants=true) {
+                            contentDescription=dailyForecastTalkBack(dayLabel,range,rainLabel,rain)
                         },
-                        verticalArrangement=Arrangement.spacedBy(Space.xs),
+                        verticalAlignment=Alignment.CenterVertically,
+                        horizontalArrangement=Arrangement.spacedBy(Space.md),
                     ) {
-                        Text(day.date,style=MaterialTheme.typography.titleMedium)
-                        Text(range,style=MaterialTheme.typography.bodyLarge)
-                        Text(rain,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(dayLabel,style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1.2f))
+                        Text(range,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f),textAlign=TextAlign.End)
+                        Text(rain,style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.widthIn(min=40.dp),textAlign=TextAlign.End)
                     }
-                    HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=0.35f))
+                    HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=0.25f))
                 }
             }
             item { Text(s(R.string.hourly),style=MaterialTheme.typography.titleMedium) }
@@ -483,21 +712,29 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
             item {
                 val rainLabel=s(R.string.rain)
                 val unavailable=s(R.string.unavailable)
-                val hourMin=(72f*LocalDensity.current.fontScale.coerceAtLeast(1f)).dp
-                FlowRow(horizontalArrangement=Arrangement.spacedBy(Space.sm),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
-                    hours.forEach { h ->
+                LazyRow(horizontalArrangement=Arrangement.spacedBy(Space.sm),contentPadding=PaddingValues(vertical=Space.sm)) {
+                    items(hours, key={it.time}) { h ->
                         val timeLabel=Instant.parse(h.time).atZone(ZoneId.of(b.location.timezone)).format(DateTimeFormatter.ofPattern("h a"))
                         val temp=h.temperature?.let{"${it.toInt()}°C"}?:unavailable
                         val rain=h.rain_chance?.let{"${it.toInt()}%"}?:"—"
-                        Column(
-                            Modifier.widthIn(min=hourMin).padding(vertical=Space.sm).semantics(mergeDescendants=true) {
+                        val code=h.weather_code?.toInt()
+                        Surface(
+                            color=MaterialTheme.colorScheme.surface,
+                            shape=MaterialTheme.shapes.small,
+                            modifier=Modifier.width(76.dp).semantics(mergeDescendants=true) {
                                 contentDescription=hourlyTalkBack(timeLabel,temp,rainLabel,rain)
                             },
-                            verticalArrangement=Arrangement.spacedBy(Space.xs),
                         ) {
-                            Text(timeLabel,style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(h.temperature?.let{"${it.toInt()}°"}?:unavailable,style=MaterialTheme.typography.titleMedium)
-                            Text(h.rain_chance?.let{"${it.toInt()}%"}?:"—",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column(
+                                Modifier.padding(vertical=Space.md,horizontal=Space.sm),
+                                horizontalAlignment=Alignment.CenterHorizontally,
+                                verticalArrangement=Arrangement.spacedBy(Space.xs),
+                            ) {
+                                Text(timeLabel,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                ConditionIcon(code, null, size=22.dp)
+                                Text(h.temperature?.let{"${it.toInt()}°"}?:unavailable,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)
+                                Text(h.rain_chance?.let{"${it.toInt()}%"}?:"—",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -538,12 +775,20 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         when {
             official.isNotEmpty() -> official.forEach { OfficialAlertCard(it,speak) }
             status=="available" -> {
-                Text(s(R.string.alerts_none_active),style=MaterialTheme.typography.bodyLarge)
-                Text(s(R.string.alert_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(color=MaterialTheme.colorScheme.surface,shape=MaterialTheme.shapes.medium,modifier=Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(Space.xl),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                        Text(s(R.string.alerts_none_active),style=MaterialTheme.typography.titleMedium)
+                        Text(s(R.string.alert_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
             else -> {
-                Text(s(R.string.alert_unknown),style=MaterialTheme.typography.bodyLarge)
-                Text(s(R.string.alert_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(color=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.45f),shape=MaterialTheme.shapes.medium,modifier=Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(Space.xl),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                        Text(s(R.string.alert_unknown),style=MaterialTheme.typography.titleMedium)
+                        Text(s(R.string.alert_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
         if(expiredCount>0) Text(s(R.string.expired_hidden),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
@@ -617,6 +862,7 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         Column(Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text(s(R.string.search_village_first),style=MaterialTheme.typography.bodyLarge)
             OutlinedTextField(query,{query=it.take(80)},label={Text(s(R.string.city_village))},modifier=Modifier.fillMaxWidth().heightIn(min=64.dp),textStyle=MaterialTheme.typography.titleMedium,singleLine=true)
+            LaunchedEffect(query) { vm.schedulePlaceSearch(query) }
             BigButton(s(R.string.search),Icons.Default.Search,{vm.search(query)},query.trim().length>=2&&!busy)
             if(locating || busy) Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(28.dp));Text(if(locating) s(R.string.locating) else s(R.string.loading))
@@ -683,14 +929,19 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
         )
     }
     LazyColumn(contentPadding=PaddingValues(horizontal=Space.screen,vertical=Space.lg),verticalArrangement=Arrangement.spacedBy(Space.md),modifier=Modifier.fillMaxSize()) {
-        item { SectionHeader(s(R.string.settings));Text(s(R.string.settings_intro)) }
-        item { Text(s(R.string.theme),style=MaterialTheme.typography.titleLarge) }
+        item { SectionHeader(s(R.string.settings));Text(s(R.string.settings_intro),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text(s(R.string.theme),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary) }
         items(listOf("system" to R.string.system_theme,"light" to R.string.light_theme,"dark" to R.string.dark_theme)) { (key,label)->
             Choice(s(label),preference("theme","system")==key){vm.save("theme",key)}
         }
         item { Row(Modifier.fillMaxWidth().heightIn(min=56.dp).toggleable(value=preference("large")=="true",onValueChange={vm.save("large",it.toString())}),verticalAlignment=Alignment.CenterVertically) {
             Text(s(R.string.large_text),Modifier.weight(1f));Switch(checked=preference("large")=="true",onCheckedChange=null)
         } }
+        item { Text(s(R.string.language),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary);Text(s(R.string.language_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+        items(languages) { (key,label)->Choice(label,preference("language","en")==key){vm.save("language",key)} }
+        item { Text(s(R.string.use_for),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary) }
+        items(profileOptions) { (key,label)->Choice(s(label),preference("profile","general")==key){vm.save("profile",key)} }
+        item { Text(s(R.string.wifi_only),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary) }
         item { Row(Modifier.fillMaxWidth().heightIn(min=56.dp).toggleable(value=preference("wifi","true")=="true",onValueChange={vm.save("wifi",it.toString())}),verticalAlignment=Alignment.CenterVertically) {
             Text(s(R.string.wifi_only),Modifier.weight(1f));Switch(checked=preference("wifi","true")=="true",onCheckedChange=null)
         } }
@@ -698,7 +949,7 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
             Column(Modifier.weight(1f)) { Text(s(R.string.low_data_mode));Text(s(R.string.low_data_help),style=MaterialTheme.typography.bodyMedium) }
             Switch(checked=preference("low_data")=="true",onCheckedChange=null)
         } }
-        item { Text(s(R.string.alert_rules),style=MaterialTheme.typography.titleLarge) }
+        item { Text(s(R.string.alert_rules),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary) }
         item { Row(Modifier.fillMaxWidth().heightIn(min=56.dp).toggleable(value=preference("risk_notifications")=="true",onValueChange={enabled->
             if(enabled && android.os.Build.VERSION.SDK_INT>=33) notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) else vm.save("risk_notifications",enabled.toString())
             vm.syncAlertSubscription(enabled,ALERT_CHANNEL_RISK)
@@ -720,30 +971,25 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
             }
             vm.sendDemoWarning()
         },modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.demo_warning_action))} }
-        item { Text(s(R.string.language),style=MaterialTheme.typography.titleLarge);Text(s(R.string.language_help),style=MaterialTheme.typography.bodyMedium) }
-        items(languages) { (key,label)->Choice(label,preference("language","en")==key){vm.save("language",key)} }
-        item { Text(s(R.string.use_for),style=MaterialTheme.typography.titleLarge) }
-        items(profileOptions) { (key,label)->Choice(s(label),preference("profile","general")==key){vm.save("profile",key)} }
-        item { Text(s(R.string.past_conversations),style=MaterialTheme.typography.titleLarge) }
-        if(conversations.isEmpty()) item { Text(s(R.string.no_conversations),style=MaterialTheme.typography.bodyMedium) }
+        item { Text(s(R.string.past_conversations),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary) }
+        if(conversations.isEmpty()) item { Text(s(R.string.no_conversations),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant) }
         items(conversations,key={it.conversationId}) { summary ->
             val whenText=Instant.ofEpochMilli(summary.lastTimestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM, h:mm a"))
-            OutlinedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text(whenText,style=MaterialTheme.typography.titleMedium)
-                    Text(String.format(s(R.string.messages_count),summary.messageCount),style=MaterialTheme.typography.bodyMedium)
-                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth()) {
-                        if(LocalDensity.current.fontScale>=1.5f) {
-                            Column(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth()) {
-                                OutlinedButton(onClick={vm.openConversation(summary.conversationId);onOpenChat()},modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(s(R.string.continue_chat),maxLines=3)}
-                                OutlinedButton(onClick={deleteConversationId=summary.conversationId},modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(s(R.string.delete),maxLines=3)}
-                            }
-                        } else {
-                            OutlinedButton(onClick={vm.openConversation(summary.conversationId);onOpenChat()},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.continue_chat),maxLines=3)}
-                            OutlinedButton(onClick={deleteConversationId=summary.conversationId},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.delete),maxLines=3)}
+            Column(Modifier.fillMaxWidth().padding(vertical=Space.sm),verticalArrangement=Arrangement.spacedBy(Space.sm)) {
+                Text(whenText,style=MaterialTheme.typography.titleMedium)
+                Text(String.format(s(R.string.messages_count),summary.messageCount),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement=Arrangement.spacedBy(Space.sm),modifier=Modifier.fillMaxWidth()) {
+                    if(LocalDensity.current.fontScale>=1.5f) {
+                        Column(verticalArrangement=Arrangement.spacedBy(Space.sm),modifier=Modifier.fillMaxWidth()) {
+                            OutlinedButton(onClick={vm.openConversation(summary.conversationId);onOpenChat()},modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(s(R.string.continue_chat),maxLines=3)}
+                            TextButton(onClick={deleteConversationId=summary.conversationId},modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)){Text(s(R.string.delete),maxLines=3)}
                         }
+                    } else {
+                        OutlinedButton(onClick={vm.openConversation(summary.conversationId);onOpenChat()},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.continue_chat),maxLines=3)}
+                        TextButton(onClick={deleteConversationId=summary.conversationId},modifier=Modifier.weight(1f).heightIn(min=52.dp)){Text(s(R.string.delete),maxLines=3)}
                     }
                 }
+                HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=0.25f))
             }
         }
         item { OutlinedButton(onClick={vm.startNewChat();onOpenChat()},modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)){Text(s(R.string.new_chat))} }
@@ -752,7 +998,7 @@ fun conditionResource(code:Int?):Int?=when(code) { 0->R.string.clear_sky;1,2,3->
             if(advanced) {
                 val online by vm.backendOnline.collectAsState()
                 val lastConnected=preference("last_connected").toLongOrNull()
-                Text(s(R.string.server_help))
+                Text(s(R.string.server_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 // Status comes from a real GET /health through the same Retrofit client, never
                 // from the fact that a URL is configured.
                 Text(vm.base(),style=MaterialTheme.typography.bodyMedium)

@@ -19,7 +19,7 @@ class OfflineTest {
         val (next,day2)=Offline.answer("What about morning?",b,day)
         assertEquals(1,day);assertEquals(1,day2)
         assertTrue(first.contains("65.0%"));assertTrue(next.contains("65.0%"))
-        assertTrue(next.contains("may have changed"))
+        assertTrue(next.contains("You're offline") || next.contains("Using the forecast saved"))
     }
     @Test fun unavailableAlertsAreNeverClear() {
         val (answer,_)=Offline.answer("Any alerts?",bundle(),0)
@@ -134,6 +134,8 @@ class OfflineTest {
         assertFalse(canReuseNotModified(304,null,weather))
         assertFalse(canReuseNotModified(304,metadata,null))
         assertFalse(canReuseNotModified(200,metadata,weather))
+        assertTrue(shouldRetryUncachedNotModified(304,metadata,null))
+        assertFalse(shouldRetryUncachedNotModified(304,metadata,weather))
     }
     @Test fun lowDataModeReducesHorizonAndRefreshFrequency() {
         assertEquals(72,bundleHorizonHours(true))
@@ -178,6 +180,44 @@ class OfflineTest {
         assertFalse(shouldPromptForPlace(true,"{\"name\":\"Delhi\"}"))
         assertTrue(shouldPromptForPlace(true,null))
         assertTrue(shouldPromptForPlace(true,""))
+    }
+    @Test fun placeSearchRequiresOnlineAndMinChars() {
+        assertFalse(shouldRunPlaceSearch("D",true))
+        assertFalse(shouldRunPlaceSearch("Delhi",false))
+        assertTrue(shouldRunPlaceSearch("De",true))
+        assertTrue(placeSearchUnavailableOffline(false))
+        assertFalse(placeSearchUnavailableOffline(true))
+        assertEquals(400L, PLACE_SEARCH_DEBOUNCE_MS)
+    }
+    @Test fun placeSearchEmptyAndFailureStates() {
+        assertTrue(placeSearchShowsEmpty(emptyList(),"no_places"))
+        assertFalse(placeSearchShowsEmpty(listOf(Place("Delhi",28.6,77.2)),"no_places"))
+        assertTrue(placeSearchShowsFailure("search_failed"))
+        assertTrue(placeSearchShowsFailure("location_failed"))
+        assertFalse(placeSearchShowsFailure(""))
+    }
+    @Test fun savedPlacesRemainUsableWhenBackendSearchFails() {
+        val saved=listOf(SavedPlace("k","Home","Delhi",28.6,77.2,"Asia/Kolkata","home"))
+        assertTrue(savedPlacesRemainUsable(saved))
+        assertFalse(savedPlacesRemainUsable(emptyList()))
+        assertEquals("Delhi", saved.first().place().name)
+    }
+    @Test fun stripUncertaintyBoilerplateRemovesRepeatedConfidenceCopy() {
+        val raw = "Go between 6–8 AM.\n\nWeather sources disagree on exact timing.\nTreat this outlook as less certain.\nModels differ a little on timing — the recommended window still stands."
+        val cleaned = stripUncertaintyBoilerplate(raw)
+        assertTrue(cleaned.contains("Go between 6–8 AM"))
+        assertFalse(cleaned.contains("Weather sources disagree"))
+        assertFalse(cleaned.contains("less certain"))
+        assertFalse(cleaned.contains("Models differ"))
+    }
+    @Test fun primaryAdviceSkipsDisagreementTips() {
+        val tips = listOf(
+            Recommendation("information", "Models differ a little on timing.", rule = "sources_disagree"),
+            Recommendation("action", "Best outdoor window is morning.", rule = "outdoor_window"),
+        )
+        assertEquals("Best outdoor window is morning.", primaryAdviceMessage(tips))
+        assertTrue(shouldShowConfidenceNote(bundle().copy(agreement = "sources_disagree")))
+        assertFalse(shouldShowConfidenceNote(bundle().copy(agreement = "multi_source_consensus", confidence = Confidence(80, "High", false, emptyList()))))
     }
 }
 

@@ -28,7 +28,7 @@ Provider honesty:
 | Open-Meteo Marine | yes | yes | model guidance only | Not INCOIS |
 | INCOIS marine | no | no | no | CREDENTIAL-BLOCKED / absent |
 | BHASHINI / Google Translate | yes | no | no | CREDENTIAL-BLOCKED |
-| Gemini wording | yes | yes when keyed | optional | Never weather ground truth |
+| Groq conversational brain | yes | yes when keyed | optional online | Never weather ground truth; deterministic fallback always |
 | FCM / SMS | disabled stubs | no | no | CREDENTIAL-BLOCKED |
 
 > Same-day sources: `docs/FINAL_AUDIT.md`, `docs/REMAINING_WORK.md`, `docs/audit_status.json`, `docs/EVALUATION.md`. They must agree with this file.
@@ -37,10 +37,11 @@ Provider honesty:
 - Backend: **174 tests passed**. Localization integrity: **11 languages × 170/170** with English-leftover gate. Every remaining Android string key is referenced from Kotlin or layouts.
 - Android: `assembleDebug` **passed** (`android/app/build/outputs/apk/debug/app-debug.apk`, 19.86 MB) on 2026-09-11 after this pass. `testDebugUnitTest` **52 passed** (`OfflineTest` 27 + `NetworkTest` 25), `lintDebug` **passed** (0 errors, 35 warnings, 2 hints).
 - Emulator: Pixel_10a (`sdk_gphone16k_x86_64`, API 37). Fresh install, Hindi → Farming → Delhi, chat, Mumbai/Delhi compare, airplane-mode restart with cached forecast, DEMO notification, Bengali + Fishing home, ERA5 climate, forecast disagreement 66/100, Google Speech UI. This pass did **not** re-run the emulator; UI wiring (Home alerts honesty, Forecast gust/visibility/UV, chat post-answer chips) is in the rebuilt APK and UNVERIFIED ON DEVICE until the next device run.
-- Live verification: 4-provider fusion; ERA5 climate (+0.49 °C/decade Mumbai); Open-Meteo Marine (0.72 m); IMD CAP feed; Gemini optional with facts/prose split.
+- Live providers with local `.env`: OpenWeather + WeatherAPI + Open-Meteo/ECMWF; CAP IMD RSS connected; Groq conversational tool orchestration enabled (Gemini retired from active runtime).
+- Live verification: 4-provider fusion; ERA5 climate; Open-Meteo Marine; IMD CAP feed; Groq tool calling with validator + deterministic fallback.
 - Adversarial/security subset **24 passed** including live-device-id 409. APK scanned: no secrets. Server logs grepped: no coordinates.
 - **Still open:** spoken voice transcript, portable Gradle URL, instrumentation tests, live BHASHINI, FCM/IMD/INCOIS credentials.
-- Live providers with local `.env`: OpenWeather + WeatherAPI + Open-Meteo/ECMWF; CAP IMD RSS connected; Gemini polish enabled.
+- Live providers with local `.env`: OpenWeather + WeatherAPI + Open-Meteo/ECMWF; CAP IMD RSS connected; Groq chat orchestration enabled (Gemini not used at runtime).
 - Full-screen onboarding: **three** steps — language → occupation → location. Theme (`system`) and large text (`true`) are set automatically. Notification permission is requested from Settings, not onboarding.
 - Room v7 alert rules are **read by ForecastSync / CachedAlertReminder** (enabled rule or preference fallback). JVM tests cover match / no-match / duplicate. Device firing of a rule-gated official alert is UNVERIFIED ON DEVICE (DEMO notification was verified separately).
 - Docs: SECURITY, PRIVACY, SCALABILITY, THREAT_MODEL, API, LANGUAGE_SUPPORT, GEMINI_TUNING, README refreshed. Home/Forecast/chat strings that had no UI path are now connected or removed.
@@ -50,7 +51,8 @@ Provider honesty:
 |---|---|
 | IMD normalized forecasts | CREDENTIAL-BLOCKED — access probe only; not a live fourth provider |
 | IMD CAP official warnings | LIVE when `CAP_ALERT_URL` + allowlist are set (this machine: yes). Not IMD station forecasts |
-| Gemini live wording | Optional; adapter + guardrails tested; disabled without `GEMINI_API_KEY` + `GEMINI_MODEL` |
+| Groq live orchestration | Online when keyed; tool calls against TOOL_REGISTRY; validator + deterministic/offline fallback. Facts remain tool-grounded. |
+| Google Places / Geocoding | Optional backend-only; improves locality search + GPS labels; Open-Meteo remains fallback without the key |
 | BHASHINI / Google Translation live | CREDENTIAL-BLOCKED — fixture-tested adapters, deterministic drafts without keys |
 | FCM push | CREDENTIAL-BLOCKED — disabled stub; needs `FIREBASE_*` |
 | SMS delivery | CREDENTIAL-BLOCKED — disabled stub; needs `SMS_*` |
@@ -73,7 +75,7 @@ Provider honesty:
 | 12. SPECIALIST METEOROLOGICAL SOURCES | IN PROGRESS | Open-Meteo Marine adapter live-tested for model sea state; official INCOIS/IMD specialist feeds and agromet remain. |
 | 13. PROVIDER ADAPTER CONTRACT | TESTED | The four primary adapters plus an independent ECMWF IFS model adapter implement typed identity, capabilities, health, current/hourly/daily/alerts/historical methods; provider data is normalized before Android. |
 | 14. CANONICAL WEATHER DATA MODELS | IN PROGRESS | Validated temperature, apparent temperature, precipitation, wind/gust/direction, humidity, visibility, pressure, cloud, UV and weather-code fields; broader model set pending. |
-| 15. LOCATION AND TIME CORRECTNESS | IN PROGRESS | UTC storage and location-timezone selection tested; GET/POST resolve; Room-backed saved places; IMD station distance remains. |
+| 15. LOCATION AND TIME CORRECTNESS | IN PROGRESS | UTC storage and location-timezone selection tested; GET/POST resolve with optional Google reverse geocode; backend Google Places → Open-Meteo → local city search chain; Room-backed saved places; IMD station distance remains. |
 | 16. DATA VALIDATION | IN PROGRESS | Invalid values and stale forecast rejection tested. |
 | 17. WEATHER FUSION ENGINE | TESTED | Configured weighted median consensus, weighted categorical voting, weighted circular wind direction, duplicate-model exclusion, time alignment and disagreement detection are tested. Initial weights remain equal until representative observations justify calibration. |
 | 18. FORECAST CONFIDENCE | TESTED | Explainable source coverage/agreement score and disagreement reasons implemented and tested; explicitly labelled as uncalibrated and not a probability. |

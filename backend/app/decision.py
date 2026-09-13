@@ -314,9 +314,9 @@ def weather_score(hourly: list[dict], profile: str, marine_hourly: list[dict] | 
         "limiting_factors": limiting,
         "calculated_at": datetime.now(timezone.utc).isoformat(),
         "disclaimer": (
-            "This score is not an official safety certification or fishing clearance. Check official IMD and INCOIS warnings before going to sea."
+            "This score is guidance for your plan — not a fishing clearance. If an IMD or INCOIS warning is active, follow that first."
             if profile == 'fishing' else
-            "This score is not an official safety certification. Check official warnings before acting."
+            "This score is guidance for your plan. If an IMD warning is active, follow that first."
         ),
     }
 
@@ -363,7 +363,7 @@ def recommendations(
     if is_stale:
         recs.append(_rec(
             'caution',
-            'This outlook uses cached weather that may be out of date. Treat it as less certain.',
+            'Showing weather saved earlier. Refresh when you can for the latest plan.',
             variable='cache_freshness', time_window='cached', rule='stale_cache_limit',
             source='weather_cache', key='advice_stale',
         ))
@@ -400,21 +400,23 @@ def recommendations(
             source='official_status', key='advice_official_unknown',
         ))
 
-    if agreement == 'sources_disagree':
-        recs.append(_rec(
-            'caution',
-            'Weather sources disagree. Treat this outlook as less certain.',
-            variable='provider_agreement', time_window='next_24_hours', rule='sources_disagree',
-            source=forecast_source, key='advice_disagreement',
-        ))
+    # Mention model differences only when they are strong enough to change a plan —
+    # not on every mild disagreement (that makes guidance feel useless).
     confidence_score = (confidence or {}).get('score')
-    if confidence_score is not None and confidence_score < 50:
+    if confidence_score is not None and confidence_score < 40:
         recs.append(_rec(
-            'caution',
-            f'Forecast agreement is low ({confidence_score}/100). Treat timing as less certain. This is not a probability.',
+            'information',
+            f'Models differ more on exact timing (agreement {confidence_score}/100). Prefer the safer window and refresh before you start.',
             variable='forecast_confidence', time_window='next_24_hours', rule='low_forecast_confidence',
             source='forecast_confidence', key='advice_low_confidence',
             params={'score': confidence_score}, value=confidence_score,
+        ))
+    elif agreement == 'sources_disagree':
+        recs.append(_rec(
+            'information',
+            'Models differ a little on timing — the recommended window still stands. Refresh before you leave if the plan is critical.',
+            variable='provider_agreement', time_window='next_24_hours', rule='sources_disagree',
+            source=forecast_source, key='advice_disagreement',
         ))
 
     score = weather_score(hourly, profile, marine_hourly)
@@ -435,7 +437,7 @@ def recommendations(
         ))
         recs.append(_rec(
             'information',
-            'Check official warnings for your area before going out.',
+            'If an IMD warning is active for your area, follow that first.',
             variable='official_warning', time_window='next_24_hours', rule='official_check',
             source='official_cap', key='advice_official_check',
         ))
@@ -476,7 +478,7 @@ def recommendations(
             value = rise_value if rise_value is not None else later_rain
             recs.append(_rec(
                 'caution',
-                f"{best['name'].capitalize()} looks more workable for outdoor work. Rain chance rises after {hour} ({value:g}%). This is a forecast, not a certainty.",
+                f"{best['name'].capitalize()} looks more workable for outdoor work. Rain chance rises after {hour} ({value:g}%).",
                 variable='rain_chance', time_window=f'{best["window"]} vs {hour}',
                 rule=f'{profile}.rain_timing', source=forecast_source, key='advice_rain_after',
                 params={'period': best['name'], 'hour': hour, 'value': value}, value=value,
@@ -484,7 +486,7 @@ def recommendations(
         elif rain_peak is not None and rain_peak >= RAIN_MENTION:
             recs.append(_rec(
                 'caution',
-                f'Rain chance stays near {rain_peak:g}% through this window. Highest reading is around {rain_peak_hour}. This is a forecast, not a certainty.',
+                f'Rain chance stays near {rain_peak:g}% through this window. Highest reading is around {rain_peak_hour}.',
                 variable='rain_chance', time_window=rain_peak_hour or 'next_24_hours',
                 rule=f'{profile}.rain_peak', source=forecast_source, key='advice_rain_steady',
                 params={'value': rain_peak, 'hour': rain_peak_hour}, value=rain_peak,
@@ -492,7 +494,7 @@ def recommendations(
     elif rain_peak is not None and rain_peak >= RAIN_MENTION:
         recs.append(_rec(
             'caution',
-            f'Rain chance is highest at {rain_peak_hour} local time ({rain_peak:g}%). This is a forecast, not a certainty.',
+            f'Rain chance is highest at {rain_peak_hour} local time ({rain_peak:g}%).',
             variable='rain_chance', time_window=rain_peak_hour or 'next_24_hours',
             rule=f'{profile}.rain_peak', source=forecast_source, key='advice_rain_peak',
             params={'value': rain_peak, 'hour': rain_peak_hour}, value=rain_peak,
@@ -564,7 +566,7 @@ def recommendations(
         best = ranked[0]
         recs.append(_rec(
             'information',
-            f"The less-wet outdoor window looks like {best['name']} ({best['window']}). This is a forecast, not a certainty.",
+            f"The less-wet outdoor window looks like {best['name']} ({best['window']}).",
             variable='rain_chance', time_window=best['window'], rule='tourism.outdoor_window',
             source=forecast_source, key='advice_outdoor_window',
             params={'period': best['name'], 'window': best['window']},
@@ -573,7 +575,7 @@ def recommendations(
     if thunder_hour and profile in {'farming', 'construction', 'outdoor', 'emergency', 'vendor', 'general', 'tourism'}:
         recs.append(_rec(
             'caution',
-            f'Thunderstorm codes appear around {thunder_hour}. Pause exposed outdoor work then. This is a forecast, not a certainty.',
+            f'Thunderstorm codes appear around {thunder_hour}. Pause exposed outdoor work then.',
             variable='weather_code', time_window=thunder_hour, rule=f'{profile}.thunderstorm',
             source=forecast_source, key='advice_thunder', params={'hour': thunder_hour},
         ))
@@ -649,17 +651,13 @@ def recommendations(
     if not any(item.get('key') in profile_keys for item in recs):
         recs.append(_rec(
             'information',
-            'No strong rain, heat or wind signal stands out in this window. Still check official warnings. This is a forecast, not a certainty.',
+            'No strong rain, heat or wind signal stands out in this window.',
             variable='forecast', time_window='next_24_hours', rule=f'{profile}.quiet_window',
             source=forecast_source, key='advice_quiet',
         ))
 
-    recs.append(_rec(
-        'information',
-        'Check official warnings for your area before going out.',
-        variable='official_warning', time_window='next_24_hours', rule='official_check',
-        source='official_cap', key='advice_official_check',
-    ))
+    # Official warnings already lead when present; unknown-feed status has its own note.
+    # Do not append a generic “check warnings” line on every answer — it makes guidance feel useless.
     return recs
 
 

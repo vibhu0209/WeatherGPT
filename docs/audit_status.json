@@ -2,8 +2,20 @@
   "schema_version": "1.0",
   "project": "WeatherGPT",
   "problem_statement": "SIH 2026 / PS 26068",
-  "audit_date": "2026-09-11",
-  "overall_status": "READY WITH MINOR NON-DEMO ISSUES",
+  "audit_date": "2026-09-12",
+  "overall_status": "READY WITH SPECIFIC ISSUES",
+  "demo_blockers": [
+    "Groq free-tier can 429 under burst rehearsal; circuit breaker falls back to deterministic chat without user-facing quota UI",
+    "Spoken voice question depends on device recognizer availability",
+    "Live BHASHINI/Google Translation credentials still absent; non-en/hi climate/marine prose may stay English",
+    "Demo depends on live internet and third-party keys; demo mode is skipped by user override of master spec sections 68-69"
+  ],
+  "llm_runtime": {
+    "active": "groq",
+    "model": "openai/gpt-oss-120b",
+    "gemini_active_runtime": false,
+    "fallback": "deterministic_tools"
+  },
   "completion_percent": 82,
   "p0_blockers": 0,
   "p0_blockers_fixed_this_pass": 2,
