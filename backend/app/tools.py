@@ -233,6 +233,42 @@ async def assess_infrastructure_hazard_tool(request: HazardInput) -> ToolResult:
     )
 
 
+async def get_disaster_briefing(request: HazardInput) -> ToolResult:
+    """Official-first multi-hazard board for SIH disaster / emergency demos."""
+    from .alerts import alert_service
+    from .disaster_brief import compose_disaster_brief
+    from .geohazard import assess_infrastructure_hazard
+
+    bundle = await service.bundle(request.location)
+    official = await alert_service.official(request.location)
+    try:
+        hazard = await assess_infrastructure_hazard(
+            request.location,
+            bundle.get('hourly') or [],
+            official_alerts=official.get('alerts') or [],
+        )
+    except Exception:
+        hazard = None
+    brief = compose_disaster_brief(
+        location=request.location,
+        hourly=bundle.get('hourly') or [],
+        official_status=official.get('status') or 'unavailable',
+        official_alerts=official.get('alerts') or [],
+        official_message=official.get('message'),
+        infrastructure_hazard=hazard,
+        retrieved_at=bundle.get('retrieved_at'),
+        is_stale=bool(bundle.get('is_stale')),
+        sources=list(bundle.get('sources') or []),
+    )
+    return ToolResult(
+        data=brief,
+        retrieved_at=brief['retrieved_at'],
+        is_stale=bool(bundle.get('is_stale')),
+        sources=brief.get('sources') or [],
+        status='available',
+    )
+
+
 TOOL_REGISTRY = {
     'get_current_weather': (Location, get_current_weather),
     'get_hourly_forecast': (TimeRangeInput, get_hourly_forecast),
@@ -247,4 +283,5 @@ TOOL_REGISTRY = {
     'set_alert_rule': (AlertRuleInput, set_alert_rule),
     'get_agromet_advisory': (AgrometInput, get_agromet_advisory),
     'assess_infrastructure_hazard': (HazardInput, assess_infrastructure_hazard_tool),
+    'get_disaster_briefing': (HazardInput, get_disaster_briefing),
 }

@@ -403,8 +403,10 @@ async def score(latitude: float = Query(ge=-90, le=90), longitude: float = Query
 
 @app.get('/v1/weather/alerts')
 async def alerts(latitude: float = Query(ge=-90, le=90), longitude: float = Query(ge=-180, le=180), name: str = 'Selected place', timezone: str = 'Asia/Kolkata'):
+    from .disaster_brief import AUTHORITY_LINKS, disruption_estimate
     data = await weather_for(latitude, longitude, name, timezone)
-    official = await alert_service.official(Location(name=name, latitude=latitude, longitude=longitude, timezone=timezone))
+    location = Location(name=name, latitude=latitude, longitude=longitude, timezone=timezone)
+    official = await alert_service.official(location)
     return {
         'location': data['location'],
         'status': official['status'],
@@ -412,6 +414,8 @@ async def alerts(latitude: float = Query(ge=-90, le=90), longitude: float = Quer
         'alerts': official['alerts'],
         'official_alerts': official['alerts'],
         'risk_estimates': data.get('risk_estimates') or estimate_risks(data['hourly']),
+        'disruption_estimate': disruption_estimate(data.get('hourly') or [], location),
+        'authority_links': list(AUTHORITY_LINKS),
         'retrieved_at': data['retrieved_at'],
         'is_stale': data['is_stale'],
         'message': official['message'],
@@ -436,6 +440,45 @@ async def infrastructure_hazard(
         return {'location': data['location'], 'data': hazard, 'is_stale': data.get('is_stale', False)}
     except httpx.HTTPError:
         return error_response(request, 'hazard_unavailable', 'Infrastructure hazard inputs could not be checked right now.', True, 503)
+
+
+@app.get('/v1/hazards/disaster-brief')
+async def disaster_brief(
+    request: Request,
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+    name: str = 'Selected place',
+    timezone: str = 'Asia/Kolkata',
+):
+    """Official-first multi-hazard briefing for SIH disaster-management demos."""
+    from .disaster_brief import compose_disaster_brief
+    from .geohazard import assess_infrastructure_hazard
+    location = Location(name=name, latitude=latitude, longitude=longitude, timezone=timezone)
+    try:
+        data, official = await asyncio.gather(
+            weather_for(latitude, longitude, name, timezone),
+            alert_service.official(location),
+        )
+        try:
+            hazard = await assess_infrastructure_hazard(
+                location, data.get('hourly') or [], official.get('alerts') or [],
+            )
+        except httpx.HTTPError:
+            hazard = None
+        brief = compose_disaster_brief(
+            location=location,
+            hourly=data.get('hourly') or [],
+            official_status=official.get('status') or 'unavailable',
+            official_alerts=official.get('alerts') or [],
+            official_message=official.get('message'),
+            infrastructure_hazard=hazard,
+            retrieved_at=data.get('retrieved_at'),
+            is_stale=bool(data.get('is_stale')),
+            sources=list(data.get('sources') or []),
+        )
+        return {'location': data['location'], 'data': brief, 'is_stale': data.get('is_stale', False)}
+    except httpx.HTTPError:
+        return error_response(request, 'disaster_brief_unavailable', 'Disaster briefing inputs could not be checked right now.', True, 503)
 
 
 @app.get('/v1/climate/summary')

@@ -36,4 +36,24 @@ def estimate_risks(hourly: list[dict]) -> list[dict]:
             "calculated_at": datetime.now(timezone.utc).isoformat(),
             "disclaimer": "WeatherGPT Risk Estimate — not an official government warning.",
         })
+
+    # 24h accumulation — waterlogging disruption estimate (not a flood inundation model).
+    rain_values = [float(p['rain_mm']) for p in future if p.get('rain_mm') is not None]
+    if rain_values:
+        total = round(sum(rain_values), 1)
+        if total >= 50:
+            peak = max(future, key=lambda p: float(p.get('rain_mm') or 0))
+            output.append({
+                "id": f"risk-waterlogging-{peak.get('time')}",
+                "classification": "WEATHERGPT_RISK_ESTIMATE",
+                "kind": "waterlogging_disruption",
+                "severity": "red" if total >= 100 else "orange",
+                "message": "Heavy rainfall totals may cause travel disruption or waterlogging in low-lying areas",
+                "valid_at": peak.get('time'),
+                "supporting_value": total,
+                "unit": "mm",
+                "rationale": f"About {total:g} mm forecast rain in the next 24 hours — estimate only, not a municipal flood map",
+                "calculated_at": datetime.now(timezone.utc).isoformat(),
+                "disclaimer": "WeatherGPT Risk Estimate — not an official flood warning or inundation model.",
+            })
     return output

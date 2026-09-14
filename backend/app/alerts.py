@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
@@ -70,8 +71,87 @@ def _inside_polygon(latitude: float, longitude: float, value: str) -> bool:
     return inside
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    from math import asin, cos, radians, sin, sqrt
+    r = 6371.0
+    p1, p2 = radians(lat1), radians(lat2)
+    dphi = radians(lat2 - lat1)
+    dl = radians(lon2 - lon1)
+    a = sin(dphi / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
+    return 2 * r * asin(sqrt(a))
+
+
+def _inside_circle(latitude: float, longitude: float, value: str) -> bool:
+    """CAP circle is 'lat,lon radius' with radius in kilometres."""
+    try:
+        coords, radius_raw = value.strip().rsplit(None, 1)
+        lat_s, lon_s = coords.split(",", 1)
+        centre_lat, centre_lon, radius_km = float(lat_s), float(lon_s), float(radius_raw)
+    except (TypeError, ValueError):
+        return False
+    if radius_km < 0:
+        return False
+    return _haversine_km(latitude, longitude, centre_lat, centre_lon) <= radius_km
+
+
+def _tokens(text: str) -> set[str]:
+    return {part for part in re.findall(r'[\w\u0900-\u097F]+', (text or '').lower()) if len(part) >= 3}
+
+
+def _area_desc_matches(location_name: str, descriptions: list[str]) -> bool:
+    place_tokens = _tokens(location_name)
+    if not place_tokens:
+        return False
+    for desc in descriptions:
+        desc_tokens = _tokens(desc)
+        if place_tokens & desc_tokens:
+            return True
+        lowered = (desc or '').lower()
+        name = (location_name or '').strip().lower()
+        if name and name in lowered:
+            return True
+    return False
+
+
+def _area_match(location: Location, areas: list[ET.Element]) -> tuple[bool, str, bool]:
+    """Return (applies, match_mode, uncertain).
+
+    Prefer geometry (polygon/circle). Fall back to areaDesc / geocode honesty flags —
+    never silently treat a missing polygon as “no warning for this place.”
+    """
+    polygons = [p.text.strip() for area in areas for p in area.findall('cap:polygon', CAP_NS) if p.text and p.text.strip()]
+    circles = [c.text.strip() for area in areas for c in area.findall('cap:circle', CAP_NS) if c.text and c.text.strip()]
+    geocodes = [g.text.strip() for area in areas for g in area.findall('cap:geocode', CAP_NS) if g.text and g.text.strip()]
+    # Also accept nested value forms: <geocode><valueName/><value/>
+    for area in areas:
+        for geo in area.findall('cap:geocode', CAP_NS):
+            value = _text(geo, 'cap:value')
+            if value:
+                geocodes.append(value)
+    descriptions = [_text(area, 'cap:areaDesc') for area in areas if _text(area, 'cap:areaDesc')]
+
+    if polygons:
+        if any(_inside_polygon(location.latitude, location.longitude, poly) for poly in polygons):
+            return True, 'polygon', False
+        if circles and any(_inside_circle(location.latitude, location.longitude, circle) for circle in circles):
+            return True, 'circle', False
+        return False, 'polygon_miss', False
+    if circles:
+        if any(_inside_circle(location.latitude, location.longitude, circle) for circle in circles):
+            return True, 'circle', False
+        return False, 'circle_miss', False
+    if descriptions and _area_desc_matches(location.name, descriptions):
+        return True, 'area_desc', True
+    if geocodes:
+        # No published district codebook wired yet — surface with honesty, do not invent fit.
+        return True, 'geocode_unverified', True
+    if not polygons and not circles and not geocodes and not descriptions:
+        return True, 'unconstrained', True
+    return False, 'no_match', True
+
+
 def parse_cap(xml: str, location: Location, now: datetime | None = None) -> list[dict]:
-    """Parse CAP 1.2 and retain only active alerts whose polygon contains the place."""
+    """Parse CAP 1.2 and retain active alerts that apply to the place (geometry or honest fallback)."""
     root = ET.fromstring(xml)
     if root.tag.endswith("feed"):
         nodes = [entry.find("cap:alert", CAP_NS) for entry in root]
@@ -91,8 +171,8 @@ def parse_cap(xml: str, location: Location, now: datetime | None = None) -> list
             if effective and current < effective or expires and current >= expires:
                 continue
             areas = info.findall("cap:area", CAP_NS)
-            polygons = [p.text.strip() for area in areas for p in area.findall("cap:polygon", CAP_NS) if p.text]
-            if polygons and not any(_inside_polygon(location.latitude, location.longitude, p) for p in polygons):
+            applies, match_mode, uncertain = _area_match(location, areas)
+            if not applies:
                 continue
             output.append({
                 "id": _text(alert, "cap:identifier") or "unknown",
@@ -109,6 +189,8 @@ def parse_cap(xml: str, location: Location, now: datetime | None = None) -> list
                 "effective": effective.isoformat() if effective else None,
                 "expires": expires.isoformat() if expires else None,
                 "area_descriptions": [_text(area, "cap:areaDesc") for area in areas if _text(area, "cap:areaDesc")],
+                "area_match": match_mode,
+                "area_match_uncertain": uncertain,
                 "source_format": "CAP_1_2",
             })
     severity_order = {"extreme": 0, "severe": 1, "moderate": 2, "minor": 3, "unknown": 4}

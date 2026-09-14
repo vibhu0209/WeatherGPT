@@ -77,6 +77,12 @@
     <string name="alert_help">This does not mean there are no warnings. Check the India Meteorological Department for your area before going out.</string>
     <string name="offline_alerts">A phone without internet cannot receive new weather warnings here.</string>
     <string name="open_imd">Open official IMD website</string>
+    <string name="open_ndma">Open NDMA website</string>
+    <string name="open_sachet">Open SACHET alerts</string>
+    <string name="emergency_priority_banner">Emergency profile: official warnings first, then WeatherGPT estimates. Not a government command dashboard.</string>
+    <string name="disaster_brief_ask">Ask for disaster situation briefing</string>
+    <string name="shelter_honesty">WeatherGPT does not list shelters or camps. Follow official warning instructions and local disaster authorities.</string>
+    <string name="area_match_uncertain">Area match uncertain — verify this warning for your district on IMD or SACHET.</string>
     <string name="risk_estimates">WeatherGPT risk estimates</string>
     <string name="risk_help">These are calculated from forecast values. They are separate from government warnings.</string>
     <string name="no_risk_estimates">No local risk threshold was crossed in the downloaded forecast. Still check official warnings.</string>

@@ -64,7 +64,7 @@ object Offline {
             pa="ਤੁਸੀਂ ਆਫਲਾਈਨ ਹੋ। ਸੰਭਾਲਿਆ ਪੂਰਵ-ਅਨੁਮਾਨ: $downloaded.\n\n",
             or="ଆପଣ ଅଫଲାଇନ୍। ସଞ୍ଚିତ ପୂର୍ବାନୁମାନ: $downloaded.\n\n",
         )
-        if(listOf("warning","alert","चेतावनी","সতর্ক","எச்சரிக்கை","హెచ్చరిక","ચેતવણી","ಎಚ್ಚರಿಕೆ","മുന്നറിയിപ്പ്","ਚੇਤਾਵਨੀ","ଚେତାବନୀ").any{q.contains(it)}) {
+        if(listOf("warning","alert","disaster","emergency","ndma","sachet","evacuat","shelter","चेतावनी","সতর্ক","எச்சரிக்கை","హెచ్చరిక","ચેતવણી","ಎಚ್ಚರಿಕೆ","മുന്നറിയിപ്പ്","ਚੇਤਾਵਨੀ","ଚେତାବନୀ","आपदा").any{q.contains(it)}) {
             val active=b.official_alerts.orEmpty().filter { alert->cachedAlertIsActive(alert) }
             if(active.isNotEmpty()) {
                 val warnings=active.joinToString("\n\n") { alert->

@@ -25,7 +25,7 @@ _BOILERPLATE = (
 
 _DECISION = re.compile(
     r'(?i)^(yes|no|maybe|unlikely|elevated|high concern|high disruption|watch|lower concern|'
-    r'lower outdoor|weather-wise|i would wait|i\'d wait|comparing\b|official warning)'
+    r'lower outdoor|weather-wise|i would wait|i\'d wait|comparing\b|official warning|official first)'
 )
 _PLACE_DATE = re.compile(r'^.{1,48}·.{1,32}$')
 _TEMP = re.compile(r'(?i)temperature:\s*([\d.]+)\s*to\s*([\d.]+)')

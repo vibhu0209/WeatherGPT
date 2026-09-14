@@ -28,9 +28,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -195,7 +193,9 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
                             painter=painterResource(R.drawable.weather_gpt_logo),
                             contentDescription="WeatherGPT",
                             contentScale=ContentScale.Fit,
-                            modifier=Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)),
+                            modifier=Modifier
+                                .size(40.dp)
+                                .padding(2.dp),
                         )
                         Text("WeatherGPT",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.primary,maxLines=1)
                     }
@@ -788,6 +788,7 @@ fun compactFollowUpLabel(raw:String):String {
     val context=LocalContext.current
     val hazard by vm.infrastructureHazard.collectAsState()
     val hazardBusy by vm.hazardBusy.collectAsState()
+    val profile=vm.value("profile","general")
     val official=bundle?.official_alerts.orEmpty().filter { alert->cachedAlertIsActive(alert) && bundle!=null && Freshness.officialAlert(bundle.retrieved_at,alert.expires)!=FreshnessState.STALE }
     val expiredCount=bundle?.official_alerts.orEmpty().size-official.size
     val status=(bundle?.official_status?:bundle?.alerts_status?:"").lowercase()
@@ -796,6 +797,11 @@ fun compactFollowUpLabel(raw:String):String {
     }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal=Space.screen,vertical=Space.lg),verticalArrangement=Arrangement.spacedBy(Space.lg)) {
         SectionHeader(s(R.string.alerts))
+        if(profile=="emergency") {
+            Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium,modifier=Modifier.fillMaxWidth()) {
+                Text(s(R.string.emergency_priority_banner),modifier=Modifier.padding(Space.xl),style=MaterialTheme.typography.bodyLarge)
+            }
+        }
         when {
             official.isNotEmpty() -> official.forEach { OfficialAlertCard(it,speak) }
             status=="available" -> {
@@ -817,8 +823,18 @@ fun compactFollowUpLabel(raw:String):String {
         }
         if(expiredCount>0) Text(s(R.string.expired_hidden),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
         Text(s(R.string.offline_alerts),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(s(R.string.shelter_honesty),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
         QuietButton(s(R.string.open_imd),Icons.AutoMirrored.Filled.OpenInNew,{
             context.startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://mausam.imd.gov.in/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        })
+        QuietButton(s(R.string.open_ndma),Icons.AutoMirrored.Filled.OpenInNew,{
+            context.startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://ndma.gov.in/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        })
+        QuietButton(s(R.string.open_sachet),Icons.AutoMirrored.Filled.OpenInNew,{
+            context.startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://sachet.ndma.gov.in/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        })
+        QuietButton(s(R.string.disaster_brief_ask),Icons.Default.Search,{
+            vm.send("Give me an official-first disaster management situation briefing for responders here.")
         })
         HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=0.35f))
         SectionHeader(s(R.string.infra_hazard_title))
@@ -883,6 +899,9 @@ fun compactFollowUpLabel(raw:String):String {
     val language=LocalTranslatedContext.current.resources.configuration.locales[0]?.toLanguageTag() ?: "en-IN"
     Column(verticalArrangement=Arrangement.spacedBy(Space.sm)) {
         AlertSummary(alert,open,{open=!open})
+        if(alert.area_match_uncertain==true) {
+            Text(s(R.string.area_match_uncertain),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.error)
+        }
         TextButton(onClick={
             speak(listOfNotNull(alert.headline,alert.instruction?:alert.description).joinToString(". "), language)
         },modifier=Modifier.heightIn(min=Space.touch)) {

@@ -56,6 +56,11 @@ _TOOL_DESCRIPTIONS = {
         'Use for landslide, mudslide, road collapse, cut-off villages, highway risk, GIS-style infrastructure questions. '
         'Always a WeatherGPT risk estimate — never an official NDMA/IMD geological verdict.'
     ),
+    'get_disaster_briefing': (
+        'Official-first multi-hazard disaster briefing for emergency / disaster-management questions: '
+        'CAP warnings, heavy-rain disruption estimate, road/landslide estimate, local risk thresholds, '
+        'and IMD/NDMA/SACHET links. Never invent shelters, radar, or flood inundation maps.'
+    ),
 }
 
 

@@ -62,6 +62,14 @@ def select_tool(request: ChatRequest) -> str:
         'downpour', 'cloudburst', 'why is', 'why are', 'why raining', 'radar',
     )):
         return 'get_hourly_forecast'
+    # Emergency profile defaults to the multi-hazard board for open safety questions.
+    if request.profile == 'emergency' and any(
+        word in text for word in (
+            'warning', 'alert', 'risk', 'safe', 'should', 'dashboard', 'situation',
+            'road', 'rain', 'flood', 'what now', 'status', 'brief',
+        )
+    ):
+        return 'get_disaster_briefing'
     rules = (
         ('compare_locations', ('compare', 'तुलना', ' vs ', 'versus')),
         ('get_marine_forecast', (
@@ -84,11 +92,17 @@ def select_tool(request: ChatRequest) -> str:
             'agromet', 'crop advisory', 'कृषि सलाह', 'farming advisory', 'farming advice',
             'crop advice', 'कृषि परामर्श',
         )),
+        ('get_disaster_briefing', (
+            'disaster briefing', 'disaster management', 'multi hazard', 'multi-hazard',
+            'emergency dashboard', 'situation report', 'sitrep', 'relief camp', 'shelter',
+            'evacuat', 'ndma', 'sachet', 'what should responders', 'disaster response',
+            'आपदा', 'आपातकाल', 'निकासी',
+        )),
         ('assess_infrastructure_hazard', (
             'landslide', 'landslip', 'mudslide', 'debris flow', 'slope failure',
             'road collapse', 'road cut', 'will the road', 'highway blocked', 'cut off',
             'भूस्खलन', 'सड़क', 'infrastructure risk', 'terrain angle', 'soil moisture',
-            'gis', 'which roads', 'village cut', 'emergency dashboard',
+            'gis', 'which roads', 'village cut',
         )),
         ('get_weather_score', (
             'score', 'should i', 'should we', 'can i', 'can we', 'is it safe', 'safe to',
@@ -202,6 +216,8 @@ def _input_for(name: str, request: ChatRequest):
     if name == 'get_agromet_advisory':
         return AgrometInput(location=location)
     if name == 'assess_infrastructure_hazard':
+        return HazardInput(location=location)
+    if name == 'get_disaster_briefing':
         return HazardInput(location=location)
     raise KeyError(name)
 
@@ -464,6 +480,11 @@ def _render_score(result: ToolResult, request: ChatRequest) -> str:
     return f'{lead}\n\n{tip}\n\n{support}'
 
 
+def _render_disaster_brief(data: dict) -> str:
+    from .disaster_brief import format_disaster_brief_answer
+    return format_disaster_brief_answer(data)
+
+
 def _render_infrastructure_hazard(data: dict, request: ChatRequest) -> str:
     """Decision-first plain language for landslide / road connectivity estimates."""
     parts = [
@@ -572,6 +593,9 @@ def render_tool_result(name: str, result: ToolResult, request: ChatRequest) -> d
     elif name == 'assess_infrastructure_hazard' and isinstance(data, dict):
         answer_text = _render_infrastructure_hazard(data, request)
         agreement = 'infrastructure_hazard_estimate'
+    elif name == 'get_disaster_briefing' and isinstance(data, dict):
+        answer_text = _render_disaster_brief(data)
+        agreement = 'disaster_briefing'
     else:
         answer_text = result.error or phrase(language, 'unavailable')
         agreement = 'tool'
