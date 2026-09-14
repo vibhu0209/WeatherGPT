@@ -162,11 +162,11 @@
     <string name="or_pick_city">ಅಥವಾ ದೊಡ್ಡ ನಗರವನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="location_backup_help">ಫೋನ್ ಸ್ಥಳ ಐಚ್ಛಿಕ. ಸಿಲುಕಿದರೆ ಮೇಲೆ ಹುಡುಕಿ.</string>
     <string name="tap_to_ask">ಒಂದು ಪ್ರಶ್ನೆ ಒತ್ತಿರಿ</string>
-    <string name="notice_offline_cached">ಆಫ್‌ಲೈನ್ — ಮೊದಲು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಹವಾಮಾನ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
-    <string name="notice_cant_connect">WeatherGPT ಗೆ ಸಂಪರ್ಕಿಸಲು ಆಗುತ್ತಿಲ್ಲ. ಉಳಿಸಿದ ಹವಾಮಾನ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
+    <string name="notice_offline_cached">ಆಫ್‌ಲೈನ್ · ಡೌನ್‌ಲೋಡ್ ಹವಾಮಾನ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
+    <string name="notice_cant_connect">ಆಫ್‌ಲೈನ್ · ಡೌನ್‌ಲೋಡ್ ಹವಾಮಾನ ಬಳಸುತ್ತಿದ್ದೇವೆ.</string>
     <string name="notice_provider_down">ಹವಾಮಾನ ಮೂಲ ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಭ್ಯವಿಲ್ಲ. ಕೊನೆಯ ಉಳಿಸಿದ ಮುನ್ಸೂಚನೆ ತೋರಿಸುತ್ತಿದ್ದೇವೆ.</string>
-    <string name="notice_no_data">ಈಗ ಹವಾಮಾನ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
-    <string name="notice_no_saved">ಇನ್ನೂ ಉಳಿಸಿದ ಹವಾಮಾನ ಲಭ್ಯವಿಲ್ಲ.</string>
+    <string name="notice_no_data">ಈ ಸ್ಥಳದ ಹವಾಮಾನ ಇನ್ನೂ ಡೌನ್‌ಲೋಡ್ ಆಗಿಲ್ಲ. ಒಮ್ಮೆ ಸಂಪರ್ಕಿಸಿ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ.</string>
+    <string name="notice_no_saved">ಇನ್ನೂ ಡೌನ್‌ಲೋಡ್ ಹವಾಮಾನ ಲಭ್ಯವಿಲ್ಲ.</string>
     <string name="notice_providers_unavailable">ಹವಾಮಾನ ಮೂಲಗಳು ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಭ್ಯವಿಲ್ಲ.</string>
     <string name="notice_check_settings">WeatherGPT ಈ ಸಾಧನವನ್ನು ಪರಿಶೀಲಿಸಲು ಆಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ನೋಡಿ.</string>
     <string name="connection_unknown">ಸರ್ವರ್ ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇವೆ...</string>
@@ -196,6 +196,8 @@
     <string name="chip_why_time">ಈ ಸಮಯ ಏಕೆ?</string>
     <string name="chip_score">ಸ್ಕೋರ್</string>
     <string name="refresh_weather">ಹವಾಮಾನ ರಿಫ್ರೆಶ್</string>
+    <string name="chat_need_download_hint">ಉತ್ತರಗಳು ನಿಖರವಾಗಿರಲು ಈ ಸ್ಥಳದ ಹವಾಮಾನ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ.</string>
+    <string name="chat_ai_unavailable">AI ಮಾರ್ಗದರ್ಶನ ಈಗ ಲಭ್ಯವಿಲ್ಲ, ಆದರೆ ಡೌನ್‌ಲೋಡ್ ಹವಾಮಾನ ಲಭ್ಯ.</string>
 </resources>
 
 

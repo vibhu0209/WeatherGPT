@@ -162,11 +162,11 @@
     <string name="or_pick_city">അല്ലെങ്കിൽ വലിയ നഗരം തിരഞ്ഞെടുക്കുക</string>
     <string name="location_backup_help">ഫോൺ സ്ഥാനം ഐച്ഛികം. കുടുങ്ങിയാൽ മുകളിൽ തിരയുക.</string>
     <string name="tap_to_ask">ഒരു ചോദ്യം അമർത്തുക</string>
-    <string name="notice_offline_cached">ഓഫ്‌ലൈൻ — നേരത്തെ ഡൗൺലോഡ് ചെയ്ത കാലാവസ്ഥ കാണിക്കുന്നു.</string>
-    <string name="notice_cant_connect">WeatherGPT-യുമായി ബന്ധപ്പെടാൻ കഴിയുന്നില്ല. സൂക്ഷിച്ച കാലാവസ്ഥ കാണിക്കുന്നു.</string>
+    <string name="notice_offline_cached">ഓഫ്‌ലൈൻ · ഡൗൺലോഡ് കാലാവസ്ഥ കാണിക്കുന്നു.</string>
+    <string name="notice_cant_connect">ഓഫ്‌ലൈൻ · ഡൗൺലോഡ് കാലാവസ്ഥ ഉപയോഗിക്കുന്നു.</string>
     <string name="notice_provider_down">കാലാവസ്ഥാ സ്രോതസ്സ് താൽക്കാലികമായി ലഭ്യമല്ല. അവസാനം സൂക്ഷിച്ച പ്രവചനം കാണിക്കുന്നു.</string>
-    <string name="notice_no_data">ഇപ്പോൾ കാലാവസ്ഥാ വിവരം ലഭ്യമല്ല. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.</string>
-    <string name="notice_no_saved">സൂക്ഷിച്ച കാലാവസ്ഥ ഇതുവരെ ലഭ്യമല്ല.</string>
+    <string name="notice_no_data">ഈ സ്ഥലത്തിന്റെ കാലാവസ്ഥ ഇതുവരെ ഡൗൺലോഡ് ചെയ്തിട്ടില്ല. ഒരിക്കൽ ബന്ധിപ്പിച്ച് ഡൗൺലോഡ് ചെയ്യുക.</string>
+    <string name="notice_no_saved">ഇതുവരെ ഡൗൺലോഡ് കാലാവസ്ഥ ലഭ്യമല്ല.</string>
     <string name="notice_providers_unavailable">കാലാവസ്ഥാ സ്രോതസ്സുകൾ താൽക്കാലികമായി ലഭ്യമല്ല.</string>
     <string name="notice_check_settings">WeatherGPT-ന് ഈ ഉപകരണം സ്ഥിരീകരിക്കാൻ കഴിഞ്ഞില്ല. കണക്ഷൻ ക്രമീകരണം നോക്കുക.</string>
     <string name="connection_unknown">സെർവർ പരിശോധിക്കുന്നു...</string>
@@ -196,6 +196,8 @@
     <string name="chip_why_time">ഈ സമയം എന്തുകൊണ്ട്?</string>
     <string name="chip_score">സ്കോർ</string>
     <string name="refresh_weather">കാലാവസ്ഥ റിഫ്രഷ്</string>
+    <string name="chat_need_download_hint">ഉത്തരങ്ങൾ വിശ്വസനീയമാക്കാൻ ഈ സ്ഥലത്തിന്റെ കാലാവസ്ഥ ഡൗൺലോഡ് ചെയ്യുക.</string>
+    <string name="chat_ai_unavailable">AI മാർഗനിർദേശം ഇപ്പോൾ ലഭ്യമല്ല, പക്ഷേ ഡൗൺലോഡ് കാലാവസ്ഥ ലഭ്യമാണ്.</string>
 </resources>
 
 

@@ -215,11 +215,12 @@ class NetworkTest {
         // Case C: backend fine, provider failed, cache present.
         assertEquals(WeatherNotice.PROVIDER_DOWN, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = true, isStale = false))
         // Case D: nothing cached — keep failure classes distinct.
-        assertEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = false, isStale = false))
+        assertEquals(WeatherNotice.NO_SAVED, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = false, isStale = false))
         assertEquals(WeatherNotice.NO_SAVED, noticeFor(NetFailure.NO_NETWORK, hasCache = false, isStale = false))
         assertEquals(WeatherNotice.PROVIDERS_UNAVAILABLE, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = false, isStale = false))
         assertNotEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.NO_NETWORK, hasCache = false, isStale = false))
         assertNotEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = false, isStale = false))
+        assertNotEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = false, isStale = false))
     }
 
     @Test fun usableWeatherNeverShowsNoDataBanners() {
@@ -233,8 +234,8 @@ class NetworkTest {
         assertNotEquals(WeatherNotice.PROVIDERS_UNAVAILABLE, noticeFor(NetFailure.PROVIDER_UNAVAILABLE, hasCache = true, isStale = false))
         // After a successful refresh path, banner clears even if isStale is false.
         assertEquals(WeatherNotice.NONE, noticeFor(NetFailure.NONE, hasCache = true, isStale = false))
-        // Room later becoming valid flips empty-cache NO_DATA into CANT_CONNECT without restart semantics.
-        assertEquals(WeatherNotice.NO_DATA, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = false, isStale = false))
+        // Room empty + unreachable → soft "no downloaded weather", not "WeatherGPT is down".
+        assertEquals(WeatherNotice.NO_SAVED, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = false, isStale = false))
         assertEquals(WeatherNotice.CANT_CONNECT, noticeFor(NetFailure.SERVER_UNREACHABLE, hasCache = true, isStale = false))
     }
 
@@ -289,5 +290,20 @@ class NetworkTest {
     @Test fun noInternetWithCacheIsOfflineCachedNotUnreachable() {
         assertEquals(WeatherNotice.OFFLINE_CACHED, noticeFor(NetFailure.NO_NETWORK, hasCache = true, isStale = true))
         assertNotEquals(WeatherNotice.CANT_CONNECT, noticeFor(NetFailure.NO_NETWORK, hasCache = true, isStale = true))
+    }
+
+    @Test fun placeKeysSurviveGpsJitter() {
+        val a = Place("Current location", 28.61261261261261, 77.20928393909416)
+        val b = Place("Current location", 28.612648, 77.209291) // still rounds to same 4dp key
+        assertEquals(
+            placeStorageKey(a.latitude, a.longitude, a.timezone),
+            placeStorageKey(b.latitude, b.longitude, b.timezone),
+        )
+        assertTrue(samePlaceCoords(a.latitude, a.longitude, b.latitude, b.longitude))
+        val stable = normalizePlace(a)
+        assertEquals(
+            placeStorageKey(stable.latitude, stable.longitude, stable.timezone),
+            placeStorageKey(a.latitude, a.longitude, a.timezone),
+        )
     }
 }

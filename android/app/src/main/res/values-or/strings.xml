@@ -162,11 +162,11 @@
     <string name="or_pick_city">କିମ୍ବା ବଡ଼ ସହର ବାଛନ୍ତୁ</string>
     <string name="location_backup_help">ଫୋନ୍ ଅବସ୍ଥାନ ବୈକଳ୍ପିକ। ଅଟକିଗଲେ ଉପରେ ଖୋଜନ୍ତୁ।</string>
     <string name="tap_to_ask">ଗୋଟିଏ ପ୍ରଶ୍ନ ଦବାନ୍ତୁ</string>
-    <string name="notice_offline_cached">ଅଫଲାଇନ୍ — ପୂର୍ବରୁ ଡାଉନଲୋଡ୍ କରାଯାଇଥିବା ପାଣିପାଗ ଦେଖାଉଛୁ।</string>
-    <string name="notice_cant_connect">WeatherGPT ସହ ସଂଯୋଗ ହୋଇପାରୁନାହିଁ। ସଞ୍ଚିତ ପାଣିପାଗ ଦେଖାଉଛୁ।</string>
+    <string name="notice_offline_cached">ଅଫଲାଇନ୍ · ଡାଉନଲୋଡ୍ ପାଣିପାଗ ଦେଖାଉଛୁ।</string>
+    <string name="notice_cant_connect">ଅଫଲାଇନ୍ · ଡାଉନଲୋଡ୍ ପାଣିପାଗ ବ୍ୟବହାର କରୁଛୁ।</string>
     <string name="notice_provider_down">ପାଣିପାଗ ଉତ୍ସ ସାମୟିକ ଭାବେ ଉପଲବ୍ଧ ନାହିଁ। ଶେଷ ସଞ୍ଚିତ ପୂର୍ବାନୁମାନ ଦେଖାଉଛୁ।</string>
-    <string name="notice_no_data">ବର୍ତ୍ତମାନ ପାଣିପାଗ ସୂଚନା ଉପଲବ୍ଧ ନାହିଁ। ଆପଣଙ୍କ ସଂଯୋଗ ଯାଞ୍ଚ କରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।</string>
-    <string name="notice_no_saved">ଏପର୍ଯ୍ୟନ୍ତ ସଞ୍ଚିତ ପାଣିପାଗ ଉପଲବ୍ଧ ନାହିଁ।</string>
+    <string name="notice_no_data">ଏହି ସ୍ଥାନର ପାଣିପାଗ ଏପର୍ଯ୍ୟନ୍ତ ଡାଉନଲୋଡ୍ ହୋଇନାହିଁ। ଥରେ ଯୋଡି ଡାଉନଲୋଡ୍ କରନ୍ତୁ।</string>
+    <string name="notice_no_saved">ଏପର୍ଯ୍ୟନ୍ତ ଡାଉନଲୋଡ୍ ପାଣିପାଗ ଉପଲବ୍ଧ ନାହିଁ।</string>
     <string name="notice_providers_unavailable">ପାଣିପାଗ ଉତ୍ସଗୁଡ଼ିକ ସାମୟିକ ଭାବେ ଉପଲବ୍ଧ ନାହିଁ।</string>
     <string name="notice_check_settings">WeatherGPT ଏହି ଉପକରଣ ଯାଞ୍ଚ କରିପାରିଲା ନାହିଁ। ସଂଯୋଗ ସେଟିଂସ୍ ଦେଖନ୍ତୁ।</string>
     <string name="connection_unknown">ସର୍ଭର ଯାଞ୍ଚ କରାଯାଉଛି...</string>
@@ -196,6 +196,8 @@
     <string name="chip_why_time">ଏହି ସମୟ କାହିଁକି?</string>
     <string name="chip_score">ସ୍କୋର</string>
     <string name="refresh_weather">ପାଣିପାଗ ରିଫ୍ରେଶ</string>
+    <string name="chat_need_download_hint">ଉତ୍ତର ବିଶ୍ୱସନୀୟ ରଖିବା ପାଇଁ ଏହି ସ୍ଥାନର ପାଣିପାଗ ଡାଉନଲୋଡ୍ କରନ୍ତୁ।</string>
+    <string name="chat_ai_unavailable">AI ନିର୍ଦ୍ଦେଶ ବର୍ତ୍ତମାନ ନାହିଁ, କିନ୍ତୁ ଆପଣଙ୍କ ଡାଉନଲୋଡ୍ ପାଣିପାଗ ଅଛି।</string>
 </resources>
 
 

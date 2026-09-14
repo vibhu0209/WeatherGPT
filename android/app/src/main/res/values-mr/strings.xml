@@ -162,11 +162,11 @@
     <string name="or_pick_city">किंवा मोठे शहर निवडा</string>
     <string name="location_backup_help">फोन स्थान पर्यायी आहे. अडकले तर वर शोधा.</string>
     <string name="tap_to_ask">एक प्रश्न दाबा</string>
-    <string name="notice_offline_cached">ऑफलाइन — आधी डाउनलोड केलेले हवामान दाखवत आहोत.</string>
-    <string name="notice_cant_connect">WeatherGPT शी संपर्क होत नाही. जतन केलेले हवामान दाखवत आहोत.</string>
+    <string name="notice_offline_cached">ऑफलाइन · डाउनलोड केलेले हवामान दाखवत आहोत.</string>
+    <string name="notice_cant_connect">ऑफलाइन · डाउनलोड केलेले हवामान वापरत आहोत.</string>
     <string name="notice_provider_down">हवामान स्रोत तात्पुरता उपलब्ध नाही. शेवटचा जतन केलेला अंदाज दाखवत आहोत.</string>
-    <string name="notice_no_data">सध्या हवामान माहिती उपलब्ध नाही. तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</string>
-    <string name="notice_no_saved">अजून जतन केलेले हवामान उपलब्ध नाही.</string>
+    <string name="notice_no_data">या ठिकाणाचे हवामान अजून डाउनलोड नाही. एकदा जोडून डाउनलोड करा.</string>
+    <string name="notice_no_saved">अजून डाउनलोड केलेले हवामान उपलब्ध नाही.</string>
     <string name="notice_providers_unavailable">हवामान स्रोत तात्पुरते उपलब्ध नाहीत.</string>
     <string name="notice_check_settings">WeatherGPT या उपकरणाची पडताळणी करू शकले नाही. कनेक्शन सेटिंग्ज पहा.</string>
     <string name="connection_unknown">सर्व्हर तपासत आहोत...</string>
@@ -196,6 +196,8 @@
     <string name="chip_why_time">हा वेळ का?</string>
     <string name="chip_score">स्कोअर</string>
     <string name="refresh_weather">हवामान रिफ्रेश</string>
+    <string name="chat_need_download_hint">उत्तरे विश्वसनीय राहण्यासाठी या ठिकाणाचे हवामान डाउनलोड करा.</string>
+    <string name="chat_ai_unavailable">AI मार्गदर्शन सध्या उपलब्ध नाही, पण तुमचे डाउनलोड हवामान उपलब्ध आहे.</string>
 </resources>
 
 

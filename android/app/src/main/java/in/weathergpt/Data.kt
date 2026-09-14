@@ -31,6 +31,19 @@ fun placeSearchShowsFailure(error:String)=error=="search_failed" || error=="loca
 fun savedPlacesRemainUsable(saved:List<SavedPlace>)=saved.isNotEmpty()
 const val PLACE_SEARCH_DEBOUNCE_MS=400L
 const val PLACE_SEARCH_MIN_CHARS=2
+
+/** Stable Room key — GPS jitter must not orphan cached weather. */
+fun roundCoord(value:Double):String=String.format(java.util.Locale.US,"%.4f",value)
+fun placeStorageKey(latitude:Double,longitude:Double,timezone:String)=
+    "${roundCoord(latitude)},${roundCoord(longitude)},$timezone"
+fun samePlaceCoords(aLat:Double,aLon:Double,bLat:Double,bLon:Double)=
+    roundCoord(aLat)==roundCoord(bLat) && roundCoord(aLon)==roundCoord(bLon)
+fun normalizePlace(p:Place)=Place(
+    p.name,
+    roundCoord(p.latitude).toDouble(),
+    roundCoord(p.longitude).toDouble(),
+    p.timezone,
+)
 data class Hour(val time:String, val temperature:Double?, val rain_chance:Double?, val rain_mm:Double?, val wind_ms:Double?, val humidity:Double?, val source_count:Int=1, val apparent_temperature:Double?=null, val wind_direction:Double?=null, val wind_gust_ms:Double?=null, val visibility_m:Double?=null, val pressure_hpa:Double?=null, val cloud_cover:Double?=null, val uv_index:Double?=null, val weather_code:Double?=null)
 data class Day(val date:String, val temperature_min:Double?, val temperature_max:Double?, val rain_chance_max:Double?, val rain_total_mm:Double?, val wind_max_ms:Double?, val humidity_average:Double?, val source_count:Int=0)
 data class ScoreComponent(val name:String, val penalty:Int, val reason:String)
@@ -87,6 +100,7 @@ data class ConversationSummary(val conversationId:String, val lastTimestamp:Long
 @Dao interface LocalDao {
     @Query("SELECT * FROM weather WHERE `key` = :key") fun weather(key:String):Flow<SavedWeather?>
     @Query("SELECT * FROM weather WHERE `key` = :key") suspend fun weatherOnce(key:String):SavedWeather?
+    @Query("SELECT * FROM weather") suspend fun allWeather():List<SavedWeather>
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun save(weather:SavedWeather)
     @Query("SELECT * FROM sync_metadata WHERE `key` = :key") suspend fun syncOnce(key:String):SyncMetadata?
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun saveSync(metadata:SyncMetadata)
@@ -152,7 +166,9 @@ abstract class WeatherDb:RoomDatabase() { abstract fun dao():LocalDao
 fun validateBundle(data:BundleDto?,p:Place):BundleDto {
     if(data==null) throw MalformedWeatherException("Weather response was empty")
     if(data.hourly.isEmpty() || data.source_count==0) throw ProviderUnavailableException("No provider returned weather")
-    if(data.location.latitude!=p.latitude || data.location.longitude!=p.longitude) throw MalformedWeatherException("Weather is for a different place")
+    if(!samePlaceCoords(data.location.latitude,data.location.longitude,p.latitude,p.longitude)) {
+        throw MalformedWeatherException("Weather is for a different place")
+    }
     if(!data.hourly.all { java.time.Instant.parse(it.time).epochSecond>0 && (it.temperature==null || it.temperature in -90.0..65.0) }) throw MalformedWeatherException("Weather values are out of range")
     return data
 }
@@ -203,17 +219,42 @@ class Repository(context:Context) {
         }
         throw last ?: java.io.IOException("WeatherGPT server is not reachable")
     }
-    fun key(p:Place)="${p.latitude},${p.longitude},${p.timezone}"
+    fun key(p:Place)=placeStorageKey(p.latitude,p.longitude,p.timezone)
+    /** Rematerialize weather under the stable key when GPS jitter left an orphaned Room row. */
+    suspend fun ensureWeatherKey(p:Place):SavedWeather? {
+        val key=key(p)
+        dao.weatherOnce(key)?.let {
+            CacheLog.hit(key)
+            return it
+        }
+        val nearby=dao.allWeather().firstOrNull { row ->
+            val parts=row.key.split(",")
+            if(parts.size<2) return@firstOrNull false
+            val lat=parts[0].toDoubleOrNull() ?: return@firstOrNull false
+            val lon=parts[1].toDoubleOrNull() ?: return@firstOrNull false
+            samePlaceCoords(lat,lon,p.latitude,p.longitude)
+        }
+        if(nearby!=null) {
+            CacheLog.migrate(nearby.key,key)
+            val meta=dao.syncOnce(nearby.key)
+            dao.saveBundle(SavedWeather(key,nearby.json), SyncMetadata(key,meta?.etag,meta?.lastCheckedAt ?: System.currentTimeMillis(),meta?.lastChangedAt ?: System.currentTimeMillis()))
+            return dao.weatherOnce(key)
+        }
+        CacheLog.miss(key)
+        return null
+    }
     suspend fun refresh(p:Place, base:String, lowData:Boolean=false) {
+        ensureWeatherKey(p)
         val key=key(p)
         val hours=bundleHorizonHours(lowData)
         val existing=dao.syncOnce(key)
         var response=call(base){ it.bundle(BundleBody(p.latitude,p.longitude,p.name,p.timezone,hours),existing?.etag) }
         var checkedAt=System.currentTimeMillis()
         if(response.code()==304) {
-            val localWeather=dao.weatherOnce(key)
+            val localWeather=dao.weatherOnce(key) ?: ensureWeatherKey(p)
             if(canReuseNotModified(response.code(),existing,localWeather)) {
                 NetLog.bundle(base,304,null,cacheHit=true,roomPresent=true,etagPresent=true)
+                CacheLog.hit(key)
                 dao.saveSync(checkNotNull(existing).copy(lastCheckedAt=checkedAt))
                 return
             }
@@ -231,6 +272,7 @@ class Repository(context:Context) {
         val data=validateBundle(response.body(),p)
         NetLog.bundle(base,response.code(),data.source_count,cacheHit=false,roomPresent=true,etagPresent=response.headers()["etag"]!=null)
         dao.saveBundle(SavedWeather(key,gson.toJson(data)),SyncMetadata(key,response.headers()["etag"],checkedAt,checkedAt))
+        CacheLog.write(key,data.source_count,data.hourly.size)
     }
 }
 

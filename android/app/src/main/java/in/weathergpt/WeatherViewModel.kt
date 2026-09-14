@@ -65,7 +65,18 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
         set(day){save("day_offset",day.toString())}
     val place=preferences.map { p->p[stringPreferencesKey("place")]?.let{runCatching{repo.gson.fromJson(it,Place::class.java)}.getOrNull()} }.distinctUntilChanged().stateIn(viewModelScope,SharingStarted.Eagerly,null)
     @OptIn(ExperimentalCoroutinesApi::class)
-    val weather=place.flatMapLatest { p->if(p==null) flowOf(null) else repo.dao.weather(repo.key(p)).map { it?.let{runCatching{repo.gson.fromJson(it.json,BundleDto::class.java)}.getOrNull()} } }.stateIn(viewModelScope,SharingStarted.Eagerly,null)
+    val weather=place.flatMapLatest { p->
+        if(p==null) flowOf<BundleDto?>(null)
+        else flow<BundleDto?> {
+            val key=repo.key(p)
+            repo.ensureWeatherKey(p)
+            repo.dao.weather(key).collect { saved ->
+                val bundle=saved?.let{runCatching{repo.gson.fromJson(it.json,BundleDto::class.java)}.getOrNull()}
+                CacheLog.emit(bundle!=null, key)
+                emit(bundle)
+            }
+        }
+    }.stateIn(viewModelScope,SharingStarted.Eagerly,null)
     fun value(key:String,default:String="")=preferences.value[stringPreferencesKey(key)]?:default
     fun save(key:String,value:String) { viewModelScope.launch {
         settings.edit{it[stringPreferencesKey(key)]=value}
@@ -77,15 +88,16 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
     fun choose(p:Place,purpose:String="home") { viewModelScope.launch {
         androidx.work.WorkManager.getInstance(getApplication()).cancelAllWorkByTag("official-alerts")
         val profile=purposeToProfile(purpose)
-        repo.dao.savePlace(SavedPlace(repo.key(p),p.name,p.name,p.latitude,p.longitude,p.timezone,purpose))
+        val stable=normalizePlace(p)
+        repo.dao.savePlace(SavedPlace(repo.key(stable),stable.name,stable.name,stable.latitude,stable.longitude,stable.timezone,purpose))
         settings.edit {
-            it[stringPreferencesKey("place")]=repo.gson.toJson(p)
+            it[stringPreferencesKey("place")]=repo.gson.toJson(stable)
             it[stringPreferencesKey("profile")]=profile
             it[stringPreferencesKey("place_purpose")]=purpose
             it[stringPreferencesKey("onboarded")]="true"
         }
         dayOffset=0; results.value=emptyList(); comparePlace.value=null
-        ForecastSync.schedule(getApplication(),value("wifi","true")=="true",value("low_data")=="true"); refresh(p)
+        ForecastSync.schedule(getApplication(),value("wifi","true")=="true",value("low_data")=="true"); refresh(stable)
     } }
     fun updatePlacePurpose(place:SavedPlace,purpose:String) { viewModelScope.launch {
         repo.dao.savePlace(place.copy(purpose=purpose))
@@ -166,12 +178,26 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
         viewModelScope.launch {
             busy.value=true; error.value=""
             try {
+                // Always try Room first so offline reopen never waits on network.
+                repo.ensureWeatherKey(p)
+                if(!online()) {
+                    val has=repo.dao.weatherOnce(repo.key(p))!=null
+                    failure.value=if(has) NetFailure.NO_NETWORK else NetFailure.NO_NETWORK
+                    offline.value=true
+                    backendOnline.value=false
+                    CacheLog.emit(has,repo.key(p))
+                    return@launch
+                }
                 repo.refresh(p,base(),value("low_data")=="true")
                 repo.dao.weatherOnce(repo.key(p))?.let { scheduleCachedAlerts(getApplication(),p,repo.gson.fromJson(it.json,BundleDto::class.java)) }
                 recordWeather("bundle","v1/weather/bundle",null)
             }
             catch(e:CancellationException) { throw e }
-            catch(e:Exception) { recordWeather("bundle","v1/weather/bundle",e) }
+            catch(e:Exception) {
+                // Keep any Room weather; only record transport failure for the banner.
+                repo.ensureWeatherKey(p)
+                recordWeather("bundle","v1/weather/bundle",e)
+            }
             finally { busy.value=false }
         }
     }

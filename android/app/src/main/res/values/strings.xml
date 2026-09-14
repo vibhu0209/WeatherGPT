@@ -11,6 +11,8 @@
     <string name="chat_context_score">Score %1$d</string>
     <string name="chat_offline_hint">You\'re offline. I can still answer using your saved forecast.</string>
     <string name="chat_no_weather_hint">Choose a place and download weather so answers stay grounded.</string>
+    <string name="chat_need_download_hint">Download weather for this place so answers stay grounded.</string>
+    <string name="chat_ai_unavailable">AI guidance is temporarily unavailable, but your downloaded weather is still available.</string>
     <string name="good_morning">Good morning</string>
     <string name="good_afternoon">Good afternoon</string>
     <string name="good_evening">Good evening</string>
@@ -178,10 +180,10 @@
     <string name="search_village_first">Type your village or city name. Searching is easier than GPS.</string>
     <string name="or_pick_city">Or tap a big city</string>
     <string name="location_backup_help">Phone location is optional. If it gets stuck, use search above.</string>
-    <string name="notice_offline_cached">Offline - showing the weather you downloaded earlier.</string>
-    <string name="notice_cant_connect">Cannot connect to WeatherGPT. Showing saved weather.</string>
-    <string name="notice_no_data">Cannot reach WeatherGPT right now. Check your connection and try again.</string>
-    <string name="notice_no_saved">No saved weather is available yet.</string>
+    <string name="notice_offline_cached">Offline · showing downloaded weather.</string>
+    <string name="notice_cant_connect">Offline · using downloaded weather.</string>
+    <string name="notice_no_data">No downloaded weather for this place yet. Connect once to download.</string>
+    <string name="notice_no_saved">No downloaded weather available yet.</string>
     <string name="notice_check_settings">WeatherGPT could not verify this device. Check Connection settings.</string>
     <string name="connection_unknown">Checking the server...</string>
     <string name="connection_last">Last connected: </string>

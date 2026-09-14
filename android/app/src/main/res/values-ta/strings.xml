@@ -162,11 +162,11 @@
     <string name="or_pick_city">அல்லது பெரிய நகரைத் தேர்ந்தெடுக்கவும்</string>
     <string name="location_backup_help">தொலைபேசி இடம் விருப்பமானது. சிக்கினால் மேலே தேடுங்கள்.</string>
     <string name="tap_to_ask">ஒரு கேள்வியைத் தட்டவும்</string>
-    <string name="notice_offline_cached">ஆஃப்லைன் — முன்பு பதிவிறக்கிய வானிலை காட்டப்படுகிறது.</string>
-    <string name="notice_cant_connect">WeatherGPT உடன் இணைக்க முடியவில்லை. சேமித்த வானிலை காட்டப்படுகிறது.</string>
+    <string name="notice_offline_cached">ஆஃப்லைன் · பதிவிறக்கிய வானிலை காட்டப்படுகிறது.</string>
+    <string name="notice_cant_connect">ஆஃப்லைன் · பதிவிறக்கிய வானிலை பயன்படுத்தப்படுகிறது.</string>
     <string name="notice_provider_down">வானிலை மூலம் தற்காலிகமாக கிடைக்கவில்லை. கடைசியாக சேமித்த முன்னறிவிப்பு காட்டப்படுகிறது.</string>
-    <string name="notice_no_data">இப்போது வானிலைத் தகவல் கிடைக்கவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</string>
-    <string name="notice_no_saved">சேமித்த வானிலை இன்னும் கிடைக்கவில்லை.</string>
+    <string name="notice_no_data">இந்த இடத்தின் வானிலை இன்னும் பதிவிறக்கப்படவில்லை. ஒருமுறை இணைத்து பதிவிறக்கவும்.</string>
+    <string name="notice_no_saved">இன்னும் பதிவிறக்கிய வானிலை இல்லை.</string>
     <string name="notice_providers_unavailable">வானிலை மூலங்கள் தற்காலிகமாக கிடைக்கவில்லை.</string>
     <string name="notice_check_settings">WeatherGPT இந்தச் சாதனத்தை உறுதிப்படுத்த முடியவில்லை. இணைப்பு அமைப்புகளைப் பாருங்கள்.</string>
     <string name="connection_unknown">சேவையகம் சரிபார்க்கப்படுகிறது...</string>
@@ -196,6 +196,8 @@
     <string name="chip_why_time">இந்த நேரம் ஏன்?</string>
     <string name="chip_score">மதிப்பெண்</string>
     <string name="refresh_weather">வானிலை புதுப்பி</string>
+    <string name="chat_need_download_hint">பதில்கள் நம்பகமாக இருக்க இந்த இடத்தின் வானிலையைப் பதிவிறக்கவும்.</string>
+    <string name="chat_ai_unavailable">AI வழிகாட்டல் தற்போது இல்லை, ஆனால் பதிவிறக்கிய வானிலை உள்ளது.</string>
 </resources>
 
 

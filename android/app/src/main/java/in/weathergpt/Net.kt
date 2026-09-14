@@ -153,11 +153,11 @@ fun noticeFor(failure: NetFailure, hasCache: Boolean, isStale: Boolean): Weather
         NetFailure.AUTH_CONFIGURATION_ERROR -> WeatherNotice.CHECK_SETTINGS
         NetFailure.NO_NETWORK -> if (hasCache) WeatherNotice.OFFLINE_CACHED else WeatherNotice.NO_SAVED
         NetFailure.SERVER_UNREACHABLE, NetFailure.TIMEOUT ->
-            if (hasCache) WeatherNotice.CANT_CONNECT else WeatherNotice.NO_DATA
+            if (hasCache) WeatherNotice.CANT_CONNECT else WeatherNotice.NO_SAVED
         NetFailure.PROVIDER_UNAVAILABLE ->
             if (hasCache) WeatherNotice.PROVIDER_DOWN else WeatherNotice.PROVIDERS_UNAVAILABLE
         NetFailure.SERVER_ERROR, NetFailure.BAD_RESPONSE ->
-            if (hasCache) WeatherNotice.PROVIDER_DOWN else WeatherNotice.NO_DATA
+            if (hasCache) WeatherNotice.PROVIDER_DOWN else WeatherNotice.NO_SAVED
     }
     if (!hasCache) return notice
     // Invariant: weather is on screen — never claim "no data".
@@ -233,4 +233,30 @@ object NetLog {
         if (message.isNullOrBlank()) return "-"
         return message.substringBefore('?').replace(Regex("-?\\d+\\.\\d{3,}"), "<redacted>").take(180)
     }
+}
+
+/** Debug-only Room cache stages — no coordinates beyond rounded key fragments. */
+object CacheLog {
+    private const val TAG = "WeatherGPTCache"
+    fun hit(key: String) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, "room_read hit key=${redactKey(key)}")
+    }
+    fun miss(key: String) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, "room_read miss key=${redactKey(key)}")
+    }
+    fun migrate(from: String, to: String) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, "room_migrate from=${redactKey(from)} to=${redactKey(to)}")
+    }
+    fun write(key: String, sourceCount: Int, hours: Int) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, "room_write key=${redactKey(key)} sources=$sourceCount hours=$hours")
+    }
+    fun emit(hasWeather: Boolean, key: String?) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, "ui_emit hasWeather=$hasWeather key=${key?.let(::redactKey) ?: "-"}")
+    }
+    private fun redactKey(key: String) = key.replace(Regex("-?\\d+\\.\\d{3,}"), "<g>")
 }

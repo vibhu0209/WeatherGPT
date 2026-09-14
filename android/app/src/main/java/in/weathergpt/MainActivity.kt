@@ -29,6 +29,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -191,10 +193,11 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
                         Image(
                             painter=painterResource(R.drawable.weather_gpt_logo),
-                            contentDescription=null,
-                            modifier=Modifier.size(36.dp),
+                            contentDescription="WeatherGPT",
+                            contentScale=ContentScale.Fit,
+                            modifier=Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)),
                         )
-                        Text("WeatherGPT",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.primary)
+                        Text("WeatherGPT",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.primary,maxLines=1)
                     }
                     Surface(
                         onClick={showPlace=true},
@@ -226,11 +229,11 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
                 WeatherNotice.NONE->{}
                 WeatherNotice.STALE->StatusBanner(cachedNotice(s(R.string.saved_notice)), BannerTone.QUIET)
                 WeatherNotice.OFFLINE_CACHED->StatusBanner(cachedNotice(s(R.string.notice_offline_cached)), BannerTone.QUIET)
-                WeatherNotice.CANT_CONNECT->StatusBanner(cachedNotice(s(R.string.notice_cant_connect)), BannerTone.WARN)
-                WeatherNotice.PROVIDER_DOWN->StatusBanner(cachedNotice(s(R.string.notice_provider_down)), BannerTone.ERROR)
+                WeatherNotice.CANT_CONNECT->StatusBanner(cachedNotice(s(R.string.notice_cant_connect)), BannerTone.QUIET)
+                WeatherNotice.PROVIDER_DOWN->StatusBanner(cachedNotice(s(R.string.notice_provider_down)), BannerTone.WARN)
                 WeatherNotice.NO_DATA->StatusBanner(s(R.string.notice_no_data), BannerTone.WARN)
                 WeatherNotice.NO_SAVED->StatusBanner(s(R.string.notice_no_saved), BannerTone.INFO)
-                WeatherNotice.PROVIDERS_UNAVAILABLE->StatusBanner(s(R.string.notice_providers_unavailable), BannerTone.ERROR)
+                WeatherNotice.PROVIDERS_UNAVAILABLE->StatusBanner(s(R.string.notice_providers_unavailable), BannerTone.WARN)
                 WeatherNotice.CHECK_SETTINGS->StatusBanner(s(R.string.notice_check_settings), BannerTone.WARN)
             }
             if(error=="no_places"||error=="search_failed"||error=="location_failed")
@@ -560,6 +563,7 @@ fun compactFollowUpLabel(raw:String):String {
                             Text(String.format(s(R.string.place_saved_offline), placeShort),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(s(R.string.chat_offline_hint),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        b==null && p!=null -> Text(s(R.string.chat_need_download_hint),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         b==null -> Text(s(R.string.chat_no_weather_hint),style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         hour?.temperature!=null && placeShort.isNotEmpty() -> {
                             Text(String.format(s(R.string.place_now_temp), placeShort, hour.temperature.toInt()),style=MaterialTheme.typography.titleMedium)

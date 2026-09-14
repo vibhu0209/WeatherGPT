@@ -155,11 +155,11 @@
     <string name="or_pick_city">या बड़ा शहर चुनें</string>
     <string name="location_backup_help">फ़ोन स्थान वैकल्पिक है। अटक जाए तो ऊपर खोजें।</string>
     <string name="tap_to_ask">एक सवाल दबाएँ</string>
-    <string name="notice_offline_cached">ऑफ़लाइन — पहले डाउनलोड किया गया मौसम दिखाया जा रहा है।</string>
-    <string name="notice_cant_connect">WeatherGPT से संपर्क नहीं हो रहा। सहेजा गया मौसम दिखाया जा रहा है।</string>
+    <string name="notice_offline_cached">ऑफ़लाइन · डाउनलोड किया मौसम दिखाया जा रहा है.</string>
+    <string name="notice_cant_connect">ऑफ़लाइन · डाउनलोड किया मौसम इस्तेमाल हो रहा है.</string>
     <string name="notice_provider_down">मौसम स्रोत अभी उपलब्ध नहीं है। नवीनतम सहेजा गया पूर्वानुमान दिखाया जा रहा है।</string>
-    <string name="notice_no_data">अभी WeatherGPT से संपर्क नहीं हो रहा। अपना कनेक्शन जाँचें और फिर कोशिश करें।</string>
-    <string name="notice_no_saved">अभी कोई सहेजा मौसम उपलब्ध नहीं है।</string>
+    <string name="notice_no_data">इस जगह का मौसम अभी डाउनलोड नहीं है. एक बार जुड़कर डाउनलोड करें.</string>
+    <string name="notice_no_saved">अभी कोई डाउनलोड किया मौसम उपलब्ध नहीं है.</string>
     <string name="notice_providers_unavailable">मौसम स्रोत अभी उपलब्ध नहीं हैं।</string>
     <string name="notice_check_settings">WeatherGPT इस डिवाइस की पुष्टि नहीं कर सका। कनेक्शन सेटिंग्स देखें।</string>
     <string name="connection_unknown">सर्वर जाँचा जा रहा है...</string>
@@ -189,6 +189,8 @@
     <string name="chip_why_time">यह समय क्यों?</string>
     <string name="chip_score">स्कोर</string>
     <string name="refresh_weather">मौसम ताज़ा करें</string>
+    <string name="chat_need_download_hint">इस जगह का मौसम डाउनलोड करें ताकि जवाब सही रहें.</string>
+    <string name="chat_ai_unavailable">AI मार्गदर्शन अभी उपलब्ध नहीं है, लेकिन आपका डाउनलोड किया मौसम उपलब्ध है.</string>
 </resources>
 
 

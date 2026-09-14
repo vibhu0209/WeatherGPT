@@ -162,11 +162,11 @@
     <string name="or_pick_city">లేదా పెద్ద నగరం ఎంచుకోండి</string>
     <string name="location_backup_help">ఫోన్ స్థానం ఐచ్ఛికం. నిలిచిపోతే పైన వెతకండి.</string>
     <string name="tap_to_ask">ఒక ప్రశ్న నొక్కండి</string>
-    <string name="notice_offline_cached">ఆఫ్‌లైన్ — ముందు డౌన్‌లోడ్ చేసిన వాతావరణం చూపిస్తున్నాం.</string>
-    <string name="notice_cant_connect">WeatherGPTకి కనెక్ట్ కాలేకపోతున్నాం. సేవ్ చేసిన వాతావరణం చూపిస్తున్నాం.</string>
+    <string name="notice_offline_cached">ఆఫ్‌లైన్ · డౌన్‌లోడ్ వాతావరణం చూపిస్తున్నాం.</string>
+    <string name="notice_cant_connect">ఆఫ్‌లైన్ · డౌన్‌లోడ్ వాతావరణం ఉపయోగిస్తున్నాం.</string>
     <string name="notice_provider_down">వాతావరణ మూలం తాత్కాలికంగా అందుబాటులో లేదు. చివరిగా సేవ్ చేసిన సూచన చూపిస్తున్నాం.</string>
-    <string name="notice_no_data">ప్రస్తుతం వాతావరణ సమాచారం అందుబాటులో లేదు. కనెక్షన్ చూసి మళ్లీ ప్రయత్నించండి.</string>
-    <string name="notice_no_saved">ఇంకా సేవ్ చేసిన వాతావరణం అందుబాటులో లేదు.</string>
+    <string name="notice_no_data">ఈ స్థలం వాతావరణం ఇంకా డౌన్‌లోడ్ కాలేదు. ఒకసారి కనెక్ట్ అయి డౌన్‌లోడ్ చేయండి.</string>
+    <string name="notice_no_saved">ఇంకా డౌన్‌లోడ్ వాతావరణం లేదు.</string>
     <string name="notice_providers_unavailable">వాతావరణ మూలాలు తాత్కాలికంగా అందుబాటులో లేవు.</string>
     <string name="notice_check_settings">WeatherGPT ఈ పరికరాన్ని ధృవీకరించలేకపోయింది. కనెక్షన్ సెట్టింగ్స్ చూడండి.</string>
     <string name="connection_unknown">సర్వర్ పరిశీలిస్తున్నాం...</string>
@@ -196,6 +196,8 @@
     <string name="chip_why_time">ఈ సమయం ఎందుకు?</string>
     <string name="chip_score">స్కోరు</string>
     <string name="refresh_weather">వాతావరణం రిఫ్రెష్</string>
+    <string name="chat_need_download_hint">సమాధానాలు నమ్మదగినవిగా ఉండేలా ఈ స్థలం వాతావరణం డౌన్‌లోడ్ చేయండి.</string>
+    <string name="chat_ai_unavailable">AI మార్గదర్శకం ప్రస్తుతం లేదు, కానీ మీ డౌన్‌లోడ్ వాతావరణం ఉంది.</string>
 </resources>
 
 

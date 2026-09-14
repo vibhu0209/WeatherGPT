@@ -162,11 +162,11 @@
     <string name="or_pick_city">অথবা বড় শহর বেছে নিন</string>
     <string name="location_backup_help">ফোনের অবস্থান ঐচ্ছিক। আটকে গেলে উপরে খুঁজুন।</string>
     <string name="tap_to_ask">একটি প্রশ্ন চাপুন</string>
-    <string name="notice_offline_cached">অফলাইন — আগে ডাউনলোড করা আবহাওয়া দেখানো হচ্ছে।</string>
-    <string name="notice_cant_connect">WeatherGPT-এর সঙ্গে সংযোগ করা যাচ্ছে না। সংরক্ষিত আবহাওয়া দেখানো হচ্ছে।</string>
+    <string name="notice_offline_cached">অফলাইন · ডাউনলোড করা আবহাওয়া দেখানো হচ্ছে।</string>
+    <string name="notice_cant_connect">অফলাইন · ডাউনলোড করা আবহাওয়া ব্যবহার হচ্ছে।</string>
     <string name="notice_provider_down">আবহাওয়ার উৎস সাময়িকভাবে অনুপলব্ধ। সর্বশেষ সংরক্ষিত পূর্বাভাস দেখানো হচ্ছে।</string>
-    <string name="notice_no_data">এখন আবহাওয়ার তথ্য পাওয়া যাচ্ছে না। সংযোগ দেখে আবার চেষ্টা করুন।</string>
-    <string name="notice_no_saved">এখনও কোনো সংরক্ষিত আবহাওয়া নেই।</string>
+    <string name="notice_no_data">এই জায়গার আবহাওয়া এখনও ডাউনলোড হয়নি। একবার সংযুক্ত হয়ে ডাউনলোড করুন।</string>
+    <string name="notice_no_saved">এখনও কোনো ডাউনলোড করা আবহাওয়া নেই।</string>
     <string name="notice_providers_unavailable">আবহাওয়ার উৎস সাময়িকভাবে অনুপলব্ধ।</string>
     <string name="notice_check_settings">WeatherGPT এই ডিভাইস যাচাই করতে পারেনি। সংযোগ সেটিংস দেখুন।</string>
     <string name="connection_unknown">সার্ভার পরীক্ষা করা হচ্ছে...</string>
@@ -196,6 +196,8 @@
     <string name="chip_why_time">এই সময় কেন?</string>
     <string name="chip_score">স্কোর</string>
     <string name="refresh_weather">আবহাওয়া রিফ্রেশ</string>
+    <string name="chat_need_download_hint">এই জায়গার আবহাওয়া ডাউনলোড করুন যাতে উত্তর নির্ভরযোগ্য থাকে।</string>
+    <string name="chat_ai_unavailable">AI নির্দেশনা এখন নেই, কিন্তু আপনার ডাউনলোড করা আবহাওয়া আছে।</string>
 </resources>
 
 
