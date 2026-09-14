@@ -53,6 +53,7 @@ fun OnboardingScreen(vm: WeatherViewModel, onFinished: (Place?, String) -> Unit)
     var query by rememberSaveable { mutableStateOf("") }
     val results by vm.results.collectAsState()
     val searchBusy by vm.searchBusy.collectAsState()
+    val searchError by vm.error.collectAsState()
     val context = LocalContext.current
     val locationUnavailable = s(R.string.location_unavailable)
     val currentLocationLabel = s(R.string.current_location)
@@ -162,6 +163,19 @@ fun OnboardingScreen(vm: WeatherViewModel, onFinished: (Place?, String) -> Unit)
                                 CircularProgressIndicator(Modifier.size(28.dp))
                                 Text(if (locating) s(R.string.locating) else s(R.string.loading), style = MaterialTheme.typography.titleMedium)
                             }
+                        }
+                        if (searchError == "search_failed" || searchError == "no_places" || searchError == "location_failed") {
+                            Text(
+                                s(
+                                    when (searchError) {
+                                        "no_places" -> R.string.no_places
+                                        "search_failed" -> R.string.search_failed
+                                        else -> R.string.location_unavailable
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
                         results.forEach { place ->
                             BigChoice(place.name, false) { finish(place) }

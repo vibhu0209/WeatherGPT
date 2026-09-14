@@ -32,6 +32,37 @@ fun savedPlacesRemainUsable(saved:List<SavedPlace>)=saved.isNotEmpty()
 const val PLACE_SEARCH_DEBOUNCE_MS=400L
 const val PLACE_SEARCH_MIN_CHARS=2
 
+/** Built-in India cities for offline / failed live search. */
+val LOCAL_PLACE_FALLBACKS = listOf(
+    Place("Delhi",28.6139,77.2090),
+    Place("Mumbai",19.0760,72.8777),
+    Place("Bengaluru",12.9716,77.5946),
+    Place("Chennai",13.0827,80.2707),
+    Place("Kolkata",22.5726,88.3639),
+    Place("Hyderabad",17.3850,78.4867),
+    Place("Pune",18.5204,73.8567),
+    Place("Ahmedabad",23.0225,72.5714),
+    Place("Jaipur",26.9124,75.7873),
+    Place("Lucknow",26.8467,80.9462),
+    Place("Patna",25.5941,85.1376),
+    Place("Bhopal",23.2599,77.4126),
+    Place("Bhubaneswar",20.2961,85.8245),
+    Place("Guwahati",26.1445,91.7362),
+    Place("Kochi",9.9312,76.2673),
+)
+
+fun localPlaceMatches(query:String):List<Place> {
+    val q=query.trim().lowercase()
+    if(q.length<PLACE_SEARCH_MIN_CHARS) return emptyList()
+    return LOCAL_PLACE_FALLBACKS.filter { it.name.lowercase().contains(q) }
+}
+
+/** API language codes only — never send en-IN / device tags. */
+fun searchLanguageTag(raw:String):String {
+    val base=raw.trim().lowercase().substringBefore('-').substringBefore('_')
+    return if(base in setOf("en","hi","bn","te","mr","ta","gu","kn","ml","pa","or")) base else "en"
+}
+
 /** Stable Room key — GPS jitter must not orphan cached weather. */
 fun roundCoord(value:Double):String=String.format(java.util.Locale.US,"%.4f",value)
 fun placeStorageKey(latitude:Double,longitude:Double,timezone:String)=

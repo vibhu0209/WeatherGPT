@@ -851,6 +851,7 @@ fun compactFollowUpLabel(raw:String):String {
     val results by vm.results.collectAsState()
     val saved by vm.savedPlaces.collectAsState()
     val busy by vm.searchBusy.collectAsState()
+    val searchError by vm.error.collectAsState()
     val context=LocalContext.current
     val locationUnavailable=s(R.string.location_unavailable)
     val deleteLabel=s(R.string.delete)
@@ -885,6 +886,17 @@ fun compactFollowUpLabel(raw:String):String {
             BigButton(s(R.string.search),Icons.Default.Search,{vm.search(query)},query.trim().length>=2&&!busy)
             if(locating || busy) Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(28.dp));Text(if(locating) s(R.string.locating) else s(R.string.loading))
+            }
+            if(searchError=="search_failed"||searchError=="no_places"||searchError=="location_failed") {
+                Text(
+                    s(when(searchError) {
+                        "no_places"->R.string.no_places
+                        "search_failed"->R.string.search_failed
+                        else->R.string.location_unavailable
+                    }),
+                    style=MaterialTheme.typography.bodyMedium,
+                    color=MaterialTheme.colorScheme.error,
+                )
             }
             results.forEach { place->OutlinedButton(onClick={onChoose(place,purpose)},modifier=Modifier.fillMaxWidth().heightIn(min=64.dp)) { Text(place.name,style=MaterialTheme.typography.titleMedium) } }
             Text(s(R.string.or_pick_city),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)

@@ -189,6 +189,14 @@ class OfflineTest {
         assertFalse(placeSearchUnavailableOffline(true))
         assertEquals(400L, PLACE_SEARCH_DEBOUNCE_MS)
     }
+    @Test fun localPlaceFallbackMatchesPopularCities() {
+        assertEquals(listOf("Delhi"), localPlaceMatches("del").map { it.name })
+        assertTrue(localPlaceMatches("mu").any { it.name == "Mumbai" })
+        assertTrue(localPlaceMatches("x").isEmpty())
+        assertEquals("en", searchLanguageTag("en-IN"))
+        assertEquals("hi", searchLanguageTag("hi"))
+        assertEquals("en", searchLanguageTag("xx"))
+    }
     @Test fun placeSearchEmptyAndFailureStates() {
         assertTrue(placeSearchShowsEmpty(emptyList(),"no_places"))
         assertFalse(placeSearchShowsEmpty(listOf(Place("Delhi",28.6,77.2)),"no_places"))

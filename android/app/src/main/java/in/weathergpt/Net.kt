@@ -87,8 +87,12 @@ fun debugAlternateBases(preferred: String, fallback: String, debug: Boolean): Li
 fun hasNetwork(context: Context): Boolean {
     val manager = context.getSystemService(ConnectivityManager::class.java) ?: return true
     val capabilities = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
-    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    // INTERNET is enough for backend calls. VALIDATED is often late/false on emulators
+    // and private LAN backends, which incorrectly blocked place search.
+    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ||
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
 }
 
 fun failureForStatus(code: Int): NetFailure = when {

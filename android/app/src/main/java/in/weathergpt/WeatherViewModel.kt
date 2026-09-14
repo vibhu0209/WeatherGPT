@@ -121,22 +121,36 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             if(error.value=="no_places" || error.value=="search_failed") error.value=""
             return
         }
-        if(placeSearchUnavailableOffline(online())) {
-            searchJob?.cancel()
-            results.value=emptyList()
-            error.value="search_failed"
-            searchBusy.value=false
-            return
-        }
         searchJob?.cancel()
         searchJob=viewModelScope.launch {
             if(debounceMs>0) delay(debounceMs)
             if(!isActive) return@launch
-            if(!shouldRunPlaceSearch(trimmed, online())) return@launch
             searchBusy.value=true; error.value=""; results.value=emptyList()
-            try { results.value=repo.call(base()){it.search(trimmed,value("language","en"))}.locations; if(results.value.isEmpty()) error.value="no_places" }
+            // Offline: still show built-in India cities so search never looks "dead".
+            if(placeSearchUnavailableOffline(online())) {
+                results.value=localPlaceMatches(trimmed)
+                error.value=if(results.value.isEmpty()) "search_failed" else ""
+                searchBusy.value=false
+                return@launch
+            }
+            if(!shouldRunPlaceSearch(trimmed, online())) {
+                searchBusy.value=false
+                return@launch
+            }
+            try {
+                val lang=searchLanguageTag(value("language","en"))
+                results.value=repo.call(base()){it.search(trimmed,lang)}.locations
+                if(results.value.isEmpty()) {
+                    results.value=localPlaceMatches(trimmed)
+                    error.value=if(results.value.isEmpty()) "no_places" else ""
+                }
+            }
             catch(e:CancellationException) { throw e }
-            catch(e:Exception) { NetLog.call("search",base(),"v1/locations/search",null,classifyFailure(e,online()),e); error.value="search_failed" }
+            catch(e:Exception) {
+                NetLog.call("search",base(),"v1/locations/search",null,classifyFailure(e,online()),e)
+                results.value=localPlaceMatches(trimmed)
+                error.value=if(results.value.isEmpty()) "search_failed" else ""
+            }
             finally { searchBusy.value=false }
         }
     }
