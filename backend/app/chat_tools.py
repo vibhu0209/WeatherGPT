@@ -57,6 +57,11 @@ def select_tool(request: ChatRequest) -> str:
     window_start, _window_end = parse_hour_window(text, request.location.timezone)
     if window_start is not None:
         return 'get_hourly_forecast'
+    if any(word in text for word in (
+        'event', 'outdoor event', 'flood', 'waterlog', 'heavy rain', 'heavy rainfall',
+        'downpour', 'cloudburst', 'why is', 'why are', 'why raining', 'radar',
+    )):
+        return 'get_hourly_forecast'
     rules = (
         ('compare_locations', ('compare', 'तुलना', ' vs ', 'versus')),
         ('get_marine_forecast', (
@@ -315,7 +320,11 @@ async def _marine_answer(request: ChatRequest, result: ToolResult) -> dict:
 
 
 def _render_hourly(result: ToolResult, request: ChatRequest) -> str:
-    from .chat import is_action_question, is_rain_question, rain_decision_lead
+    from .chat import is_action_question, is_rain_question, rain_decision_lead, parse_hour_window
+    from .event_risk import (
+        assess_timed_event_risk, clock_window_label, format_event_risk_answer,
+        is_event_question, is_heavy_rain_or_flood_question, is_why_question, why_weather_brief,
+    )
 
     rows = result.data if isinstance(result.data, list) else []
     language = chat_language(request.language)
@@ -325,6 +334,18 @@ def _render_hourly(result: ToolResult, request: ChatRequest) -> str:
     rain = [row['rain_chance'] for row in rows if row.get('rain_chance') is not None]
     wind = [row['wind_ms'] for row in rows if row.get('wind_ms') is not None]
     rain_max = max(rain) if rain else None
+    why_line = why_weather_brief({
+        'sources': list(result.sources or []),
+        'source_count': len(result.sources or []),
+    })
+    event_like = is_event_question(request.text) or is_heavy_rain_or_flood_question(request.text)
+    if event_like:
+        start, end = parse_hour_window(request.text, request.location.timezone)
+        label = clock_window_label(start, end) if start and end else 'this period'
+        assessment = assess_timed_event_risk(
+            rows, place=display_place_name(request.location.name), window_label=label,
+        )
+        return format_event_risk_answer(assessment, why_line=why_line, user_text=request.text)
     supporting = [f'{display_place_name(request.location.name)}']
     if rain:
         supporting.append(phrase(language, 'rain', value=max(rain)))
@@ -332,7 +353,12 @@ def _render_hourly(result: ToolResult, request: ChatRequest) -> str:
         supporting.append(phrase(language, 'temperature', lo=min(temps), hi=max(temps)))
     if wind and not is_rain_question(request.text):
         supporting.append(phrase(language, 'wind', value=max(wind) * MS_TO_KMH))
+    if why_line and is_why_question(request.text):
+        supporting.append(why_line)
     supporting.append(phrase(language, 'official'))
+    if is_why_question(request.text):
+        lead = rain_decision_lead(rain_max) if rain_max is not None else 'Here is what the verified hourly forecast supports.'
+        return '\n\n'.join([lead, *supporting])
     if is_rain_question(request.text):
         return '\n\n'.join([rain_decision_lead(rain_max), *supporting])
     if not is_action_question(request.text):
@@ -621,6 +647,17 @@ async def run_chat(request: ChatRequest) -> dict:
             payload = await _forecast_answer(request, name)
             payload['response_origin'] = 'deterministic_fallback'
             return _humanize_payload(payload)
+        # Event / heavy-rain / why answers need fusion disagreement + alerts, not hourly-only drafts.
+        if name == 'get_hourly_forecast':
+            from .event_risk import is_event_question, is_heavy_rain_or_flood_question, is_why_question
+            if (
+                is_event_question(request.text)
+                or is_heavy_rain_or_flood_question(request.text)
+                or is_why_question(request.text)
+            ):
+                payload = await _forecast_answer(request, name)
+                payload['response_origin'] = 'deterministic_fallback'
+                return _humanize_payload(payload)
         payload = render_tool_result(name, result, request)
         if name == 'get_weather_score' and result.status == 'available':
             data, official = await asyncio.gather(

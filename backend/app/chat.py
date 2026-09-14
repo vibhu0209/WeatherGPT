@@ -23,6 +23,7 @@ WEATHER_WORDS = TODAY_WORDS + TOMORROW_WORDS + (
     'వాతావరణం', 'వర్షం', 'ఉష్ణోగ్రత', 'हवामान', 'पाऊस', 'तापमान', 'வானிலை', 'மழை', 'வெப்பநிலை',
     'હવામાન', 'વરસાદ', 'તાપમાન', 'ಹವಾಮಾನ', 'ಮಳೆ', 'ತಾಪಮಾನ', 'കാലാവസ്ഥ', 'മഴ', 'താപനില',
     'ਮੌਸਮ', 'ਮੀਂਹ', 'ਤਾਪਮਾਨ', 'ପାଣିପାଗ', 'ବର୍ଷା', 'ତାପମାତ୍ରା', 'अगले तीन घंटे',
+    'event', 'flood', 'heavy rain', 'outdoor', 'risk', 'why',
 )
 ALERT_WORDS = (
     'alert', 'warning', 'चेतावनी', 'সতর্কতা', 'హెచ్చరిక', 'इशारे',
@@ -149,7 +150,7 @@ def format_official_warning(language: str, alert: dict) -> str:
 
 
 def parse_hour_window(text: str, timezone_name: str, now: datetime | None = None):
-    """Local clock window for questions like 'between 3 and 6'. Returns aware start/end or (None, None)."""
+    """Local clock window for 'between 3 and 6' or a single 'at 4 PM' (±1h)."""
     zone = ZoneInfo(timezone_name)
     local_now = (now or datetime.now(zone)).astimezone(zone)
     match = re.search(
@@ -157,27 +158,28 @@ def parse_hour_window(text: str, timezone_name: str, now: datetime | None = None
         text,
         re.I,
     )
-    if not match:
-        return None, None
+    if match:
+        def clock_hour(raw: str, period: str | None, other: str | None) -> int:
+            hour = int(raw) % 24
+            stamp = (period or other or '').lower()
+            if stamp == 'pm' and hour < 12:
+                hour += 12
+            elif stamp == 'am' and hour == 12:
+                hour = 0
+            elif not stamp and 1 <= hour <= 7:
+                hour += 12
+            return hour
 
-    def clock_hour(raw: str, period: str | None, other: str | None) -> int:
-        hour = int(raw) % 24
-        stamp = (period or other or '').lower()
-        if stamp == 'pm' and hour < 12:
-            hour += 12
-        elif stamp == 'am' and hour == 12:
-            hour = 0
-        elif not stamp and 1 <= hour <= 7:
-            hour += 12
-        return hour
+        start_hour = clock_hour(match.group(1), match.group(2), match.group(4))
+        end_hour = clock_hour(match.group(3), match.group(4), match.group(2))
+        start = local_now.replace(hour=start_hour, minute=0, second=0, microsecond=0)
+        end = local_now.replace(hour=end_hour, minute=0, second=0, microsecond=0)
+        if end <= start:
+            end = end + timedelta(days=1)
+        return start, end
 
-    start_hour = clock_hour(match.group(1), match.group(2), match.group(4))
-    end_hour = clock_hour(match.group(3), match.group(4), match.group(2))
-    start = local_now.replace(hour=start_hour, minute=0, second=0, microsecond=0)
-    end = local_now.replace(hour=end_hour, minute=0, second=0, microsecond=0)
-    if end <= start:
-        end = end + timedelta(days=1)
-    return start, end
+    from .event_risk import parse_clock_window
+    return parse_clock_window(text, timezone_name, local_now)
 
 
 def select_time_rows(request: ChatRequest, bundle: dict, now: datetime | None = None):
@@ -187,6 +189,10 @@ def select_time_rows(request: ChatRequest, bundle: dict, now: datetime | None = 
     window_start, window_end = parse_hour_window(text, request.location.timezone, local_now)
     if window_start and window_end:
         rows = [p for p in bundle['hourly'] if window_start <= datetime.fromisoformat(p['time']).astimezone(zone) < window_end]
+        if not rows:
+            # Widen once so sparse hourly grids still answer "at 4 PM".
+            wide_start, wide_end = window_start - timedelta(hours=2), window_end + timedelta(hours=2)
+            rows = [p for p in bundle['hourly'] if wide_start <= datetime.fromisoformat(p['time']).astimezone(zone) < wide_end]
         return rows, 0
     if any(x in text for x in ['next three hours', 'next 3 hours', 'अगले तीन घंटे']):
         end = local_now + timedelta(hours=3)
@@ -245,14 +251,24 @@ def answer(request: ChatRequest, bundle: dict):
         message = phrase(language, 'climate_offline')
     elif not rows:
         message = phrase(language, 'unavailable')
-    elif not mentions(text, WEATHER_WORDS) and not is_action_question(text):
-        message = phrase(language, 'ask_weather')
+    elif not mentions(text, WEATHER_WORDS) and not is_action_question(text) and not is_rain_question(text):
+        from .event_risk import is_event_question, is_heavy_rain_or_flood_question, is_why_question
+        if not (is_event_question(text) or is_heavy_rain_or_flood_question(text) or is_why_question(text)):
+            message = phrase(language, 'ask_weather')
+        else:
+            message = ''
+            rows = rows or bundle.get('hourly') or []
     else:
-        temps = [p['temperature'] for p in rows if p['temperature'] is not None]
-        rain = [p['rain_chance'] for p in rows if p['rain_chance'] is not None]
-        wind = [p['wind_ms'] for p in rows if p['wind_ms'] is not None]
+        message = ''
+    if not message:
+        from .event_risk import (
+            assess_timed_event_risk, clock_window_label, format_event_risk_answer,
+            is_event_question, is_heavy_rain_or_flood_question, is_why_question, why_weather_brief,
+        )
+        temps = [p['temperature'] for p in rows if p.get('temperature') is not None]
+        rain = [p['rain_chance'] for p in rows if p.get('rain_chance') is not None]
+        wind = [p['wind_ms'] for p in rows if p.get('wind_ms') is not None]
         advice = grounded_advice_lines(request, bundle, rows or bundle.get('hourly') or [])
-        # Filter repeated disagreement padding from the lead when answering actions.
         lead_advice = [
             line for line in advice
             if 'models differ' not in line.lower() and 'sources disagree' not in line.lower()
@@ -268,12 +284,28 @@ def answer(request: ChatRequest, bundle: dict):
             supporting.append(phrase(language, 'spray'))
 
         parts: list[str] = []
-        # Official warnings always first when present.
         official = bundle.get('official_alerts') or bundle.get('alerts') or []
         active_official = [a for a in official if a]
-        if active_official and (is_action_question(text) or is_rain_question(text)):
+        event_like = is_event_question(text) or is_heavy_rain_or_flood_question(text)
+        why_line = why_weather_brief(bundle) if (is_why_question(text) or event_like) else None
+        if active_official and (is_action_question(text) or is_rain_question(text) or event_like or is_why_question(text)):
             parts.append(format_official_warning(language, active_official[0]))
-        if is_rain_question(text):
+
+        window_start, window_end = parse_hour_window(request.text, request.location.timezone)
+        if event_like and rows:
+            label = clock_window_label(window_start, window_end) if window_start and window_end else 'this period'
+            assessment = assess_timed_event_risk(
+                rows, place=display_place_name(request.location.name), window_label=label,
+            )
+            parts.append(format_event_risk_answer(assessment, why_line=why_line, user_text=request.text))
+        elif is_why_question(text):
+            rain_max = max(rain) if rain else None
+            parts.append(rain_decision_lead(rain_max) if rain_max is not None else 'Here is what the verified forecast supports.')
+            if why_line:
+                parts.append(why_line)
+            parts.append(f'{display_place_name(request.location.name)} · {date.isoformat()}')
+            parts.extend(supporting[:2])
+        elif is_rain_question(text):
             rain_max = max(rain) if rain else None
             parts.append(rain_decision_lead(rain_max))
             parts.append(f'{display_place_name(request.location.name)} · {date.isoformat()}')
@@ -281,7 +313,8 @@ def answer(request: ChatRequest, bundle: dict):
                 parts.append(phrase(language, 'rain', value=max(rain)))
             if temps:
                 parts.append(phrase(language, 'temperature', lo=min(temps), hi=max(temps)))
-            # Keep occupation tips after the yes/no rain decision.
+            if why_line:
+                parts.append(why_line)
             for rec in advice:
                 if rec not in parts:
                     parts.append(rec)
@@ -291,7 +324,6 @@ def answer(request: ChatRequest, bundle: dict):
             if lead_advice:
                 parts.extend(lead_advice[:2])
             else:
-                # Weather-wise decision frame without inventing crop thresholds.
                 rain_max = max(rain) if rain else None
                 if rain_max is not None and rain_max >= 60:
                     parts.append(
@@ -308,6 +340,8 @@ def answer(request: ChatRequest, bundle: dict):
                     )
             parts.append(f'{display_place_name(request.location.name)} · {date.isoformat()}')
             parts.extend(supporting)
+            if why_line:
+                parts.append(why_line)
             for rec in advice:
                 if rec not in parts:
                     parts.append(rec)
@@ -316,6 +350,8 @@ def answer(request: ChatRequest, bundle: dict):
         else:
             parts.append(f'{display_place_name(request.location.name)} · {date.isoformat()}')
             parts.extend(supporting)
+            if why_line:
+                parts.append(why_line)
             for rec in advice:
                 if rec not in parts:
                     parts.append(rec)

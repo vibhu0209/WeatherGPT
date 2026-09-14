@@ -35,7 +35,11 @@ _ACTION_SUPPORT_TOOLS = frozenset({'get_current_weather', 'get_hourly_forecast',
 
 _TOOL_DESCRIPTIONS = {
     'get_current_weather': 'Verified current conditions and near-term forecast for the active place.',
-    'get_hourly_forecast': 'Verified hourly forecast (rain, temp, wind) for timing questions.',
+    'get_hourly_forecast': (
+        'Verified hourly forecast for timing questions, outdoor events (e.g. at 4 PM), '
+        'heavy-rain / waterlogging disruption risk, and short grounded why-lines from forecast facts. '
+        'Never claim radar anomalies or a municipal flood model.'
+    ),
     'get_daily_forecast': 'Verified multi-day daily forecast for the active place.',
     'get_active_alerts': 'Official CAP/IMD-style warnings only. Never invent warnings.',
     'get_weather_score': 'Occupation suitability / Weather Score — prefer for should-I / can-I / safe-to / sow / irrigate / spray / outdoors / travel / drive / walk action questions.',

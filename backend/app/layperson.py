@@ -24,8 +24,8 @@ _BOILERPLATE = (
 )
 
 _DECISION = re.compile(
-    r'(?i)^(yes|no|maybe|unlikely|elevated|high concern|watch|lower concern|'
-    r'weather-wise|i would wait|i\'d wait|comparing\b|official warning)'
+    r'(?i)^(yes|no|maybe|unlikely|elevated|high concern|high disruption|watch|lower concern|'
+    r'lower outdoor|weather-wise|i would wait|i\'d wait|comparing\b|official warning)'
 )
 _PLACE_DATE = re.compile(r'^.{1,48}·.{1,32}$')
 _TEMP = re.compile(r'(?i)temperature:\s*([\d.]+)\s*to\s*([\d.]+)')
@@ -81,6 +81,7 @@ def format_layperson_answer(text: str) -> str:
     lines = [_clean(line) for line in raw.splitlines() if _clean(line)]
     decision: str | None = None
     reasons: list[str] = []
+    honesty: list[str] = []
     tip: str | None = None
 
     def add_reason(line: str) -> None:
@@ -89,6 +90,13 @@ def format_layperson_answer(text: str) -> str:
             return
         if len(reasons) < 3:
             reasons.append(line)
+
+    def add_honesty(line: str) -> None:
+        line = _clean(line)
+        if not line or line in honesty:
+            return
+        if len(honesty) < 2:
+            honesty.append(line)
 
     for line in lines:
         if any(pattern.search(line) for pattern in _BOILERPLATE):
@@ -104,9 +112,15 @@ def format_layperson_answer(text: str) -> str:
             continue
         if _is_place_only(line):
             continue
+        if re.match(r'(?i)^why\b', line):
+            add_reason(line)
+            continue
         if _DECISION.match(line):
             if decision is None:
                 decision = _clean(re.sub(r'(?i)\s*·\s*severity\s+\w+.*$', '', line))
+            continue
+        if re.search(r'(?i)not a flood model|not live radar|radar is not available', line):
+            add_honesty(line)
             continue
         if _TIP.search(line) and tip is None:
             tip = line[:160]
@@ -137,10 +151,12 @@ def format_layperson_answer(text: str) -> str:
     if decision:
         parts.append(decision)
     parts.extend(reasons[:3])
+    parts.extend(honesty)
     if tip and tip not in parts:
         parts.append(tip)
     if not any('warning' in part.lower() or 'alert' in part.lower() for part in parts):
-        parts.append('Check local official warnings if you are heading out.')
+        if not any('radar' in part.lower() or 'flood model' in part.lower() for part in parts):
+            parts.append('Check local official warnings if you are heading out.')
 
     seen: set[str] = set()
     unique: list[str] = []
@@ -150,8 +166,11 @@ def format_layperson_answer(text: str) -> str:
             continue
         seen.add(key)
         unique.append(part)
-    substantive = [part for part in unique if not part.lower().startswith('check local official')]
+    substantive = [
+        part for part in unique
+        if not part.lower().startswith('check local official')
+    ]
     if not substantive:
         light = [line for line in lines if not any(pattern.search(line) for pattern in _BOILERPLATE)]
         return '\n\n'.join(light[:5]) or lines[0]
-    return '\n\n'.join(unique[:5])
+    return '\n\n'.join(unique[:6])
