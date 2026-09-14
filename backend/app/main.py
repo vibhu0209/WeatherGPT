@@ -418,6 +418,26 @@ async def alerts(latitude: float = Query(ge=-90, le=90), longitude: float = Quer
     }
 
 
+@app.get('/v1/hazards/infrastructure')
+async def infrastructure_hazard(
+    request: Request,
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+    name: str = 'Selected place',
+    timezone: str = 'Asia/Kolkata',
+):
+    """Landslide / road-connectivity risk estimate for emergency dashboards (not official)."""
+    from .geohazard import assess_infrastructure_hazard
+    location = Location(name=name, latitude=latitude, longitude=longitude, timezone=timezone)
+    try:
+        data = await weather_for(latitude, longitude, name, timezone)
+        official = await alert_service.official(location)
+        hazard = await assess_infrastructure_hazard(location, data.get('hourly') or [], official.get('alerts') or [])
+        return {'location': data['location'], 'data': hazard, 'is_stale': data.get('is_stale', False)}
+    except httpx.HTTPError:
+        return error_response(request, 'hazard_unavailable', 'Infrastructure hazard inputs could not be checked right now.', True, 503)
+
+
 @app.get('/v1/climate/summary')
 async def climate_summary(request: Request, latitude: float = Query(ge=-90, le=90), longitude: float = Query(ge=-180, le=180), name: str = 'Selected place', timezone: str = 'Asia/Kolkata', metric: str = Query(default='temperature', pattern='^(temperature|rainfall)$'), years: int = Query(default=10, ge=2, le=30)):
     try:

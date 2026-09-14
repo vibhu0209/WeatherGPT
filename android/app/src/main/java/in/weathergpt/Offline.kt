@@ -182,7 +182,16 @@ object Offline {
             or="ସେହି ସମୟର ସଞ୍ଚିତ ପାଣିପାଗ ନାହିଁ। ନୂଆ ସୂଚନା ପାଇଁ ଇଣ୍ଟରନେଟ୍ ଯୋଡନ୍ତୁ।",
         )) to day
         val temps=rows.mapNotNull{it.temperature}; val rain=rows.mapNotNull{it.rain_chance}
+        val rainQ = listOf("rain","baarish","बारिश","will it rain","going to rain").any { q.contains(it) }
+        val rainMax = rain.maxOrNull()
+        val rainLead = when {
+            !rainQ || rainMax == null -> null
+            rainMax >= 60 -> copy(lang, en="Yes — rain is likely in this window. Plan as if it will rain.")
+            rainMax >= 35 -> copy(lang, en="Maybe — rain is possible. Keep outdoor plans flexible.")
+            else -> copy(lang, en="Unlikely — dry conditions look more probable in this window.")
+        }
         val facts=buildList {
+            if(rainLead != null) add(rainLead)
             add("${b.location.name} · $date")
             if(temps.isNotEmpty()) add(copy(lang,
                 en="Temperature: ${temps.min()} to ${temps.max()}°C.",
@@ -198,17 +207,17 @@ object Offline {
                 or="ତାପମାତ୍ରା: ${temps.min()} ରୁ ${temps.max()}°C।",
             ))
             if(rain.isNotEmpty()) add(copy(lang,
-                en="Highest hourly chance of rain: ${rain.max()}%.",
-                hi="बारिश की सबसे अधिक संभावना: ${rain.max()}%.",
-                bn="বৃষ্টির সর্বোচ্চ সম্ভাবনা: ${rain.max()}%.",
-                te="అత్యధిక వర్ష అవకాశం: ${rain.max()}%.",
-                ta="அதிகபட்ச மழை வாய்ப்பு: ${rain.max()}%.",
-                mr="पावसाची सर्वाधिक शक्यता: ${rain.max()}%.",
-                gu="વરસાદની સૌથી વધુ શક્યતા: ${rain.max()}%.",
-                kn="ಅತ್ಯಧಿಕ ಮಳೆ ಸಾಧ್ಯತೆ: ${rain.max()}%.",
-                ml="ഏറ്റവും ഉയർന്ന മഴ സാധ്യത: ${rain.max()}%.",
-                pa="ਮੀਂਹ ਦੀ ਸਭ ਤੋਂ ਵੱਧ ਸੰਭਾਵਨਾ: ${rain.max()}%.",
-                or="ସର୍ବାଧିକ ବର୍ଷା ସମ୍ଭାବନା: ${rain.max()}%.",
+                en="Rain chance peaks around ${rain.max()}% (supporting detail).",
+                hi="बारिश की संभावना लगभग ${rain.max()}% तक पहुँच सकती है।",
+                bn="বৃষ্টির সম্ভাবনা প্রায় ${rain.max()}% পর্যন্ত।",
+                te="వర్షం అవకాశం సుమారు ${rain.max()}% వరకు.",
+                ta="மழை வாய்ப்பு சுமார் ${rain.max()}% வரை.",
+                mr="पावसाची शक्यता सुमारे ${rain.max()}% पर्यंत.",
+                gu="વરસાદની શક્યતા આશરે ${rain.max()}% સુધી.",
+                kn="ಮಳೆಯ ಸಾಧ್ಯತೆ ಸುಮಾರು ${rain.max()}% ವರೆಗೆ.",
+                ml="മഴ സാധ്യത ഏകദേശം ${rain.max()}% വരെ.",
+                pa="ਮੀਂਹ ਦੀ ਸੰਭਾਵਨਾ ਲਗਭਗ ${rain.max()}% ਤੱਕ।",
+                or="ବର୍ଷା ସମ୍ଭାବନା ପ୍ରାୟ ${rain.max()}% ପର୍ଯ୍ୟନ୍ତ।",
             ))
             add(copy(lang,
                 en="Check official warnings before going out.",

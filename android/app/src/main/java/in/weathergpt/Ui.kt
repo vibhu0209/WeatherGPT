@@ -146,7 +146,7 @@ fun WeatherScoreCard(score: WeatherScore) {
 
 private val UNCERTAINTY_ADVICE_RULES = setOf("sources_disagree", "low_forecast_confidence")
 
-/** Drop repeated confidence/disagreement boilerplate from display text only. */
+/** Drop repeated confidence/disagreement boilerplate and raw-data scaffolding from display text only. */
 fun stripUncertaintyBoilerplate(text: String): String {
     var t = text.trim()
     val patterns = listOf(
@@ -161,6 +161,12 @@ fun stripUncertaintyBoilerplate(text: String): String {
         Regex("""(?i)Weather sources disagree[^.!\n]*[.!]?"""),
         Regex("""(?i)Treat this outlook as less certain\.?"""),
         Regex("""(?i)This is a forecast, not a certainty\.?"""),
+        Regex("""(?im)^Supporting reading:.*$"""),
+        Regex("""(?im)^Weather score for.*$"""),
+        Regex("""(?i)\(supporting detail\)"""),
+        Regex("""(?im)^The connected official service reports.*$"""),
+        Regex("""(?im)^If an IMD warning is active for your area.*$"""),
+        Regex("""(?im)^Supporting inputs:.*$"""),
     )
     patterns.forEach { t = it.replace(t, " ") }
     return t.replace(Regex("""[ \t]+\n"""), "\n")

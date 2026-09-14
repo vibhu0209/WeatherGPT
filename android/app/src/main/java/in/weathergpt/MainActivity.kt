@@ -243,7 +243,7 @@ private val profileOptions=listOf("general" to R.string.general,"farming" to R.s
                 0 -> ChatScreen(vm,p,b,busy,chatStatus,{showPlace=true},::speak)
                 1 -> HomeScreen(vm,b,busy,{vm.refresh()},{showPlace=true},onAsk={tab=0},onRetryConnection={vm.checkBackend()})
                 2 -> ForecastScreen(b,busy,failure,{vm.refresh()},{showPlace=true})
-                3 -> AlertScreen(b,::speak)
+                3 -> AlertScreen(vm,b,::speak)
                 else -> SettingsScreen(vm,onOpenChat={tab=0})
             }
         }
@@ -784,11 +784,16 @@ fun compactFollowUpLabel(raw:String):String {
         }
     }
 }
-@Composable fun AlertScreen(bundle:BundleDto?,speak:(String,String)->Unit={_,_->}) {
+@Composable fun AlertScreen(vm:WeatherViewModel,bundle:BundleDto?,speak:(String,String)->Unit={_,_->}) {
     val context=LocalContext.current
+    val hazard by vm.infrastructureHazard.collectAsState()
+    val hazardBusy by vm.hazardBusy.collectAsState()
     val official=bundle?.official_alerts.orEmpty().filter { alert->cachedAlertIsActive(alert) && bundle!=null && Freshness.officialAlert(bundle.retrieved_at,alert.expires)!=FreshnessState.STALE }
     val expiredCount=bundle?.official_alerts.orEmpty().size-official.size
     val status=(bundle?.official_status?:bundle?.alerts_status?:"").lowercase()
+    LaunchedEffect(bundle?.location?.latitude, bundle?.location?.longitude) {
+        if(bundle!=null && hazard==null && !hazardBusy) vm.loadInfrastructureHazard(bundle.location)
+    }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal=Space.screen,vertical=Space.lg),verticalArrangement=Arrangement.spacedBy(Space.lg)) {
         SectionHeader(s(R.string.alerts))
         when {
@@ -815,6 +820,46 @@ fun compactFollowUpLabel(raw:String):String {
         QuietButton(s(R.string.open_imd),Icons.AutoMirrored.Filled.OpenInNew,{
             context.startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://mausam.imd.gov.in/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         })
+        HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=0.35f))
+        SectionHeader(s(R.string.infra_hazard_title))
+        Text(s(R.string.infra_hazard_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        if(hazardBusy && hazard==null) {
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(Space.sm)) {
+                CircularProgressIndicator(Modifier.size(24.dp));Text(s(R.string.loading))
+            }
+        }
+        hazard?.let { h ->
+            Text(h.decision,style=MaterialTheme.typography.titleMedium)
+            Text("${s(R.string.infra_hazard_severity)}: ${h.severity} · ${h.label}",style=MaterialTheme.typography.bodyLarge)
+            h.inputs?.let { inputs ->
+                val bits=buildList {
+                    inputs.rain_24h_mm?.let { add("${s(R.string.infra_rain_24h)}: ${it} mm") }
+                    inputs.soil_moisture_0_to_7cm?.let { add("${s(R.string.infra_soil)}: $it") }
+                    inputs.slope_percent?.let { add("${s(R.string.infra_slope)}: $it%") }
+                    inputs.elevation_m?.let { add("${s(R.string.infra_elevation)}: ${it} m") }
+                }
+                if(bits.isNotEmpty()) Text(bits.joinToString(" · "),style=MaterialTheme.typography.bodyMedium)
+            }
+            val roads=h.infrastructure?.roads_at_risk_priority.orEmpty()
+            if(roads.isNotEmpty()) {
+                Text(s(R.string.infra_roads),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)
+                roads.take(8).forEach { road ->
+                    val label=listOfNotNull(road.name,road.`class`).joinToString(" · ")
+                    Text("• $label",style=MaterialTheme.typography.bodyMedium)
+                }
+            }
+            val places=h.infrastructure?.settlements_nearby.orEmpty()
+            if(places.isNotEmpty()) {
+                Text(s(R.string.infra_settlements),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)
+                places.take(8).forEach { placeItem ->
+                    Text("• ${placeItem.name ?: placeItem.place}",style=MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Text(h.disclaimer,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            QuietButton(s(R.string.ask_road_risk),Icons.Default.Search,{
+                vm.send("Will nearby roads or villages be cut off by landslide risk given rainfall, soil moisture and terrain?")
+            })
+        }
         HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=0.35f))
         SectionHeader(s(R.string.risk_estimates))
         Text(s(R.string.risk_help),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)

@@ -45,11 +45,39 @@ ACTION_WORDS = (
     'travel', 'travelling', 'traveling', 'work outside', 'field work', 'go out',
     'kheti', 'खेती', 'छिड़काव', 'सिंचाई', 'बुआई', 'बीज',
 )
+# Plain-language rain questions — lead with Yes / Maybe / Unlikely, not a % dump.
+RAIN_QUESTION_WORDS = (
+    'will it rain', 'will rain', 'going to rain', 'gonna rain', 'is it raining',
+    'rain today', 'rain tomorrow', 'any rain', 'baarish', 'barish', 'barsaat',
+    'बारिश', 'वर्षा', 'क्या बारिश', 'बारिश होगी', 'বৃষ্টি', 'వర్షం', 'पाऊस',
+    'மழை', 'વરસાદ', 'ಮಳೆ', 'മഴ', 'ਮੀਂਹ', 'ବର୍ଷା',
+)
 
 
 def is_action_question(text: str) -> bool:
     lowered = text.lower()
     return any(word in lowered for word in ACTION_WORDS)
+
+
+def is_rain_question(text: str) -> bool:
+    lowered = text.lower()
+    if any(word in lowered for word in RAIN_QUESTION_WORDS):
+        return True
+    # Short "rain?" / "rain" alone still wants a yes/no, not a stats dump.
+    stripped = lowered.strip(' ?!.')
+    return stripped in {'rain', 'baarish', 'barish', 'बारिश'}
+
+
+def rain_decision_lead(rain_max: float | int | None) -> str:
+    """Plain Yes/Maybe/Unlikely from verified max rain chance. Never invent numbers."""
+    if rain_max is None:
+        return 'I cannot say clearly whether it will rain — rain chance is unavailable for that window.'
+    chance = float(rain_max)
+    if chance >= 60:
+        return 'Yes — rain is likely in this window. Plan as if it will rain.'
+    if chance >= 35:
+        return 'Maybe — rain is possible. Keep outdoor plans flexible.'
+    return 'Unlikely — dry conditions look more probable in this window.'
 
 
 def phrase(language: str, key: str, **kwargs) -> str:
@@ -243,9 +271,23 @@ def answer(request: ChatRequest, bundle: dict):
         # Official warnings always first when present.
         official = bundle.get('official_alerts') or bundle.get('alerts') or []
         active_official = [a for a in official if a]
-        if active_official and is_action_question(text):
+        if active_official and (is_action_question(text) or is_rain_question(text)):
             parts.append(format_official_warning(language, active_official[0]))
-        if is_action_question(text):
+        if is_rain_question(text):
+            rain_max = max(rain) if rain else None
+            parts.append(rain_decision_lead(rain_max))
+            parts.append(f'{display_place_name(request.location.name)} · {date.isoformat()}')
+            if rain:
+                parts.append(phrase(language, 'rain', value=max(rain)))
+            if temps:
+                parts.append(phrase(language, 'temperature', lo=min(temps), hi=max(temps)))
+            # Keep occupation tips after the yes/no rain decision.
+            for rec in advice:
+                if rec not in parts:
+                    parts.append(rec)
+                if len(parts) >= 8:
+                    break
+        elif is_action_question(text):
             if lead_advice:
                 parts.extend(lead_advice[:2])
             else:
@@ -286,7 +328,7 @@ def answer(request: ChatRequest, bundle: dict):
         'rain' if mentions(text, ('rain', 'baarish', 'बारिश', 'বৃষ্টি', 'వర్షం', 'पाऊस', 'மழை', 'વરસાદ', 'ಮಳೆ', 'മഴ', 'ਮੀਂਹ', 'ବର୍ଷା')) else 'forecast')
     return {'answer':message, 'language':language, 'day_offset':offset,
         'retrieved_at':bundle['retrieved_at'], 'is_stale':bundle['is_stale'],
-        'sources':bundle['sources'], 'agreement':bundle['agreement'],
+        'sources':bundle['sources'], 'agreement':bundle.get('agreement', 'forecast'),
         'conversation_context':{'conversation_id':str(request.conversation_id),
             'resolved_location':public_location(request.location), 'resolved_day_offset':offset,
             'profile':request.profile, 'last_intent':intent,

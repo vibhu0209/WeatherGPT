@@ -161,7 +161,7 @@ async def test_sowing_answer_keeps_human_decision_before_no_warning_status(monke
         return httpx.Response(200, json={'choices': [{'message': {
             'role': 'assistant',
             'content': (
-                'Weather-wise, yes — conditions look reasonably suitable for sowing today. '
+                'Yes — weather-wise, you can sow today. '
                 'Tell me the crop for more specific advice.'
             ),
         }}]})
@@ -177,7 +177,7 @@ async def test_sowing_answer_keeps_human_decision_before_no_warning_status(monke
     assert result is not None
     assert calls['n'] == 4
     assert result['response_origin'] == 'groq_tool_orchestrated'
-    assert result['answer'].startswith('Weather-wise, yes')
+    assert result['answer'].startswith('Yes — weather-wise')
     assert 'Temperature:' not in result['answer']
 
 

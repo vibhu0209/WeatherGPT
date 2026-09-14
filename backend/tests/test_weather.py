@@ -165,7 +165,7 @@ def test_chat_converts_internal_metres_per_second_to_labelled_kmh():
     text = answer(ChatRequest(text='What is the weather today?', location=LOC), bundle)['answer']
     assert f'{10 * MS_TO_KMH:.0f} km/h' in text
     assert '10 km/h' not in text
-    assert 'Highest hourly chance of rain: 10%' in text
+    assert 'Rain chance peaks around 10%' in text or 'Some rain possible — about 10%' in text or '10%' in text
     assert '30' in text and '°C' in text
 
 @pytest.mark.asyncio

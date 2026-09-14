@@ -209,6 +209,30 @@ async def get_agromet_advisory(request: AgrometInput) -> ToolResult:
     )
 
 
+class HazardInput(BaseModel):
+    location: Location
+
+
+async def assess_infrastructure_hazard_tool(request: HazardInput) -> ToolResult:
+    from .alerts import alert_service
+    from .geohazard import assess_infrastructure_hazard
+
+    bundle = await service.bundle(request.location)
+    official = await alert_service.official(request.location)
+    data = await assess_infrastructure_hazard(
+        request.location,
+        bundle.get('hourly') or [],
+        official_alerts=official.get('alerts') or [],
+    )
+    return ToolResult(
+        data=data,
+        retrieved_at=data['retrieved_at'],
+        is_stale=bool(bundle.get('is_stale')),
+        sources=data.get('sources') or [],
+        status='available',
+    )
+
+
 TOOL_REGISTRY = {
     'get_current_weather': (Location, get_current_weather),
     'get_hourly_forecast': (TimeRangeInput, get_hourly_forecast),
@@ -222,4 +246,5 @@ TOOL_REGISTRY = {
     'get_saved_locations': (SavedLocationsInput, get_saved_locations),
     'set_alert_rule': (AlertRuleInput, set_alert_rule),
     'get_agromet_advisory': (AgrometInput, get_agromet_advisory),
+    'assess_infrastructure_hazard': (HazardInput, assess_infrastructure_hazard_tool),
 }

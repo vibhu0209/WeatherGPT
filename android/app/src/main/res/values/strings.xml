@@ -81,6 +81,16 @@
     <string name="risk_help">These are calculated from forecast values. They are separate from government warnings.</string>
     <string name="no_risk_estimates">No local risk threshold was crossed in the downloaded forecast. Still check official warnings.</string>
     <string name="weather_risk">WeatherGPT Risk Estimate</string>
+    <string name="infra_hazard_title">Roads &amp; landslide concern</string>
+    <string name="infra_hazard_help">Combines rainfall, soil moisture, terrain slope proxy and nearby OpenStreetMap roads/villages. This is a WeatherGPT estimate — not an official geological warning.</string>
+    <string name="infra_hazard_severity">Concern level</string>
+    <string name="infra_rain_24h">24h rain</string>
+    <string name="infra_soil">Soil moisture</string>
+    <string name="infra_slope">Slope proxy</string>
+    <string name="infra_elevation">Elevation</string>
+    <string name="infra_roads">Nearby roads / highways</string>
+    <string name="infra_settlements">Nearby settlements</string>
+    <string name="ask_road_risk">Ask WeatherGPT about road risk</string>
     <string name="temperature">Temperature</string>
     <string name="rain">Chance of rain</string>
     <string name="wind">Wind</string>

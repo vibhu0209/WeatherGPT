@@ -81,6 +81,11 @@ data class ScoreComponent(val name:String, val penalty:Int, val reason:String)
 data class WeatherScore(val score:Int?, val label:String, val profile:String, val time_window:String?=null, val components:List<ScoreComponent>?=null, val limiting_factors:List<String>?=null, val calculated_at:String?=null, val disclaimer:String)
 data class Recommendation(val severity:String, val message:String, val variable:String?=null, val time_window:String?=null, val rule:String?=null, val source:String?=null)
 data class RiskEstimate(val id:String, val classification:String, val kind:String, val severity:String, val message:String, val valid_at:String, val supporting_value:Double, val unit:String, val rationale:String, val calculated_at:String, val disclaimer:String)
+data class HazardInputs(val rain_24h_mm:Double?=null, val rain_48h_mm:Double?=null, val soil_moisture_0_to_7cm:Double?=null, val soil_moisture_7_to_28cm:Double?=null, val elevation_m:Double?=null, val slope_percent:Double?=null, val slope_note:String?=null)
+data class HazardInfraItem(val name:String?=null, val `class`:String?=null, val place:String?=null, val latitude:Double?=null, val longitude:Double?=null)
+data class HazardInfrastructure(val status:String?=null, val radius_m:Int?=null, val roads_at_risk_priority:List<HazardInfraItem>?=null, val settlements_nearby:List<HazardInfraItem>?=null, val message:String?=null)
+data class InfrastructureHazard(val classification:String, val kind:String, val place:String, val decision:String, val severity:String, val label:String, val score:Int, val factors:List<String>?=null, val inputs:HazardInputs?=null, val infrastructure:HazardInfrastructure?=null, val disclaimer:String, val retrieved_at:String, val sources:List<String>?=null)
+data class InfrastructureHazardDto(val location:Place, val data:InfrastructureHazard, val is_stale:Boolean=false)
 data class OfficialAlert(val id:String, val classification:String, val sender:String?, val sent:String?, val event:String, val headline:String, val description:String?, val instruction:String?, val severity:String, val urgency:String, val certainty:String, val effective:String?, val expires:String?, val area_descriptions:List<String>?, val source_format:String)
 data class Confidence(val score:Int, val label:String, val calibrated_probability:Boolean, val reasons:List<String>)
 data class BundleDto(val location:Place, val hourly:List<Hour>, val retrieved_at:String, val is_stale:Boolean, val sources:List<String>, val source_count:Int, val agreement:String, val alerts_status:String, val current:Hour?=null, val daily:List<Day>?=null, val scores:Map<String,WeatherScore>?=null, val recommendations:Map<String,List<Recommendation>>?=null, val risk_estimates:List<RiskEstimate>?=null, val confidence:Confidence?=null, val disagreement_reasons:List<String>?=null, val official_status:String?=null, val official_alerts:List<OfficialAlert>?=null, val alerts_message:String?=null)
@@ -99,6 +104,12 @@ interface Api {
     @POST("v1/locations/resolve") suspend fun resolve(@Body body:ResolveBody):ResolvedPlace
     @POST("v1/weather/bundle") suspend fun bundle(@Body body:BundleBody,@Header("If-None-Match") etag:String?):Response<BundleDto>
     @POST("v1/chat/message") suspend fun chat(@Body body:ChatBody):AnswerDto
+    @GET("v1/hazards/infrastructure") suspend fun infrastructureHazard(
+        @HttpQuery("latitude") latitude:Double,
+        @HttpQuery("longitude") longitude:Double,
+        @HttpQuery("name") name:String,
+        @HttpQuery("timezone") timezone:String,
+    ):InfrastructureHazardDto
     @POST("v1/device/register") suspend fun registerDevice(@Body body:DeviceRegistrationBody=DeviceRegistrationBody()):DeviceRegistrationDto
     @POST("v1/alerts/subscriptions") suspend fun createSubscription(@Body body:AlertSubscriptionBody,@Header("X-Device-Id") deviceId:String,@Header("Authorization") authorization:String):Map<String,Any>
 }

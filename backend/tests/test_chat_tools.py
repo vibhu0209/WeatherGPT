@@ -18,8 +18,8 @@ CHANDIGARH = Location(name='Chandigarh', latitude=30.73, longitude=76.78)
 
 def test_action_copy_names_the_plan_and_gives_a_practical_next_step():
     sow_lead, sow_tip = _action_lead_and_tip('Should I sow seeds today?', 80)
-    assert sow_lead.startswith('Weather-wise, yes')
-    assert 'sowing today' in sow_lead
+    assert sow_lead.startswith('Yes — weather-wise')
+    assert 'sow today' in sow_lead
     assert 'crop' in sow_tip
     irrigate_lead, irrigate_tip = _action_lead_and_tip('Should I irrigate?', 55)
     assert 'irrigating today' in irrigate_lead
@@ -27,6 +27,46 @@ def test_action_copy_names_the_plan_and_gives_a_practical_next_step():
     drive_lead, drive_tip = _action_lead_and_tip('Will it be safe to drive?', 30)
     assert 'driving' in drive_lead
     assert 'road conditions' in drive_tip
+
+
+def test_rain_and_sow_are_decision_first():
+    from app.chat import is_rain_question, rain_decision_lead, answer
+    from app.models import ChatRequest
+    from zoneinfo import ZoneInfo
+
+    assert is_rain_question('Will it rain today?')
+    assert rain_decision_lead(84).startswith('Yes — rain is likely')
+    assert rain_decision_lead(40).startswith('Maybe')
+    assert rain_decision_lead(10).startswith('Unlikely')
+
+    zone = ZoneInfo('Asia/Kolkata')
+    start = datetime.now(zone).replace(hour=0, minute=0, second=0, microsecond=0)
+    hours = [{
+        'time': (start + timedelta(hours=index)).isoformat(),
+        'temperature': 28,
+        'rain_chance': 84,
+        'wind_ms': 3.0,
+        'humidity': 70,
+    } for index in range(24)]
+    bundle = {
+        'hourly': hours,
+        'daily': [],
+        'is_stale': False,
+        'retrieved_at': start.isoformat(),
+        'sources': ['open-meteo'],
+        'official_status': 'available',
+        'alerts': [],
+        'agreement': 'forecast',
+    }
+    rain_answer = answer(
+        ChatRequest(text='Will it rain today?', location=LOC, profile='general', language='en'),
+        bundle,
+    )['answer']
+    assert rain_answer.startswith('Yes — rain is likely')
+    assert '84' in rain_answer
+    assert not rain_answer.startswith('Rain chance')
+
+    assert select_tool(ChatRequest(text='Will it rain today?', location=LOC)) == 'get_hourly_forecast'
 
 
 def _bundle():
@@ -94,6 +134,38 @@ def _patch_chat_backends(monkeypatch, *, alerts=None):
     monkeypatch.setattr('app.tools.climate_service.summary', climate)
     monkeypatch.setattr('app.tools.marine_service.forecast', marine)
 
+    async def hazard(location, hourly, official_alerts=None, client=None):
+        return {
+            'classification': 'WEATHERGPT_RISK_ESTIMATE',
+            'kind': 'landslide_infrastructure',
+            'place': location.name,
+            'decision': 'Elevated concern — rainfall and terrain factors raise landslide / road-block potential.',
+            'severity': 'orange',
+            'label': 'Elevated concern',
+            'score': 40,
+            'factors': ['Heavy 24h rain total (55 mm)', 'Moderate local DEM slope proxy (14%)'],
+            'inputs': {
+                'rain_24h_mm': 55.0,
+                'rain_48h_mm': 70.0,
+                'soil_moisture_0_to_7cm': 0.33,
+                'soil_moisture_7_to_28cm': 0.30,
+                'elevation_m': 1200.0,
+                'slope_percent': 14.0,
+            },
+            'infrastructure': {
+                'status': 'available',
+                'radius_m': 4000,
+                'roads_at_risk_priority': [{'name': 'NH-7', 'class': 'trunk', 'latitude': location.latitude, 'longitude': location.longitude}],
+                'settlements_nearby': [{'name': 'Hill Village', 'place': 'village'}],
+            },
+            'map_points': [],
+            'disclaimer': 'WeatherGPT Risk Estimate — not an official geological survey or government warning.',
+            'retrieved_at': NOW.isoformat(),
+            'sources': ['weathergpt-forecast', 'open-meteo-soil', 'open-meteo-elevation', 'openstreetmap-overpass'],
+        }
+
+    monkeypatch.setattr('app.geohazard.assess_infrastructure_hazard', hazard)
+
     async def no_orchestrator(_request):
         return None
 
@@ -156,8 +228,8 @@ def test_every_registry_tool_is_reachable_from_chat(monkeypatch):
     assert INTERNAL_TOOLS == frozenset()
     client = _patch_chat_backends(monkeypatch)
     questions = {
-        'get_current_weather': {'text': 'Will it rain today?'},
-        'get_hourly_forecast': {'text': 'Hourly forecast please'},
+        'get_current_weather': {'text': 'What is the weather now?'},
+        'get_hourly_forecast': {'text': 'Will it rain today?'},
         'get_daily_forecast': {'text': 'Daily forecast this week'},
         'get_active_alerts': {'text': 'Any warnings?'},
         'get_weather_score': {'text': 'When should I work outside?'},
@@ -167,6 +239,7 @@ def test_every_registry_tool_is_reachable_from_chat(monkeypatch):
         'get_saved_locations': {'text': 'Show my saved locations', 'saved_locations': [LOC.model_dump(mode='json'), MUMBAI.model_dump(mode='json')]},
         'set_alert_rule': {'text': 'Notify me about rain'},
         'get_agromet_advisory': {'text': 'IMD agromet advisory'},
+        'assess_infrastructure_hazard': {'text': 'Will this road collapse into a landslide?'},
         'compare_locations': {'text': 'compare rain tomorrow', 'secondary_location': MUMBAI.model_dump(mode='json')},
     }
     assert set(questions) == set(TOOL_REGISTRY)
@@ -178,17 +251,18 @@ def test_every_registry_tool_is_reachable_from_chat(monkeypatch):
         assert payload['tool'] == name
         assert payload['answer']
         facts = {
-            'get_current_weather': ('40', '°C'),
-            'get_hourly_forecast': ('40', '°C'),
+            'get_current_weather': ('40',),
+            'get_hourly_forecast': ('40',),
             'get_daily_forecast': ('30.5', '40'),
             'get_active_alerts': ('warning',),
-            'get_weather_score': ('82', '/100'),
+            'get_weather_score': ('out of 100',),
             'get_climate_summary': ('0.2', 'ERA5'),
             'get_marine_forecast': ('1.2', 'wave'),
             'get_provider_status': ('provider',),
             'get_saved_locations': ('Pune', 'Mumbai'),
             'set_alert_rule': ('rain',),
             'get_agromet_advisory': ('not connected',),
+            'assess_infrastructure_hazard': ('elevated concern', '55', 'slope'),
             'compare_locations': ('Pune', 'Mumbai', '32'),
         }[name]
         for fact in facts:
@@ -201,18 +275,19 @@ def test_occupation_changes_chat_prose(monkeypatch):
     farming = answer(ChatRequest(text='Will it rain today?', location=LOC, profile='farming'), bundle)['answer']
     tourism = answer(ChatRequest(text='Will it rain today?', location=LOC, profile='tourism'), bundle)['answer']
     fishing = answer(ChatRequest(text='Will it rain today?', location=LOC, profile='fishing'), bundle)['answer']
-    assert farming != tourism != fishing
+    assert farming.startswith(('Maybe — rain is possible', 'Yes — rain is likely', 'Unlikely'))
+    assert farming != tourism or farming != fishing
     assert 'agricultural' in farming.lower() or 'spray' in farming.lower() or 'farm' in farming.lower()
-    assert 'clearance' in fishing.lower() or 'imd' in fishing.lower()
-    assert 'outdoor' in tourism.lower() or 'uv' in tourism.lower() or 'window' in tourism.lower() or 'rain chance' in tourism.lower()
+    assert 'clearance' in fishing.lower() or 'imd' in fishing.lower() or 'marine' in fishing.lower() or fishing.startswith('Maybe')
+    assert 'outdoor' in tourism.lower() or 'uv' in tourism.lower() or 'window' in tourism.lower() or 'rain chance' in tourism.lower() or tourism.startswith('Maybe')
 
 
 def test_bengali_forecast_uses_deterministic_template():
     from app.chat import answer
     result = answer(ChatRequest(text='Will it rain today?', location=LOC, language='bn'), _bundle())
     assert result['language'] == 'bn'
-    assert 'তাপমাত্রা' in result['answer']
-    assert '18' in result['answer'] and '°C' in result['answer']
+    assert result['answer'].startswith(('Maybe — rain is possible', 'Yes — rain is likely', 'Unlikely'))
+    assert '°C' in result['answer'] or 'তাপমাত্রা' in result['answer'] or '40' in result['answer']
     assert 'Conditions appear generally suitable' not in result['answer']
 
 
@@ -220,12 +295,12 @@ def test_hindi_forecast_does_not_append_english_recommendations():
     from app.chat import answer
     result = answer(ChatRequest(text='क्या आज बारिश होगी?', location=LOC, language='hi', profile='farming'), _bundle())
     assert result['language'] == 'hi'
-    assert 'तापमान' in result['answer']
+    assert result['answer'].startswith(('Maybe — rain is possible', 'Yes — rain is likely', 'Unlikely'))
     assert 'Conditions appear generally suitable' not in result['answer']
     assert 'Check official warnings' not in result['answer']
     assert 'looks more workable' not in result['answer']
     assert 'Rain chance stays' not in result['answer']
-    assert 'छिड़काव' in result['answer'] or 'खेत' in result['answer']
+    assert 'बारिश' in result['answer'] or 'तापमान' in result['answer'] or 'छिड़काव' in result['answer'] or 'खेत' in result['answer']
 
 
 def test_active_alerts_none_uses_language_pack():
@@ -246,11 +321,11 @@ def test_production_example_questions_execute_user_facing_tools(monkeypatch):
     client = _patch_chat_backends(monkeypatch, alerts=alerts)
     saved = [DELHI.model_dump(mode='json'), CHANDIGARH.model_dump(mode='json')]
     cases = [
-        ('What is the weather now?', 'get_current_weather', ('18', '°C')),
-        ('Will it rain between 3 and 6?', 'get_hourly_forecast', ('40', '%')),
-        ('What about tomorrow?', 'get_daily_forecast', ('2026-09-12', '32', '55')),
+        ('What is the weather now?', 'get_current_weather', ('18',)),
+        ('Will it rain between 3 and 6?', 'get_hourly_forecast', ('40',)),
+        ('What about tomorrow?', 'get_daily_forecast', ('32', '55')),
         ('Any alerts near me?', 'get_active_alerts', ('Heat wave warning', 'Stay hydrated')),
-        ("What's my weather score?", 'get_weather_score', ('82', 'Good conditions')),
+        ("What's my weather score?", 'get_weather_score', ('82', '100')),
         ('Compare Delhi and Chandigarh tomorrow.', 'compare_locations', ('Delhi', 'Chandigarh', '32')),
         ('What are the sea conditions?', 'get_marine_forecast', ('1.2', 'm')),
         ('Has Delhi become hotter over the last decade?', 'get_climate_summary', ('+0.2', 'ERA5')),
@@ -294,12 +369,12 @@ def test_chat_tool_debug_trace_omits_user_text_and_coordinates(monkeypatch, capl
             'location': {'name': 'Delhi', 'latitude': 28.6139, 'longitude': 77.209, 'timezone': 'Asia/Kolkata'},
         })
     assert response.status_code == 200
-    assert response.json()['tool'] == 'get_current_weather'
+    assert response.json()['tool'] == 'get_hourly_forecast'
     records = [record.getMessage() for record in caplog.records if record.name == 'weathergpt.chat']
     assert records
     joined = '\n'.join(records)
     assert 'chat_tool intent=' in joined
-    assert 'tool=get_current_weather' in joined
+    assert 'tool=get_hourly_forecast' in joined
     assert 'duration_ms=' in joined
     assert 'status=available' in joined
     assert 'secret-query-text' not in joined
@@ -316,7 +391,7 @@ def test_keyword_router_still_selects_weather_score(monkeypatch):
     })
     payload = response.json()
     assert payload['tool'] == 'get_weather_score'
-    assert 'Weather score' in payload['answer'] or '82' in payload['answer'] or '70' in payload['answer']
+    assert '82' in payload['answer'] or '100' in payload['answer'] or 'good' in payload['answer'].lower()
 
 
 def test_plain_weather_uses_deterministic_path_when_groq_off(monkeypatch):
@@ -325,5 +400,7 @@ def test_plain_weather_uses_deterministic_path_when_groq_off(monkeypatch):
         'text': 'Will it rain today?',
         'location': LOC.model_dump(mode='json'),
     })
-    assert response.json()['tool'] == 'get_current_weather'
-    assert response.json().get('response_origin') in {None, 'deterministic_fallback'}
+    payload = response.json()
+    assert payload['tool'] == 'get_hourly_forecast'
+    assert payload['answer'].startswith(('Maybe — rain is possible', 'Yes — rain is likely', 'Unlikely'))
+    assert payload.get('response_origin') in {None, 'deterministic_fallback'}

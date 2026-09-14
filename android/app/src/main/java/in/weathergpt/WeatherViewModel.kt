@@ -27,6 +27,8 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
     val chatStatus=MutableStateFlow("")
     val followUps=MutableStateFlow<List<String>>(emptyList())
     val backendOnline=MutableStateFlow<Boolean?>(null)
+    val infrastructureHazard=MutableStateFlow<InfrastructureHazard?>(null)
+    val hazardBusy=MutableStateFlow(false)
     /**
      * Failure for the weather-bundle / health path only.
      * Chat offline fallback must not sticky-overwrite this, or Home keeps a
@@ -187,6 +189,21 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
             }
         }
     }
+    fun loadInfrastructureHazard(p:Place?=place.value) {
+        if(p==null) return
+        viewModelScope.launch {
+            if(!online()) return@launch
+            hazardBusy.value=true
+            try {
+                infrastructureHazard.value=repo.call(base()){
+                    it.infrastructureHazard(p.latitude,p.longitude,p.name,p.timezone)
+                }.data
+            } catch(e:CancellationException) { throw e }
+            catch(_:Exception) {
+                // Keep prior estimate if any; Alerts screen still shows weather risks.
+            } finally { hazardBusy.value=false }
+        }
+    }
     fun refresh(p:Place?=place.value) {
         if(p==null || busy.value) return
         viewModelScope.launch {
@@ -205,6 +222,7 @@ class WeatherViewModel(app:Application):AndroidViewModel(app) {
                 repo.refresh(p,base(),value("low_data")=="true")
                 repo.dao.weatherOnce(repo.key(p))?.let { scheduleCachedAlerts(getApplication(),p,repo.gson.fromJson(it.json,BundleDto::class.java)) }
                 recordWeather("bundle","v1/weather/bundle",null)
+                loadInfrastructureHazard(p)
             }
             catch(e:CancellationException) { throw e }
             catch(e:Exception) {

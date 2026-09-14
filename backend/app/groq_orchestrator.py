@@ -46,6 +46,12 @@ _TOOL_DESCRIPTIONS = {
     'get_saved_locations': 'List saved places already provided by the client.',
     'set_alert_rule': 'Describe saving a local alert rule preference (not a live government warning).',
     'get_agromet_advisory': 'Official agromet advisory status (often unavailable; do not invent crop advice).',
+    'assess_infrastructure_hazard': (
+        'Landslide / road-cut / infrastructure connectivity estimate from verified rainfall, '
+        'Open-Meteo soil moisture, DEM slope proxy, and OpenStreetMap roads/villages. '
+        'Use for landslide, mudslide, road collapse, cut-off villages, highway risk, GIS-style infrastructure questions. '
+        'Always a WeatherGPT risk estimate — never an official NDMA/IMD geological verdict.'
+    ),
 }
 
 
@@ -169,7 +175,9 @@ def _compact_context(request: ChatRequest) -> str:
         f'Saved places: {", ".join(saved) if saved else "(none)"}\n'
         f'Question: {sanitize_llm_question(request.text)}\n'
         'Call tools before stating weather facts. Coordinates are bound server-side.\n'
-        'If this is an action / should-I question: decide first, then short reason, then supporting weather.'
+        'Prefer tools over guessing for any weather or infrastructure question.\n'
+        'If this is an action / should-I question: decide first, then short reason, then supporting weather.\n'
+        'If this is a landslide / road / cut-off / GIS infrastructure question: call assess_infrastructure_hazard.'
     )
 
 
@@ -228,6 +236,7 @@ def _follow_ups_for(request: ChatRequest, tools: list[str]) -> list[str]:
         'get_hourly_forecast': ['Why this time?', 'Warnings', 'Tomorrow'],
         'get_daily_forecast': ['Hourly', 'Warnings', 'Score'],
         'get_current_weather': ['Hourly', 'Warnings', 'Tomorrow'],
+        'assess_infrastructure_hazard': ['Official warnings', 'Road risk', 'Rain later?'],
     }
     picked = []
     for tool in tools:
@@ -394,6 +403,8 @@ async def _build_response(
         final = draft or final
     elif validator != 'pass' and (not answer_text or answer_text == '\n\n'.join(fact_chunks)):
         final = draft or final
+    from .layperson import format_layperson_answer
+    final = format_layperson_answer(final)
     suggestions = _follow_ups_for(request, unique_tools)
     duration_ms = int((time.monotonic() - started) * 1000)
     payload_out = _attach_tool({
@@ -471,14 +482,15 @@ async def orchestrate_chat(request: ChatRequest) -> dict | None:
                     messages.append({
                         'role': 'user',
                         'content': (
-                            'VERIFIED_ONLY: Answer from the tool verified_draft text only. '
-                            'Decision first for action questions, then 1–2 weather reasons, then brief supporting numbers. '
-                            'Keep numbers/units exact as in the drafts (do not invent or inventively round). '
-                            'Do not mention official warnings, all-clears, or alert severity '
+                            'VERIFIED_ONLY: Answer like a helpful local guide, not a data dump. '
+                            'Use 2–4 short sentences. Lead with Yes / Maybe / No / Wait (or rain Yes/Maybe/Unlikely). '
+                            'Then one plain reason. Put at most one number. '
+                            'Do not paste weather-score lines, “supporting reading”, or long alert status text. '
+                            'Keep numbers/units exact as in the drafts (do not invent). '
+                            'Do not mention official warnings or all-clears '
                             'unless get_active_alerts appears in the tool results. '
-                            'Mention source disagreement only if it changes the recommendation. '
                             'If drafts conflict, prefer official warnings, then the weather-score decision, '
-                            'and use forecast numbers only as supporting evidence.'
+                            'and use forecast numbers only as brief support.'
                         ),
                     })
             elif used_tools and messages and messages[-1].get('role') == 'tool':

@@ -45,7 +45,7 @@ def test_polish_skips_when_there_are_no_immutable_facts():
 
 
 def test_forecast_facts_stay_immutable_while_prose_can_change():
-    draft = 'Pune · 2026-09-12\n\nTemperature: 18 to 30.5°C.\n\nHighest hourly chance of rain: 40%.\n\nCheck official warnings before going out.'
+    draft = 'Pune · 2026-09-12\n\nTemperature: 18 to 30.5°C.\n\nRain chance peaks around 40% (supporting detail).\n\nCheck official warnings before going out.'
     facts, prose = split_immutable(draft)
     assert '18' in facts and '30.5' in facts and '40' in facts
     assert 'Check official warnings' in prose
@@ -58,7 +58,7 @@ def test_occupation_advice_is_polishable_without_unlocking_numbers():
     draft = (
         'Delhi · 2026-09-12\n\n'
         'Temperature: 27.4 to 32°C.\n\n'
-        'Highest hourly chance of rain: 26%.\n\n'
+        'Rain chance peaks around 26% (supporting detail).\n\n'
         'Models differ a little on timing — the recommended window still stands.\n\n'
         'For farming today, delay spray until rain chance falls.\n\n'
         'Check official warnings before going out.'
@@ -71,7 +71,7 @@ def test_occupation_advice_is_polishable_without_unlocking_numbers():
     polished = (
         'Delhi · 2026-09-12\n'
         'Temperature: 27.4 to 32°C.\n'
-        'Highest hourly chance of rain: 26%.\n'
+        'Rain chance peaks around 26% (supporting detail).\n'
         'Sources do not fully agree, so keep plans flexible.\n'
         'Farmers should wait for a clearer spray window.\n'
         'Check official warnings before going out.'
