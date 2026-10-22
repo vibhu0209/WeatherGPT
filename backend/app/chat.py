@@ -5,7 +5,8 @@ import re
 from zoneinfo import ZoneInfo
 from .models import ChatRequest, MS_TO_KMH
 from .security import public_location, display_place_name
-from .decision import recommendations_for_bundle, spray_window
+from .decision import recommendations_for_bundle
+from .work_window import format_work_window_answer, infer_work_activity, plan_from_bundle
 
 SUPPORTED_LANGUAGES = ('en', 'hi', 'bn', 'te', 'mr', 'ta', 'gu', 'kn', 'ml', 'pa', 'or')
 PHRASES = loads((Path(__file__).with_name('chat_phrases.json')).read_text(encoding='utf-8'))
@@ -41,7 +42,7 @@ AGROMET_WORDS = ('agromet', 'advisory', 'कृषि सलाह', 'farming ad
 # Decision / suitability questions — answer what to do before dumping stats.
 ACTION_WORDS = (
     'should i', 'should we', 'can i', 'can we', 'is it safe', 'safe to', 'good time',
-    'sow', 'sowing', 'seed', 'irrigat', 'spray', 'spraying', 'fish', 'fishing',
+    'sow', 'sowing', 'seed', 'irrigat', 'spray', 'spraying', 'harvest', 'harvesting', 'fish', 'fishing',
     'drive', 'driving', 'walk', 'hiking', 'dry clothes', 'outdoors', 'outdoor',
     'travel', 'travelling', 'traveling', 'work outside', 'field work', 'go out',
     'kheti', 'खेती', 'छिड़काव', 'सिंचाई', 'बुआई', 'बीज',
@@ -226,6 +227,7 @@ def answer(request: ChatRequest, bundle: dict):
     rows, offset = select_time_rows(request, bundle)
     date = (datetime.now(zone).date()+timedelta(days=offset))
     language = chat_language(request.language)
+    used_work_window = False
     if mentions(text, ALERT_WORDS):
         official = bundle.get('official_alerts') or bundle.get('alerts') or []
         if official:
@@ -238,13 +240,10 @@ def answer(request: ChatRequest, bundle: dict):
         message = phrase(language, 'marine_disclaimer')
     elif mentions(text, AGROMET_WORDS):
         message = phrase(language, 'agromet')
-    elif any(w in text for w in ['spray', 'छिड़काव', 'स्प्रे']):
-        spray = spray_window(rows or bundle.get('hourly') or [], request.location.timezone)
-        hours = ', '.join(spray['suitable_hours_local'][:3])
-        if hours:
-            message = phrase(language, 'advice_spray_hours', hours=hours) + ' ' + phrase(language, 'spray')
-        else:
-            message = phrase(language, 'advice_spray_none') + ' ' + phrase(language, 'spray')
+    elif activity := infer_work_activity(request.text):
+        plan = plan_from_bundle(bundle, activity, request.location.timezone)
+        message = format_work_window_answer(plan, activity)
+        used_work_window = True
     elif mentions(text, COMPARE_WORDS):
         message = phrase(language, 'compare_need_second')
     elif mentions(text, CLIMATE_WORDS):
@@ -357,7 +356,7 @@ def answer(request: ChatRequest, bundle: dict):
                     parts.append(rec)
         parts.append(phrase(language, 'official'))
         message = '\n\n'.join(parts)
-    if bundle['is_stale']:
+    if bundle['is_stale'] and not used_work_window:
         message = phrase(language, 'stale')+message
     intent = ('alerts' if mentions(text, ALERT_WORDS) else
         'marine' if mentions(text, MARINE_WORDS) else

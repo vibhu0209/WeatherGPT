@@ -1,10 +1,20 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from threading import Lock
 
-_STORE = Path(__file__).resolve().parents[1] / "data" / "alert_rules.json"
+
+def _default_store_path() -> Path:
+    """Keep mutable user rules outside the installed/read-only application tree."""
+    base = os.getenv('LOCALAPPDATA')
+    if base:
+        return Path(base) / 'WeatherGPT' / 'alert_rules.json'
+    return Path.home() / '.weathergpt' / 'alert_rules.json'
+
+
+_STORE = _default_store_path()
 _LOCK = Lock()
 
 

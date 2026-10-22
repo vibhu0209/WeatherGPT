@@ -7,6 +7,8 @@ Official alerts and WeatherGPT Risk Estimates are separate response collections 
 
 Backend: FastAPI → typed location validation → asynchronous provider adapters → Pydantic normalized points → timestamp-aligned median consensus → deterministic answer templates.
 
+Work-window planner (Round 2): hourly bundle → `work_window.plan_work_windows` (reuses `decision.spray_window` / `harvest_window` thresholds; exclusive end = last hour + 1h) → tool `get_work_window` → GET `/v1/weather/work-window` and spray/harvest chat. Avoid runs: rain_chance ≥ 60% or WMO thunder codes 95/96/99. Empty hourly is `unavailable`; usable forecast with no run is `available` with a null best window. Missing, invalid, or duplicate timestamps form hard run boundaries; unknown alert inputs are never treated as verified safe conditions.
+
 Canonical units: Celsius, mm, metres/second, percentages, UTC timestamps with a separate IANA location timezone. Three-hour OpenWeather precipitation is deliberately excluded from one-hour fusion. Duplicate model families and stale provider retrievals are discarded. Missing values stay null.
 
 Routes implemented:
@@ -19,6 +21,7 @@ Routes implemented:
 - GET /v1/weather/hourly?latitude=...&longitude=...&hours=24
 - GET /v1/weather/daily?latitude=...&longitude=...&days=7
 - GET /v1/weather/score?latitude=...&longitude=...&profile=general
+- GET /v1/weather/work-window?latitude=...&longitude=...&activity=spray|harvest
 - GET /v1/weather/alerts?latitude=...&longitude=...
 - GET /v1/climate/summary?latitude=...&longitude=...&metric=temperature&years=10
 - POST /v1/chat/message (text, location, language, profile, day_offset)

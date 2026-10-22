@@ -18,8 +18,9 @@ from .security import public_location, display_place_name
 from .tools import (
     AlertRuleInput, AgrometInput, ClimateInput, CompareInput, DailyInput, HazardInput, MarineInput,
     ProviderStatusInput, SavedLocationsInput, ScoreInput, TOOL_REGISTRY, TimeRangeInput,
-    ToolResult,
+    ToolResult, WorkWindowInput,
 )
+from .work_window import DEFAULT_MIN_HOURS, format_work_window_answer, infer_work_activity
 from .weather import service
 
 USER_FACING_TOOLS = frozenset(TOOL_REGISTRY)
@@ -62,6 +63,13 @@ def select_tool(request: ChatRequest) -> str:
         'downpour', 'cloudburst', 'why is', 'why are', 'why raining', 'radar',
     )):
         return 'get_hourly_forecast'
+    if any(word in text for word in (
+        'landslide', 'landslip', 'mudslide', 'debris flow', 'slope failure',
+        'road collapse', 'road cut', 'will the road', 'highway blocked', 'cut off',
+        'भूस्खलन', 'सड़क', 'infrastructure risk', 'terrain angle', 'soil moisture',
+        'gis', 'which roads', 'village cut',
+    )):
+        return 'assess_infrastructure_hazard'
     # Emergency profile defaults to the multi-hazard board for open safety questions.
     if request.profile == 'emergency' and any(
         word in text for word in (
@@ -88,6 +96,10 @@ def select_tool(request: ChatRequest) -> str:
             'alert', 'warning', 'चेतावनी', 'সতর্কতা', 'హెచ్చరిక', 'इशारे',
             'எச்சரிக்கை', 'ચેતવણી', 'ಎಚ್ಚರಿಕೆ', 'മുന്നറിയിപ്പ്', 'ਚੇਤਾਵਨੀ', 'ଚେତାବନୀ',
         )),
+        ('get_work_window', (
+            'spray', 'spraying', 'harvest', 'harvesting',
+            'छिड़काव', 'स्प्रे', 'कटाई',
+        )),
         ('get_agromet_advisory', (
             'agromet', 'crop advisory', 'कृषि सलाह', 'farming advisory', 'farming advice',
             'crop advice', 'कृषि परामर्श',
@@ -107,12 +119,12 @@ def select_tool(request: ChatRequest) -> str:
         ('get_weather_score', (
             'score', 'should i', 'should we', 'can i', 'can we', 'is it safe', 'safe to',
             'good time', 'work outside', 'occupation', 'for me',
-            'sow', 'sowing', 'seed', 'irrigat', 'spray', 'spraying',
+            'sow', 'sowing', 'seed', 'irrigat',
             'drive', 'driving', 'walk', 'hiking', 'dry clothes', 'outdoors', 'outdoor',
             'travel', 'travelling', 'traveling', 'field work', 'go out',
             'खेत के काम', 'বাইরে', 'పని', 'काम', 'வெளியே',
             'kheti', 'खेती', 'best time', 'bahar kaam', 'बाहर काम',
-            'बुआई', 'बीज', 'सिंचाई', 'छिड़काव',
+            'बुआई', 'बीज', 'सिंचाई',
         )),
         ('get_provider_status', ('provider', 'source', 'confidence', 'which model', 'disagreement')),
         ('get_saved_locations', ('saved location', 'saved place', 'my places', 'my locations')),
@@ -215,6 +227,11 @@ def _input_for(name: str, request: ChatRequest):
         return AlertRuleInput(location=location, enabled=True, channels=_alert_channels(request.text))  # type: ignore[arg-type]
     if name == 'get_agromet_advisory':
         return AgrometInput(location=location)
+    if name == 'get_work_window':
+        activity = infer_work_activity(request.text)
+        if activity is None:
+            raise ValueError('Unsupported activity. Use spray or harvest.')
+        return WorkWindowInput(location=location, activity=activity, min_hours=DEFAULT_MIN_HOURS)
     if name == 'assess_infrastructure_hazard':
         return HazardInput(location=location)
     if name == 'get_disaster_briefing':
@@ -362,7 +379,8 @@ def _render_hourly(result: ToolResult, request: ChatRequest) -> str:
             rows, place=display_place_name(request.location.name), window_label=label,
         )
         return format_event_risk_answer(assessment, why_line=why_line, user_text=request.text)
-    supporting = [f'{display_place_name(request.location.name)}']
+    place_name = display_place_name(request.location.name)
+    supporting = [f'Place: {place_name}'] if place_name == 'Selected place' else [place_name]
     if rain:
         supporting.append(phrase(language, 'rain', value=max(rain)))
     if temps:
@@ -596,6 +614,9 @@ def render_tool_result(name: str, result: ToolResult, request: ChatRequest) -> d
     elif name == 'get_disaster_briefing' and isinstance(data, dict):
         answer_text = _render_disaster_brief(data)
         agreement = 'disaster_briefing'
+    elif name == 'get_work_window' and isinstance(data, dict):
+        answer_text = format_work_window_answer(data, data.get('activity'))
+        agreement = 'work_window'
     else:
         answer_text = result.error or phrase(language, 'unavailable')
         agreement = 'tool'
@@ -613,6 +634,8 @@ def render_tool_result(name: str, result: ToolResult, request: ChatRequest) -> d
 
 def _humanize_payload(payload: dict) -> dict:
     from .layperson import format_layperson_answer
+    if payload.get('tool') == 'get_work_window' or payload.get('language') != 'en':
+        return payload
     answer = payload.get('answer')
     if isinstance(answer, str) and answer.strip():
         payload = {**payload, 'answer': format_layperson_answer(answer)}

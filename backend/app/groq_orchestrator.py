@@ -61,6 +61,12 @@ _TOOL_DESCRIPTIONS = {
         'CAP warnings, heavy-rain disruption estimate, road/landslide estimate, local risk thresholds, '
         'and IMD/NDMA/SACHET links. Never invent shelters, radar, or flood inundation maps.'
     ),
+    'get_work_window': (
+        'Contiguous spray or harvest work windows from verified hourly forecast. '
+        'Use for when-can-I-spray, best time to spray, when-can-I-harvest, and harvest timing. '
+        'Returns qualifying runs, the best window, avoid hours (rain ≥ 60% or thunderstorm), '
+        'staleness, and official alerts. Not crop-specific agricultural advice.'
+    ),
 }
 
 
@@ -277,7 +283,7 @@ async def _execute_tool(name: str, request: ChatRequest) -> tuple[dict[str, Any]
     if (
         name == 'get_weather_score'
         and request.profile == 'general'
-        and any(word in request.text.lower() for word in ('sow', 'seed', 'irrigat', 'spray'))
+        and any(word in request.text.lower() for word in ('sow', 'seed', 'irrigat', 'spray', 'harvest'))
     ):
         tool_request = request.model_copy(update={'profile': 'farming'})
     if name == 'get_current_weather':

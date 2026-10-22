@@ -53,7 +53,7 @@ def _rain_plain(pct: float) -> str:
 
 
 def _temp_plain(lo: str, hi: str) -> str:
-    return f'It will be about {lo}–{hi}°C.'
+    return f'Temperature: {lo} to {hi}°C.'
 
 
 def _clean(line: str) -> str:
@@ -61,6 +61,8 @@ def _clean(line: str) -> str:
 
 
 def _is_place_only(line: str) -> bool:
+    if line.lower().startswith('place:'):
+        return False
     if any(ch.isdigit() for ch in line):
         return False
     if re.search(r'(?i)rain|temp|wind|°|%|mm|warning|score|sow|outside|concern|road|nearby', line):

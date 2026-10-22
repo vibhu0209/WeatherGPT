@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from .alerts import alert_service
 from .climate import climate_service
 from .decision import current_point, daily_summary, weather_score
+from .work_window import DEFAULT_MIN_HOURS, plan_from_bundle
 from .marine import marine_service
 from .models import Location
 from .providers import PROVIDERS
@@ -209,8 +210,37 @@ async def get_agromet_advisory(request: AgrometInput) -> ToolResult:
     )
 
 
+class WorkWindowInput(BaseModel):
+    location: Location
+    activity: Literal['spray', 'harvest']
+    min_hours: int = Field(default=DEFAULT_MIN_HOURS, ge=1, le=48)
+
+
 class HazardInput(BaseModel):
     location: Location
+
+
+async def get_work_window(request: WorkWindowInput) -> ToolResult:
+    """Contiguous spray/harvest windows from verified hourly forecast. Not crop-specific advice."""
+    bundle = await service.bundle(request.location)
+    official = await alert_service.official(request.location)
+    data = plan_from_bundle(
+        bundle,
+        request.activity,
+        request.location.timezone,
+        request.min_hours,
+        official_alerts=official.get('alerts') or [],
+        official_status=official.get('status'),
+        official_message=official.get('message'),
+    )
+    return ToolResult(
+        data=data,
+        retrieved_at=bundle.get('retrieved_at') or datetime.now(timezone.utc).isoformat(),
+        is_stale=bool(bundle.get('is_stale')),
+        sources=list(bundle.get('sources') or []),
+        status=data['status'],
+        error=None if data['status'] == 'available' else data.get('message'),
+    )
 
 
 async def assess_infrastructure_hazard_tool(request: HazardInput) -> ToolResult:
@@ -284,4 +314,5 @@ TOOL_REGISTRY = {
     'get_agromet_advisory': (AgrometInput, get_agromet_advisory),
     'assess_infrastructure_hazard': (HazardInput, assess_infrastructure_hazard_tool),
     'get_disaster_briefing': (HazardInput, get_disaster_briefing),
+    'get_work_window': (WorkWindowInput, get_work_window),
 }

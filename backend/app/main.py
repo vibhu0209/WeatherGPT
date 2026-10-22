@@ -6,6 +6,7 @@ import logging
 import os
 import uuid
 import asyncio
+from typing import Literal
 import httpx
 from fastapi import FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -18,6 +19,7 @@ from .chat import answer
 from .chat_tools import run_chat
 from .ai import validate_translation
 from .decision import current_point, daily_summary, weather_score, apply_official_warning_limit, recommendations
+from .work_window import DEFAULT_MIN_HOURS, plan_from_bundle
 from .climate import climate_service
 from .risks import estimate_risks
 from .metrics import metrics
@@ -399,6 +401,40 @@ PROFILE_PATTERN = '^(general|farming|fishing|outdoor|tourism|transport|construct
 async def score(latitude: float = Query(ge=-90, le=90), longitude: float = Query(ge=-180, le=180), name: str = 'Selected place', timezone: str = 'Asia/Kolkata', profile: str = Query(default='general', pattern=PROFILE_PATTERN)):
     data = await weather_for(latitude, longitude, name, timezone)
     return {'location': data['location'], 'retrieved_at': data['retrieved_at'], 'is_stale': data['is_stale'], 'data': data.get('scores', {}).get(profile) or weather_score(data['hourly'], profile), 'recommendations': data.get('recommendations', {}).get(profile, [])}
+
+
+@app.get('/v1/weather/work-window')
+async def work_window(
+    activity: Literal['spray', 'harvest'],
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+    name: str = Query(default='Selected place', max_length=120),
+    timezone: str = 'Asia/Kolkata',
+    location: str | None = Query(default=None, max_length=120),
+    min_hours: int = Query(default=DEFAULT_MIN_HOURS, ge=1, le=48),
+):
+    place_name = location or name
+    loc = Location(name=place_name, latitude=latitude, longitude=longitude, timezone=timezone)
+    data, official = await asyncio.gather(service.bundle(loc), alert_service.official(loc))
+    plan = plan_from_bundle(
+        data,
+        activity,
+        loc.timezone,
+        min_hours,
+        official_alerts=official.get('alerts') or [],
+        official_status=official.get('status'),
+        official_message=official.get('message'),
+    )
+    return {
+        'location': data.get('location') or loc.model_dump(mode='json'),
+        'retrieved_at': data.get('retrieved_at'),
+        'is_stale': bool(data.get('is_stale')),
+        'sources': data.get('sources') or [],
+        'source_count': data.get('source_count', 0),
+        'agreement': data.get('agreement'),
+        'data': plan,
+        **plan,
+    }
 
 
 @app.get('/v1/weather/alerts')

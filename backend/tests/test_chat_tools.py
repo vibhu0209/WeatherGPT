@@ -1,5 +1,7 @@
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.chat_tools import _action_lead_and_tip, select_tool
@@ -8,12 +10,17 @@ from app.models import ChatRequest, Location
 from app.tools import TOOL_REGISTRY
 
 LOC = Location(name='Pune', latitude=18.52, longitude=73.85)
-NOW = datetime(2026, 9, 11, 6, 0, tzinfo=timezone.utc)
+NOW = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
 MUMBAI = Location(name='Mumbai', latitude=19.07, longitude=72.87)
 
 
 DELHI = Location(name='Delhi', latitude=28.6, longitude=77.2)
 CHANDIGARH = Location(name='Chandigarh', latitude=30.73, longitude=76.78)
+
+
+@pytest.fixture(autouse=True)
+def isolate_alert_rule_store(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr('app.rule_store._STORE', tmp_path / 'alert_rules.json')
 
 
 def test_action_copy_names_the_plan_and_gives_a_practical_next_step():
@@ -203,6 +210,8 @@ def test_select_tool_maps_representative_questions():
         'Any alerts near me?': 'get_active_alerts',
         "What's my weather score?": 'get_weather_score',
         'Should I sow seeds today?': 'get_weather_score',
+        'When can I spray tomorrow?': 'get_work_window',
+        'When should I harvest?': 'get_work_window',
         'Can I dry clothes outside?': 'get_weather_score',
         'Is it safe to drive this evening?': 'get_weather_score',
         'Compare Delhi and Chandigarh tomorrow.': 'compare_locations',
@@ -240,6 +249,8 @@ def test_every_registry_tool_is_reachable_from_chat(monkeypatch):
         'set_alert_rule': {'text': 'Notify me about rain'},
         'get_agromet_advisory': {'text': 'IMD agromet advisory'},
         'assess_infrastructure_hazard': {'text': 'Will this road collapse into a landslide?'},
+        'get_disaster_briefing': {'text': 'Give me a disaster briefing'},
+        'get_work_window': {'text': 'When can I spray tomorrow?'},
         'compare_locations': {'text': 'compare rain tomorrow', 'secondary_location': MUMBAI.model_dump(mode='json')},
     }
     assert set(questions) == set(TOOL_REGISTRY)
@@ -263,6 +274,8 @@ def test_every_registry_tool_is_reachable_from_chat(monkeypatch):
             'set_alert_rule': ('rain',),
             'get_agromet_advisory': ('not connected',),
             'assess_infrastructure_hazard': ('elevated concern', '55', 'slope'),
+            'get_disaster_briefing': ('official',),
+            'get_work_window': ('window',),
             'compare_locations': ('Pune', 'Mumbai', '32'),
         }[name]
         for fact in facts:
