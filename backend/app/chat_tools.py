@@ -644,21 +644,24 @@ def _humanize_payload(payload: dict) -> dict:
 
 async def run_chat(request: ChatRequest) -> dict:
     started = time.perf_counter()
-    # Prefer Groq tool orchestration when available; deterministic path is always the safety net.
-    try:
-        from .groq_orchestrator import orchestrate_chat
-        orchestrated = await orchestrate_chat(request)
-        if orchestrated is not None:
-            _trace(
-                orchestrated.get('tool') or 'orchestrated',
-                orchestrated.get('tool') or 'orchestrated',
-                int((time.perf_counter() - started) * 1000),
-                'available',
-            )
-            return _humanize_payload(orchestrated)
-        _LOG.info('FALLBACK_USED reason=orchestrator_none path=deterministic')
-    except Exception as error:
-        _LOG.info('FALLBACK_USED reason=orchestrator_exception exception=%s', type(error).__name__)
+    # Explicit spray/harvest requests must always use the deterministic
+    # contiguous-window planner, rather than allowing a model to choose a
+    # broad suitability score.
+    if infer_work_activity(request.text) is None:
+        try:
+            from .groq_orchestrator import orchestrate_chat
+            orchestrated = await orchestrate_chat(request)
+            if orchestrated is not None:
+                _trace(
+                    orchestrated.get('tool') or 'orchestrated',
+                    orchestrated.get('tool') or 'orchestrated',
+                    int((time.perf_counter() - started) * 1000),
+                    'available',
+                )
+                return _humanize_payload(orchestrated)
+            _LOG.info('FALLBACK_USED reason=orchestrator_none path=deterministic')
+        except Exception as error:
+            _LOG.info('FALLBACK_USED reason=orchestrator_exception exception=%s', type(error).__name__)
 
     intent, name = await resolve_tool(request)
     status = 'error'

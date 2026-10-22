@@ -19,6 +19,6 @@
 - No Android, locale, or provider-config edits.
 
 ## Tests
-Focused verification, 2026-10-22: `tests/test_work_window.py` — 19 passed.
+Focused verification, 2026-10-22: `tests/test_work_window.py` — 20 passed.
 
-Full verification, 2026-10-22: 247 passed, 1 third-party deprecation warning. Tests use a workspace-local pytest base temp directory because the system temp directory is not writable in this environment.
+Full verification, 2026-10-22: 248 passed, 1 third-party deprecation warning. Tests use a workspace-local pytest base temp directory because the system temp directory is not writable in this environment.

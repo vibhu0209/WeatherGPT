@@ -348,3 +348,34 @@ def test_chat_spray_and_harvest_use_planner(monkeypatch):
     assert 'take precedence' in spray.lower()
     assert 'crop-specific' in spray.lower()
     assert 'Your best harvest window is 06:00–10:00 local time (4 hours).' in harvest
+
+
+@pytest.mark.asyncio
+async def test_explicit_spray_question_bypasses_groq_and_returns_planner_answer(monkeypatch):
+    from app.chat_tools import run_chat
+
+    async def bundle(_):
+        return {
+            'hourly': [hour(6), hour(7), hour(8), hour(9), hour(10, rain=80)],
+            'retrieved_at': NOW.isoformat(), 'is_stale': False, 'sources': ['open-meteo'],
+        }
+
+    async def official(_):
+        return {'status': 'available', 'alerts': [], 'message': 'available'}
+
+    async def unexpected_orchestrator(_):
+        raise AssertionError('explicit spray requests must not be routed through Groq')
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW if tz is None else NOW.astimezone(tz)
+
+    monkeypatch.setattr('app.tools.service.bundle', bundle)
+    monkeypatch.setattr('app.tools.alert_service.official', official)
+    monkeypatch.setattr('app.work_window.datetime', FrozenDateTime)
+    monkeypatch.setattr('app.groq_orchestrator.orchestrate_chat', unexpected_orchestrator)
+
+    result = await run_chat(ChatRequest(text='When should I spray weedicide?', location=LOC))
+    assert result['tool'] == 'get_work_window'
+    assert result['answer'].startswith('Your best spray window is 06:00–10:00 local time (4 hours).')

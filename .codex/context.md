@@ -23,11 +23,12 @@ Avoid: rain_chance ≥ 60 OR thunderstorm code. Independent of activity.
 - Route `GET /v1/weather/work-window`.
 - Chat: spray/harvest → `get_work_window`; English `format_work_window_answer`.
 - Direct chat does not prepend a second stale-data notice because the planner formatter already makes stale data prominent.
+- Explicit spray/harvest questions bypass Groq tool selection and deterministically invoke the planner, preventing a general weather score from replacing a requested time window.
 
 ## Do not change
 `spray_window`, `harvest_window`, `recommendations` output; Android; 11 locale files; provider config.
 
 ## Verification (2026-10-22)
-- `tests/test_work_window.py`: 19 passed.
-- Full suite using workspace-local temp directory: 247 passed, 1 third-party deprecation warning.
+- `tests/test_work_window.py`: 20 passed.
+- Full suite using workspace-local temp directory: 248 passed, 1 third-party deprecation warning.
 - Regression repairs: rule persistence uses the user application-data directory; fixture time is dynamic; emergency landslide questions select the hazard tool before the broad emergency briefing; non-English templates bypass English-only layperson rewriting; warning-like place labels render only as `Selected place`.
