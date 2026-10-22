@@ -315,6 +315,7 @@ def test_chat_spray_and_harvest_use_planner(monkeypatch):
 
     assert select_tool(ChatRequest(text='When can I spray tomorrow?', location=LOC)) == 'get_work_window'
     assert select_tool(ChatRequest(text='What is the best time to spray?', location=LOC)) == 'get_work_window'
+    assert select_tool(ChatRequest(text='When should I spray weedicide?', location=LOC)) == 'get_work_window'
     assert select_tool(ChatRequest(text='When can I harvest tomorrow?', location=LOC)) == 'get_work_window'
     assert select_tool(ChatRequest(text='When should I harvest?', location=LOC)) == 'get_work_window'
     assert select_tool(ChatRequest(text='Will it rain today?', location=LOC)) == 'get_hourly_forecast'
@@ -337,9 +338,11 @@ def test_chat_spray_and_harvest_use_planner(monkeypatch):
 
     monkeypatch.setattr('app.work_window.datetime', FrozenDateTime)
     spray = answer(ChatRequest(text='When can I spray tomorrow?', location=LOC), bundle)['answer']
+    weedicide = answer(ChatRequest(text='When should I spray weedicide?', location=LOC), bundle)['answer']
     harvest = answer(ChatRequest(text='When should I harvest?', location=LOC), bundle)['answer']
     assert spray.startswith('Showing weather saved earlier')
     assert 'Your best spray window is 06:00–10:00 local time (4 hours).' in spray
+    assert 'Your best spray window is 06:00–10:00 local time (4 hours).' in weedicide
     assert 'Avoid 10:00' in spray
     assert 'Heat wave' in spray
     assert 'take precedence' in spray.lower()
